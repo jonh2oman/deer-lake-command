@@ -558,12 +558,10 @@ primaryMap.on('click', async (e) => {
   
   logToFeed(`> DEPLOYING: ${name}...`);
   
-  const { error } = await supabase
-    .from('tactical_buoys')
-    .insert([
-      { id: newId, name: name, lat: e.latlng.lat, lng: e.latlng.lng }
-    ]);
-    
+  let customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+  customBuoys.push({ id: newId, name: name, lat: e.latlng.lat, lng: e.latlng.lng });
+  localStorage.setItem('custom_buoys', JSON.stringify(customBuoys));
+  const error = null;
   if (error) {
     console.error("Error inserting buoy:", error);
     logToFeed(`SYS ERROR: FAILED TO DEPLOY ${name}`, true);
@@ -579,27 +577,27 @@ const buoysLayerPrimary = L.layerGroup().addTo(primaryMap);
 const buoysLayerSecondary = L.layerGroup().addTo(secondaryMap1);
 
 async function renderBuoys() {
+  logToFeed('[TRACE] renderBuoys started');
   buoysLayerPrimary.clearLayers();
   buoysLayerSecondary.clearLayers();
   
-  // Base Buoys from QGIS
   let allFeatures = [];
   if (typeof window.json_Buoys_2 !== 'undefined' && window.json_Buoys_2.features) {
     allFeatures = [...window.json_Buoys_2.features];
-    console.log("[DIAG] Found Base Buoys:", allFeatures.length);
+    logToFeed(`[TRACE] Added ${allFeatures.length} Base Buoys`);
   } else {
-    console.log("[DIAG] Base Buoys are UNDEFINED");
+    logToFeed('[TRACE] Base Buoys UNDEFINED');
   }
   
-  // Custom Buoys from Supabase
   try {
-    const { data: supaBuoys, error } = await supabase
-      .from('tactical_buoys')
-      .select('*');
+    logToFeed('[TRACE] Fetching custom buoys...');
+    const supaBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+    const error = null;
       
     if (error) {
-      console.warn("Supabase select error (table might not exist):", error.message);
+      logToFeed(`[TRACE] Supabase err: ${error.message}`);
     } else if (supaBuoys) {
+      logToFeed(`[TRACE] Added ${supaBuoys.length} Custom Buoys`);
       supaBuoys.forEach(b => {
         allFeatures.push({
           type: "Feature",
@@ -609,29 +607,42 @@ async function renderBuoys() {
       });
     }
   } catch (err) {
-    console.warn("Supabase connection failed:", err);
+    logToFeed(`[TRACE] Supabase throw: ${err.message}`);
   }
   
+  logToFeed(`[TRACE] Filtering deleted base buoys...`);
+  let deletedBase = [];
+  try {
+    deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
+  } catch(e) {
+    logToFeed(`[TRACE] localStorage err: ${e.message}`);
+  }
+  
+  const visibleFeatures = allFeatures.filter(f => !deletedBase.includes(f.properties.id));
+  logToFeed(`[TRACE] Rendering ${visibleFeatures.length} visible buoys...`);
+
   const onFeatureClick = (feature, layer) => {
     // Add click interceptor for Edit Mode
     layer.on('click', async (e) => {
       if (isEditMode) {
+        logToFeed(`[TRACE] Click intercepted for buoy: ${feature.properties['Buoys']}`);
         if (confirm(`Remove Tactical Buoy: ${feature.properties['Buoys']}?`)) {
           if (feature.properties.isCustom) {
-            // Remove from Supabase
-            const { error } = await supabase
-              .from('tactical_buoys')
-              .delete()
-              .match({ id: feature.properties.id });
-              
+            logToFeed(`[TRACE] Removing custom buoy: ${feature.properties.id}`);
+            // Remove from local storage
+            let customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+            customBuoys = customBuoys.filter(b => b.id !== feature.properties.id);
+            localStorage.setItem('custom_buoys', JSON.stringify(customBuoys));
+            const error = null;
             if (!error) {
               logToFeed(`> REMOVED BUOY: ${feature.properties['Buoys']}`, true);
             } else {
-              console.error("Error deleting:", error);
+              logToFeed(`[TRACE] Supabase delete err: ${error.message}`);
               logToFeed(`SYS ERROR: FAILED TO REMOVE BUOY`);
             }
           } else {
              // For base buoys, add to hidden list in local storage
+             logToFeed(`[TRACE] Removing base buoy: ${feature.properties.id}`);
              let deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
              deletedBase.push(feature.properties.id);
              localStorage.setItem('deleted_base_buoys', JSON.stringify(deletedBase));
@@ -648,43 +659,32 @@ async function renderBuoys() {
     layer.bindPopup(`<strong>TACTICAL BUOY</strong><br/>ID: ${id}<br/>NAME: ${name}`);
   };
 
-  // Filter out deleted base buoys
-  // TEMP FIX: We clear it once so the user can see them again during this test
-  if (!localStorage.getItem('reset_v2_done')) {
-    localStorage.removeItem('deleted_base_buoys');
-    localStorage.setItem('reset_v2_done', 'true');
-  }
-  const deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
-  const visibleFeatures = allFeatures.filter(f => !deletedBase.includes(f.properties.id));
-  
-  L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
-    pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon }),
-    onEachFeature: onFeatureClick
-  }).addTo(buoysLayerPrimary);
+  try {
+    L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
+      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon }),
+      onEachFeature: onFeatureClick
+    }).addTo(buoysLayerPrimary);
 
-  const geojsonSecondary = L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
-    pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon })
-  }).addTo(buoysLayerSecondary);
+    const geojsonSecondary = L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
+      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon })
+    }).addTo(buoysLayerSecondary);
 
-  // Automatically fit the minimap to the deployed buoys
-  if (visibleFeatures.length > 0) {
-    // Small timeout ensures the map is fully rendered before fitting bounds
-    setTimeout(() => {
-      secondaryMap1.fitBounds(geojsonSecondary.getBounds(), { padding: [10, 10], maxZoom: 16 });
-    }, 100);
+    if (visibleFeatures.length > 0) {
+      setTimeout(() => {
+        secondaryMap1.fitBounds(geojsonSecondary.getBounds(), { padding: [10, 10], maxZoom: 16 });
+      }, 100);
+    }
+    logToFeed('[TRACE] L.geoJSON success');
+  } catch(e) {
+    logToFeed(`[TRACE] L.geoJSON ERROR: ${e.message}`, true);
   }
 }
 
 // Initial render handled by waitForDataAndRender()
 
 // --- Supabase Realtime Subscription ---
-supabase
-  .channel('public:tactical_buoys')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'tactical_buoys' }, payload => {
-    // When another device adds/removes a buoy, re-render!
-    renderBuoys();
-  })
-  .subscribe();
+// --- Local Custom Buoys logic replaces Supabase Realtime ---
+// No realtime channel needed for local storage
 
 // Emergency Services
 function emergencyPopup(feature, layer) {

@@ -574,8 +574,6 @@ input:checked + .slider:before {
 
 /* Leaflet Overrides */
 .leaflet-container { background: #000; font-family: var(--hud-font); }
-/* [DIAG] TEMP OPACITY OVERRIDE TO TEST IF MARKERS ARE BEHIND TILES */
-.leaflet-tile-pane { opacity: 0.2 !important; }
 .leaflet-popup-content-wrapper { background: var(--panel-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-family: var(--hud-font); border-radius: 0; }
 .leaflet-popup-tip { background: var(--panel-bg); border: 1px solid var(--border-color); }
 .leaflet-bar a { background-color: rgba(0,0,0,0.8) !important; color: var(--accent-color) !important; border: 1px solid var(--border-color) !important; border-radius: 0 !important; }
