@@ -375,21 +375,27 @@ editToggle.addEventListener('change', (e) => {
   }
 });
 
-primaryMap.on('click', (e) => {
+primaryMap.on('click', async (e) => {
   if (!isEditMode) return;
   
   const name = prompt("Enter designation for new Tactical Buoy:", "Alpha-" + Math.floor(Math.random() * 100));
   if (!name) return; // User cancelled
   
-  const newBuoy = {
-    type: "Feature",
-    properties: { id: "CUSTOM-" + Date.now(), Buoys: name, isCustom: true },
-    geometry: { type: "Point", coordinates: [e.latlng.lng, e.latlng.lat] }
-  };
+  const newId = "CUSTOM-" + Date.now();
   
-  const customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
-  customBuoys.push(newBuoy);
-  localStorage.setItem('custom_buoys', JSON.stringify(customBuoys));
+  logToFeed(`> DEPLOYING: ${name}...`);
+  
+  const { error } = await supabase
+    .from('tactical_buoys')
+    .insert([
+      { id: newId, name: name, lat: e.latlng.lat, lng: e.latlng.lng }
+    ]);
+    
+  if (error) {
+    console.error("Error inserting buoy:", error);
+    logToFeed(`SYS ERROR: FAILED TO DEPLOY ${name}`, true);
+    return;
+  }
   
   logToFeed(`> DEPLOYED NEW BUOY: ${name}`);
   renderBuoys();
@@ -399,7 +405,7 @@ primaryMap.on('click', (e) => {
 const buoysLayerPrimary = L.layerGroup().addTo(primaryMap);
 const buoysLayerSecondary = L.layerGroup().addTo(secondaryMap1);
 
-function renderBuoys() {
+async function renderBuoys() {
   buoysLayerPrimary.clearLayers();
   buoysLayerSecondary.clearLayers();
   
@@ -409,27 +415,46 @@ function renderBuoys() {
     allFeatures = [...json_Buoys_2.features];
   }
   
-  // Custom Buoys from LocalStorage
-  const customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
-  allFeatures = allFeatures.concat(customBuoys);
+  // Custom Buoys from Supabase
+  const { data: supaBuoys, error } = await supabase
+    .from('tactical_buoys')
+    .select('*');
+    
+  if (!error && supaBuoys) {
+    supaBuoys.forEach(b => {
+      allFeatures.push({
+        type: "Feature",
+        properties: { id: b.id, Buoys: b.name, isCustom: true },
+        geometry: { type: "Point", coordinates: [b.lng, b.lat] }
+      });
+    });
+  }
   
   const onFeatureClick = (feature, layer) => {
     // Add click interceptor for Edit Mode
-    layer.on('click', (e) => {
+    layer.on('click', async (e) => {
       if (isEditMode) {
         if (confirm(`Remove Tactical Buoy: ${feature.properties['Buoys']}?`)) {
           if (feature.properties.isCustom) {
-            // Remove from custom buoys
-            let custom = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
-            custom = custom.filter(b => b.properties.id !== feature.properties.id);
-            localStorage.setItem('custom_buoys', JSON.stringify(custom));
+            // Remove from Supabase
+            const { error } = await supabase
+              .from('tactical_buoys')
+              .delete()
+              .match({ id: feature.properties.id });
+              
+            if (!error) {
+              logToFeed(`> REMOVED BUOY: ${feature.properties['Buoys']}`, true);
+            } else {
+              console.error("Error deleting:", error);
+              logToFeed(`SYS ERROR: FAILED TO REMOVE BUOY`);
+            }
           } else {
-             // For base buoys, add to hidden list
+             // For base buoys, add to hidden list in local storage
              let deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
              deletedBase.push(feature.properties.id);
              localStorage.setItem('deleted_base_buoys', JSON.stringify(deletedBase));
+             logToFeed(`> REMOVED BUOY: ${feature.properties['Buoys']}`, true);
           }
-          logToFeed(`> REMOVED BUOY: ${feature.properties['Buoys']}`, true);
           renderBuoys();
         }
       }
@@ -457,6 +482,15 @@ function renderBuoys() {
 
 // Initial render
 renderBuoys();
+
+// --- Supabase Realtime Subscription ---
+supabase
+  .channel('public:tactical_buoys')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'tactical_buoys' }, payload => {
+    // When another device adds/removes a buoy, re-render!
+    renderBuoys();
+  })
+  .subscribe();
 
 // Emergency Services
 function emergencyPopup(feature, layer) {
