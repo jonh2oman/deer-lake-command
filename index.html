@@ -224,7 +224,56 @@
         </div>
       </div>
     </div>
+    
+    <!-- Welcome Modal -->
+    <div id="welcome-modal" class="fullscreen-modal" style="display: none;">
+      <div class="welcome-content">
+        <h1 class="welcome-title">DEER LAKE TACTICAL COMMAND</h1>
+        <p class="welcome-text">SECURE TERMINAL INITIALIZED.</p>
+        <p class="welcome-text">This interface provides comprehensive geographical tracking, live GPS triangulation, and tactical asset deployment mapping.</p>
+        <button id="btn-welcome-enter" class="btn-primary" style="margin-top: 20px;">[ INITIALIZE SYSTEM ]</button>
+      </div>
+    </div>
 
+    <!-- Floating Help Button -->
+    <div id="help-btn" class="help-btn">?</div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="fullscreen-modal" style="display: none;">
+      <div class="help-content">
+        <div class="help-header">
+          <h2 class="welcome-title" style="margin: 0; font-size: 18px;">SYSTEM DOCUMENTATION</h2>
+          <button id="btn-close-help" class="btn-secondary" style="padding: 5px 10px;">[X] CLOSE</button>
+        </div>
+        <input type="search" id="help-search" class="help-search-input" placeholder="Search documentation...">
+        
+        <div class="help-topics-container" id="help-topics-container">
+          <div class="help-topic">
+            <h3>Live GPS Tracking</h3>
+            <p>Toggle 'SYS: LIVE GPS TRACKING' to connect to your device's physical GPS antenna. A pulsing Blue Dot will appear on the map and track your movements in real-time. Use the 'DEPLOY SENSOR AT CURRENT GPS' button to drop a marker at your exact physical coordinates.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Tactical Edit Mode</h3>
+            <p>Toggle 'SYS: TACTICAL EDIT MODE' to enable map clicking. When active, clicking anywhere on the primary map will open the Deployment Terminal to place a new asset.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Marker Types (Deployments)</h3>
+            <p><strong>Radar Blips:</strong> Animated, pulsing colored circles.<br>
+            <strong>Marine Icons:</strong> Tactical SVGs for Anchors, Warnings, Buoys, and Targets.<br>
+            <strong>Infrastructure:</strong> Land-based SVGs for Buildings, Kitchens, Restrooms, and Warehouses.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Minimaps & HUD Rollups</h3>
+            <p>The right side of the screen features Secondary Minimaps for isolating specific data layers (e.g., Tactical Buoys vs Emergency Services). Use the [-] button to rollup a minimap to save screen space, or [+] to pop it out into the primary view.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Intel Feed</h3>
+            <p>The bottom panel is the live system log. It records all system actions, errors, and marker deployments for audit tracking.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Scripts -->
     <script type="module" src="./main.js"></script>
   </body>

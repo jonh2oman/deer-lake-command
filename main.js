@@ -812,6 +812,7 @@ async function renderBuoys() {
       setTimeout(() => {
         secondaryMap1.fitBounds(geojsonSecondary.getBounds(), { padding: [10, 10], maxZoom: 16 });
       }, 100);
+      logToFeed(`[TRACE] Added custom markers to primary/secondary maps.`);
     }
     logToFeed('[TRACE] L.geoJSON success');
   } catch(e) {
@@ -883,3 +884,46 @@ setTimeout(() => {
   secondaryMap3.invalidateSize();
   secondaryMap4.invalidateSize();
 }, 500);
+
+// --- Welcome Modal Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+  const welcomeModal = document.getElementById('welcome-modal');
+  if (!sessionStorage.getItem('welcome_dismissed')) {
+    welcomeModal.style.display = 'flex';
+  }
+  
+  document.getElementById('btn-welcome-enter').addEventListener('click', () => {
+    welcomeModal.style.display = 'none';
+    sessionStorage.setItem('welcome_dismissed', 'true');
+    logToFeed("SYS: COMMAND TERMINAL ONLINE", true);
+  });
+});
+
+// --- Help Terminal Logic ---
+const helpBtn = document.getElementById('help-btn');
+const helpModal = document.getElementById('help-modal');
+const btnCloseHelp = document.getElementById('btn-close-help');
+const helpSearch = document.getElementById('help-search');
+
+helpBtn.addEventListener('click', () => {
+  helpModal.style.display = 'flex';
+  helpSearch.value = '';
+  helpSearch.focus();
+  document.querySelectorAll('.help-topic').forEach(t => t.style.display = 'block');
+});
+
+btnCloseHelp.addEventListener('click', () => {
+  helpModal.style.display = 'none';
+});
+
+helpSearch.addEventListener('input', (e) => {
+  const term = e.target.value.toLowerCase();
+  document.querySelectorAll('.help-topic').forEach(topic => {
+    const text = topic.innerText.toLowerCase();
+    if (text.includes(term)) {
+      topic.style.display = 'block';
+    } else {
+      topic.style.display = 'none';
+    }
+  });
+});

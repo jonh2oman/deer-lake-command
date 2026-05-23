@@ -741,11 +741,120 @@ input:checked + .slider:before {
 
 /* SVG wrapper for Leaflet icon */
 .marine-icon-wrapper {
+  display: flex; justify-content: center; align-items: center;
+  width: 100%; height: 100%;
+}
+
+/* Welcome Modal */
+.welcome-content {
+  background: rgba(0, 10, 20, 0.95);
+  border: 1px solid var(--accent-color);
+  padding: 40px;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 20px rgba(0, 255, 204, 0.1);
+}
+.welcome-title {
+  color: var(--accent-color);
+  font-family: var(--hud-font);
+  font-size: 24px;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+}
+.welcome-text {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+/* Floating Help Button */
+.help-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 10, 20, 0.8);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
   display: flex;
-  align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  align-items: center;
+  font-family: var(--hud-font);
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+  transition: all 0.2s;
+}
+.help-btn:hover {
+  background: var(--accent-color);
+  color: #000;
+  box-shadow: 0 0 15px var(--accent-color);
+  transform: scale(1.1);
+}
+
+/* Help Modal */
+.help-content {
+  background: rgba(0, 10, 20, 0.95);
+  border: 1px solid var(--accent-color);
+  padding: 30px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+}
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+  padding-bottom: 10px;
+}
+.help-search-input {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 10px;
+  font-family: var(--body-font);
+  width: 100%;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+.help-search-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 5px rgba(0,255,204,0.3);
+}
+.help-topics-container {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding-right: 10px;
+}
+.help-topic {
+  margin-bottom: 25px;
+  padding: 15px;
+  background: rgba(0, 255, 204, 0.05);
+  border-left: 2px solid var(--accent-color);
+}
+.help-topic h3 {
+  color: var(--accent-color);
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-family: var(--hud-font);
+  font-size: 16px;
+}
+.help-topic p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .deployment-actions {
