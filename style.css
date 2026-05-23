@@ -1,0 +1,447 @@
+/* Base Dark Theme (Default) */
+:root, [data-theme="dark"] {
+  --bg-color: #0d1117;
+  --panel-bg: rgba(10, 15, 20, 0.75);
+  --border-color: rgba(47, 129, 247, 0.3);
+  --text-primary: #e6edf3;
+  --text-secondary: #7d8590;
+  --accent-color: #2f81f7;
+  --accent-glow: rgba(47, 129, 247, 0.6);
+  --danger-color: #f85149;
+  --danger-glow: rgba(248, 81, 73, 0.6);
+  --success-color: #2ea043;
+  --tactical-green: #39ff14;
+  --hud-font: 'Share Tech Mono', monospace;
+}
+
+[data-theme="light"] {
+  --bg-color: #f6f8fa;
+  --panel-bg: rgba(255, 255, 255, 0.85);
+  --border-color: rgba(0, 0, 0, 0.2);
+  --text-primary: #1f2328;
+  --text-secondary: #656d76;
+  --accent-color: #0969da;
+  --accent-glow: rgba(9, 105, 218, 0.4);
+  --danger-color: #cf222e;
+  --danger-glow: rgba(207, 34, 46, 0.4);
+}
+
+[data-theme="sea"] {
+  --bg-color: #021a24;
+  --panel-bg: rgba(4, 38, 51, 0.8);
+  --border-color: rgba(0, 188, 212, 0.4);
+  --text-primary: #e0f7fa;
+  --text-secondary: #80deea;
+  --accent-color: #00bcd4;
+  --accent-glow: rgba(0, 188, 212, 0.6);
+  --danger-color: #ff5252;
+  --danger-glow: rgba(255, 82, 82, 0.6);
+}
+
+/* Night Vision is primarily a CSS filter over the dark theme */
+[data-theme="night-vision"] {
+  --tactical-green: #39ff14;
+}
+
+[data-theme="night-vision"] body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 255, 0, 0.05);
+  pointer-events: none;
+  z-index: 9997;
+}
+
+[data-theme="night-vision"] #app {
+  filter: sepia(1) hue-rotate(80deg) saturate(3) brightness(1.2);
+}
+
+/* Theme Control Styling */
+.theme-control {
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+.theme-control label {
+  font-family: var(--hud-font);
+  font-size: 10px;
+  color: var(--accent-color);
+  display: block;
+  margin-bottom: 4px;
+}
+.theme-control select {
+  background: rgba(0,0,0,0.5);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  font-family: var(--hud-font);
+  font-size: 12px;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+}
+.theme-control select option {
+  background: #000;
+  color: #fff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* CRT Effects */
+.scanlines {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.vignette {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.8) 100%);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Boot sequence animation */
+.boot-sequence {
+  animation: bootup 1.5s ease-out forwards;
+}
+
+@keyframes bootup {
+  0% { opacity: 0; filter: contrast(3) brightness(0.2) grayscale(1); }
+  50% { filter: contrast(1.5) brightness(1.2) sepia(0.5) hue-rotate(180deg); }
+  100% { opacity: 1; filter: none; }
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+#primary-map-container {
+  flex-grow: 1;
+  position: relative;
+  height: 100%;
+}
+
+#primary-map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Tactical HUD Panels */
+.hud-panel {
+  position: absolute;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 12px;
+  z-index: 1000;
+  box-shadow: 0 0 10px rgba(0,0,0,0.8), inset 0 0 15px rgba(47, 129, 247, 0.1);
+  font-family: var(--hud-font);
+}
+
+.hud-label {
+  font-size: 10px;
+  color: var(--accent-color);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.clock-panel {
+  top: 20px;
+  left: 60px; /* offset for zoom control */
+}
+
+.clock-display {
+  font-size: 18px;
+  color: var(--text-primary);
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+
+.clock-divider {
+  margin: 0 8px;
+  color: var(--text-secondary);
+}
+
+.coord-panel {
+  bottom: 20px;
+  left: 20px;
+}
+
+.coord-display {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tactical-green);
+  text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
+}
+
+.activity-panel {
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  height: 150px;
+  display: flex;
+  flex-direction: column;
+}
+
+.weather-panel {
+  top: 20px;
+  right: 20px;
+  width: 250px;
+}
+
+.weather-display {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--accent-color);
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+
+.weather-display span.val {
+  color: var(--text-primary);
+}
+
+/* Toggle Switch Styling */
+.radar-control {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 32px;
+}
+.radar-label {
+  font-family: var(--hud-font);
+  font-size: 12px;
+  color: var(--accent-color);
+  margin-left: 12px;
+}
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  border: 1px solid var(--border-color);
+  transition: .4s;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-secondary);
+  transition: .4s;
+}
+input:checked + .slider {
+  background-color: rgba(46, 160, 67, 0.2);
+  border-color: var(--success-color);
+  box-shadow: 0 0 10px rgba(46, 160, 67, 0.4);
+}
+input:checked + .slider:before {
+  transform: translateX(20px);
+  background-color: var(--success-color);
+  box-shadow: 0 0 5px var(--success-color);
+}
+
+.feed-list {
+  list-style: none;
+  font-size: 12px;
+  overflow-y: hidden;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.feed-list li {
+  margin-bottom: 4px;
+  color: var(--text-primary);
+  animation: feedIn 0.3s ease-out forwards;
+}
+
+.feed-list li .timestamp {
+  color: var(--text-secondary);
+  margin-right: 8px;
+}
+
+.feed-list li.alert {
+  color: var(--danger-color);
+  text-shadow: 0 0 5px var(--danger-glow);
+}
+
+@keyframes feedIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Central Crosshair */
+.crosshair {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px; height: 100px;
+  z-index: 1000;
+  pointer-events: none;
+}
+.ch-h {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 1px;
+  background: var(--accent-color);
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+.ch-v {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--accent-color);
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+.ch-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px; height: 10px;
+  border: 1px solid var(--danger-color);
+  border-radius: 50%;
+  box-shadow: 0 0 5px var(--danger-glow);
+}
+
+/* Glassmorphism Sidebar */
+.sidebar {
+  width: 350px;
+  height: 100%;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  z-index: 1000;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.8);
+}
+
+.sidebar-header h1 {
+  font-family: var(--hud-font);
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 0 0 8px var(--accent-glow);
+  margin-bottom: 4px;
+}
+
+.sidebar-header p {
+  font-family: var(--hud-font);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.status-ok {
+  color: var(--success-color);
+  text-shadow: 0 0 5px rgba(46, 160, 67, 0.5);
+}
+
+.minimap-container {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.minimap-header h3 {
+  font-family: var(--hud-font);
+  font-size: 12px;
+  color: var(--accent-color);
+}
+
+.status-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background-color: var(--success-color);
+  box-shadow: 0 0 8px rgba(46, 160, 67, 0.8);
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.minimap {
+  height: 180px;
+  border: 1px solid var(--border-color);
+  background-color: #000;
+}
+
+/* Radar Blip Animations (Leaflet DivIcons) */
+.radar-blip {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.radar-blip::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+.radar-blip::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 50%;
+  animation: radarPulse 2s infinite;
+}
+
+.blip-red::after { background-color: var(--danger-color); box-shadow: 0 0 5px var(--danger-glow); }
+.blip-red::before { border: 2px solid var(--danger-color); }
+
+.blip-cyan::after { background-color: #00ccff; box-shadow: 0 0 5px rgba(0,204,255,0.8); }
+.blip-cyan::before { border: 2px solid #00ccff; }
+
+@keyframes radarPulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* Leaflet Overrides */
+.leaflet-container { background: #000; font-family: var(--hud-font); }
+.leaflet-popup-content-wrapper { background: var(--panel-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-family: var(--hud-font); border-radius: 0; }
+.leaflet-popup-tip { background: var(--panel-bg); border: 1px solid var(--border-color); }
+.leaflet-bar a { background-color: rgba(0,0,0,0.8) !important; color: var(--accent-color) !important; border: 1px solid var(--border-color) !important; border-radius: 0 !important; }
+.leaflet-bar a:hover { background-color: rgba(47, 129, 247, 0.2) !important; color: #fff !important; }

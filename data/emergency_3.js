@@ -1,0 +1,1 @@
+var json_emergency_3 = {"type":"FeatureCollection","name":"emergency_3","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:OGC:1.3:CRS84"}},"features":[{"type":"Feature","properties":{"id":"1","EMS Loc":"Hospital 7091234567"},"geometry":{"type":"Point","coordinates":[-57.921750053845592,48.928981091922829]}}]}

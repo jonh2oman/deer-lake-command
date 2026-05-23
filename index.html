@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tactical Command Screen</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="node_modules/leaflet/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- CRT Overlay -->
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <div id="app" class="boot-sequence">
+      <!-- Primary Map Area -->
+      <div id="primary-map-container">
+        <div id="primary-map"></div>
+        
+        <!-- Targeting Crosshair -->
+        <div class="crosshair">
+          <div class="ch-h"></div>
+          <div class="ch-v"></div>
+          <div class="ch-center"></div>
+        </div>
+
+        <!-- HUD: Clock -->
+        <div class="hud-panel clock-panel">
+          <div class="hud-label">SYSTEM TIME</div>
+          <div class="clock-display">
+            <span id="time-zulu">--:--:--Z</span>
+            <span class="clock-divider">|</span>
+            <span id="time-local">--:--:-- LOC</span>
+          </div>
+        </div>
+
+        <!-- HUD: Coordinates -->
+        <div class="hud-panel coord-panel">
+          <div class="hud-label">TARGETING (CENTER)</div>
+          <div class="coord-display" id="coord-readout">
+            LAT: --.----<br>
+            LON: --.----
+          </div>
+        </div>
+
+        <!-- HUD: Intelligence Feed -->
+        <div class="hud-panel activity-panel">
+          <div class="hud-label">LIVE INTEL FEED</div>
+          <ul id="activity-feed" class="feed-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <!-- HUD: Environmental Conditions -->
+        <div class="hud-panel weather-panel">
+          <div class="hud-label">ENV. CONDITIONS</div>
+          <div class="weather-display" id="weather-readout">
+            ACQUIRING SENSOR DATA...
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h1>CMD CTR // DEER LAKE</h1>
+          <p>SYS.STATUS: <span class="status-ok">ONLINE</span></p>
+          
+          <div class="theme-control">
+            <label for="theme-select">VISUAL MODE:</label>
+            <select id="theme-select">
+              <option value="system">SYSTEM (AUTO)</option>
+              <option value="dark">DARK (DEFAULT)</option>
+              <option value="light">LIGHT (DAY OPS)</option>
+              <option value="sea">SEA (MARITIME)</option>
+              <option value="night-vision">NIGHT VISION</option>
+            </select>
+          </div>
+
+          <div class="radar-control">
+            <label class="toggle-switch">
+              <input type="checkbox" id="radar-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="radar-label">SYS: WEATHER RADAR</span>
+          </div>
+        </header>
+        
+        <div class="minimap-container">
+          <div class="minimap-header">
+            <h3>LAYER: TACTICAL BUOYS</h3>
+            <span class="status-indicator"></span>
+          </div>
+          <div id="secondary-map-1" class="minimap"></div>
+        </div>
+
+        <div class="minimap-container">
+          <div class="minimap-header">
+            <h3>LAYER: EMERGENCY SVCS</h3>
+            <span class="status-indicator"></span>
+          </div>
+          <div id="secondary-map-2" class="minimap"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Load GeoJSON Variables -->
+    <script src="/data/Buoys_2.js"></script>
+    <script src="/data/emergency_3.js"></script>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
