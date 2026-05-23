@@ -6,6 +6,8 @@ const MAP_THEMES = {
   dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   sea: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   'night-vision': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 };
 
@@ -44,7 +46,11 @@ let currentTiles = [];
 
 function setMapTiles(themeKey) {
   const url = MAP_THEMES[themeKey] || MAP_THEMES.dark;
-  const maxNative = themeKey === 'sea' ? 13 : 20;
+  
+  let maxNative = 20;
+  if (themeKey === 'sea') maxNative = 13;
+  if (themeKey === 'satellite') maxNative = 18;
+  if (themeKey === 'street') maxNative = 19;
   
   currentTiles.forEach(t => t.remove());
   currentTiles = [];
