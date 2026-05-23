@@ -39,12 +39,14 @@ let currentTiles = [];
 
 function setMapTiles(themeKey) {
   const url = MAP_THEMES[themeKey] || MAP_THEMES.dark;
+  const maxNative = themeKey === 'sea' ? 13 : 20;
+  
   currentTiles.forEach(t => t.remove());
   currentTiles = [];
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(primaryMap));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap1));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap2));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap3));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(primaryMap));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap1));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap2));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap3));
 }
 
 // --- Theme Switcher Logic ---
