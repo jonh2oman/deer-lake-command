@@ -919,17 +919,15 @@ setTimeout(() => {
 }, 500);
 
 // --- Welcome Modal Logic ---
-document.addEventListener('DOMContentLoaded', () => {
-  const welcomeModal = document.getElementById('welcome-modal');
-  if (!sessionStorage.getItem('welcome_dismissed')) {
-    welcomeModal.style.display = 'flex';
-  }
-  
-  document.getElementById('btn-welcome-enter').addEventListener('click', () => {
-    welcomeModal.style.display = 'none';
-    sessionStorage.setItem('welcome_dismissed', 'true');
-    logToFeed("SYS: COMMAND TERMINAL ONLINE", true);
-  });
+const welcomeModal = document.getElementById('welcome-modal');
+if (!sessionStorage.getItem('welcome_dismissed')) {
+  welcomeModal.style.display = 'flex';
+}
+
+document.getElementById('btn-welcome-enter').addEventListener('click', () => {
+  welcomeModal.style.display = 'none';
+  sessionStorage.setItem('welcome_dismissed', 'true');
+  logToFeed("SYS: COMMAND TERMINAL ONLINE", true);
 });
 
 // --- Help Terminal Logic ---
