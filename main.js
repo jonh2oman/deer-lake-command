@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css'
 import './style.css'
 import L from 'leaflet'
 
@@ -694,17 +695,23 @@ function emergencyPopup(feature, layer) {
 
 function renderEmergencyServices() {
   if (typeof window.json_emergency_3 !== 'undefined') {
-    L.geoJSON(window.json_emergency_3, {
-      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon }),
-      onEachFeature: emergencyPopup
-    }).addTo(primaryMap);
+    try {
+      const layer1 = L.geoJSON(window.json_emergency_3, {
+        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon }),
+        onEachFeature: emergencyPopup
+      }).addTo(primaryMap);
 
-    L.geoJSON(window.json_emergency_3, {
-      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon })
-    }).addTo(secondaryMap2);
-    logToFeed(`> LOADED EMS DATA: ${window.json_emergency_3.features.length} units`);
+      const layer2 = L.geoJSON(window.json_emergency_3, {
+        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon })
+      }).addTo(secondaryMap2);
+      
+      const count = layer1.getLayers().length;
+      logToFeed(`[DIAG] EMS RENDERED: ${count} markers.`);
+    } catch(err) {
+      logToFeed(`[DIAG] EMS ERROR: ${err.message}`, true);
+    }
   } else {
-    console.warn("Emergency data not found on window object.");
+    logToFeed(`[DIAG] EMS DATA MISSING`);
   }
 }
 
@@ -712,14 +719,17 @@ function renderEmergencyServices() {
 let retryCount = 0;
 function waitForDataAndRender() {
   if (typeof window.json_Buoys_2 !== 'undefined' && typeof window.json_emergency_3 !== 'undefined') {
-    renderBuoys();
+    logToFeed(`[DIAG] QGIS Data Loaded in ${retryCount * 100}ms`);
+    renderBuoys().then(() => {
+      const bCount = buoysLayerPrimary.getLayers().length;
+      logToFeed(`[DIAG] BUOYS RENDERED: ${bCount} markers.`);
+    }).catch(e => logToFeed(`[DIAG] BUOY ERR: ${e.message}`));
     renderEmergencyServices();
   } else if (retryCount < 20) {
     retryCount++;
     setTimeout(waitForDataAndRender, 100);
   } else {
-    logToFeed("SYS ERROR: QGIS DATA FILES MISSING");
-    // Render anyway to show Supabase buoys if base buoys failed
+    logToFeed("SYS ERROR: QGIS DATA FILES MISSING", true);
     renderBuoys();
   }
 }
