@@ -523,11 +523,37 @@ function savePanelState(panel, panelId, zoomScale, baseWidth) {
 }
 
 // --- Load Data Layers with Radar Blips ---
-const buoyIcon = L.divIcon({
-  className: 'radar-blip blip-red',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10]
-});
+function getCustomIcon(feature) {
+  const type = feature.properties.markerType || 'blip';
+  const color = feature.properties.markerColor || 'red';
+  
+  if (type === 'blip') {
+    return L.divIcon({
+      className: `radar-blip blip-${color}`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+  } else {
+    // Marine SVGs
+    let svgPath = '';
+    if (type === 'anchor') {
+      svgPath = '<circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path>';
+    } else if (type === 'warning') {
+      svgPath = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>';
+    } else if (type === 'buoy') {
+      svgPath = '<path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path>';
+    } else if (type === 'target') {
+      svgPath = '<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>';
+    }
+    
+    return L.divIcon({
+      className: `marine-icon`, // No background, just wrapper
+      html: `<div class="marine-icon-wrapper"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-${color}">${svgPath}</svg></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+  }
+}
 
 const emergencyIcon = L.divIcon({
   className: 'radar-blip blip-cyan',
@@ -550,28 +576,65 @@ editToggle.addEventListener('change', (e) => {
   }
 });
 
-primaryMap.on('click', async (e) => {
-  if (!isEditMode) return;
-  
-  const name = prompt("Enter designation for new Tactical Buoy:", "Alpha-" + Math.floor(Math.random() * 100));
-  if (!name) return; // User cancelled
+// Modal Logic
+let pendingDeployCoords = null;
+const modal = document.getElementById('deployment-modal');
+const deployNameInput = document.getElementById('deploy-name');
+
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    
+    document.getElementById('marker-grid-radar').style.display = 'none';
+    document.getElementById('marker-grid-marine').style.display = 'none';
+    
+    const targetGrid = document.getElementById(`marker-grid-${e.target.dataset.cat}`);
+    targetGrid.style.display = 'grid';
+    
+    // Auto-select first option in the active grid
+    document.querySelectorAll('.marker-option').forEach(o => o.classList.remove('selected'));
+    targetGrid.querySelector('.marker-option').classList.add('selected');
+  });
+});
+
+document.querySelectorAll('.marker-option').forEach(opt => {
+  opt.addEventListener('click', (e) => {
+    document.querySelectorAll('.marker-option').forEach(o => o.classList.remove('selected'));
+    e.currentTarget.classList.add('selected');
+  });
+});
+
+document.getElementById('btn-abort').addEventListener('click', () => {
+  modal.style.display = 'none';
+  pendingDeployCoords = null;
+});
+
+document.getElementById('btn-deploy').addEventListener('click', () => {
+  const name = deployNameInput.value.trim() || "ALPHA-" + Math.floor(Math.random() * 100);
+  const selectedOpt = document.querySelector('.marker-option.selected');
+  const type = selectedOpt ? selectedOpt.dataset.type : 'blip';
+  const color = selectedOpt ? selectedOpt.dataset.color : 'red';
   
   const newId = "CUSTOM-" + Date.now();
-  
   logToFeed(`> DEPLOYING: ${name}...`);
   
   let customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
-  customBuoys.push({ id: newId, name: name, lat: e.latlng.lat, lng: e.latlng.lng });
+  customBuoys.push({ id: newId, name: name, lat: pendingDeployCoords.lat, lng: pendingDeployCoords.lng, markerType: type, markerColor: color });
   localStorage.setItem('custom_buoys', JSON.stringify(customBuoys));
-  const error = null;
-  if (error) {
-    console.error("Error inserting buoy:", error);
-    logToFeed(`SYS ERROR: FAILED TO DEPLOY ${name}`, true);
-    return;
-  }
   
   logToFeed(`> DEPLOYED NEW BUOY: ${name}`);
+  modal.style.display = 'none';
+  pendingDeployCoords = null;
   renderBuoys();
+});
+
+primaryMap.on('click', async (e) => {
+  if (!isEditMode) return;
+  pendingDeployCoords = e.latlng;
+  deployNameInput.value = "";
+  modal.style.display = 'flex';
+  deployNameInput.focus();
 });
 
 // --- Buoy Rendering Logic ---
@@ -603,7 +666,7 @@ async function renderBuoys() {
       supaBuoys.forEach(b => {
         allFeatures.push({
           type: "Feature",
-          properties: { id: b.id, Buoys: b.name, isCustom: true },
+          properties: { id: b.id, Buoys: b.name, isCustom: true, markerType: b.markerType, markerColor: b.markerColor },
           geometry: { type: "Point", coordinates: [b.lng, b.lat] }
         });
       });
@@ -663,12 +726,12 @@ async function renderBuoys() {
 
   try {
     L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
-      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon }),
+      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: getCustomIcon(feature) }),
       onEachFeature: onFeatureClick
     }).addTo(buoysLayerPrimary);
 
     const geojsonSecondary = L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
-      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon })
+      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: getCustomIcon(feature) })
     }).addTo(buoysLayerSecondary);
 
     if (visibleFeatures.length > 0) {

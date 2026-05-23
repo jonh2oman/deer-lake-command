@@ -578,3 +578,170 @@ input:checked + .slider:before {
 .leaflet-popup-tip { background: var(--panel-bg); border: 1px solid var(--border-color); }
 .leaflet-bar a { background-color: rgba(0,0,0,0.8) !important; color: var(--accent-color) !important; border: 1px solid var(--border-color) !important; border-radius: 0 !important; }
 .leaflet-bar a:hover { background-color: rgba(47, 129, 247, 0.2) !important; color: #fff !important; }
+
+/* Deployment Modal Styling */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.deployment-panel {
+  position: static;
+  width: 400px;
+  max-width: 90vw;
+  animation: modalIn 0.3s ease-out;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.deployment-content {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deployment-content label {
+  color: var(--accent-color);
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.deployment-content input {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 8px 10px;
+  font-family: var(--hud-font);
+  font-size: 14px;
+  outline: none;
+}
+.deployment-content input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 5px rgba(47, 129, 247, 0.5);
+}
+
+.category-toggle {
+  display: flex;
+  gap: 5px;
+}
+.cat-btn {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px;
+  font-family: var(--hud-font);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+.cat-btn.active {
+  background: rgba(47, 129, 247, 0.2);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.marker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  background: rgba(0,0,0,0.3);
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  min-height: 50px;
+}
+.marker-grid[id="marker-grid-marine"] {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.marker-option {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.marker-option:hover {
+  background: rgba(255,255,255,0.05);
+}
+.marker-option.selected {
+  border-color: var(--accent-color);
+  background: rgba(47, 129, 247, 0.1);
+  box-shadow: 0 0 8px rgba(47, 129, 247, 0.3);
+}
+
+/* Radar Blips positioning for the grid */
+.marker-option .radar-blip {
+  position: relative; /* Override Leaflet absolute */
+}
+
+/* New Radar Blip Colors */
+.blip-yellow::after { background-color: #ffea00; box-shadow: 0 0 5px rgba(255,234,0,0.8); }
+.blip-yellow::before { border: 2px solid #ffea00; }
+
+.blip-green::after { background-color: #00ff00; box-shadow: 0 0 5px rgba(0,255,0,0.8); }
+.blip-green::before { border: 2px solid #00ff00; }
+
+.blip-orange::after { background-color: #ff9900; box-shadow: 0 0 5px rgba(255,153,0,0.8); }
+.blip-orange::before { border: 2px solid #ff9900; }
+
+.blip-purple::after { background-color: #cc00ff; box-shadow: 0 0 5px rgba(204,0,255,0.8); }
+.blip-purple::before { border: 2px solid #cc00ff; }
+
+/* SVG Marine Icon Colors */
+.svg-red { color: var(--danger-color); filter: drop-shadow(0 0 3px var(--danger-color)); }
+.svg-cyan { color: #00ccff; filter: drop-shadow(0 0 3px #00ccff); }
+.svg-yellow { color: #ffea00; filter: drop-shadow(0 0 3px #ffea00); }
+.svg-green { color: #00ff00; filter: drop-shadow(0 0 3px #00ff00); }
+.svg-orange { color: #ff9900; filter: drop-shadow(0 0 3px #ff9900); }
+
+/* SVG wrapper for Leaflet icon */
+.marine-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.deployment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  font-family: var(--hud-font);
+  cursor: pointer;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.1); }
+.btn-primary {
+  background: rgba(47, 129, 247, 0.2);
+  border: 1px solid var(--accent-color);
+  color: #fff;
+  padding: 6px 12px;
+  font-family: var(--hud-font);
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(47, 129, 247, 0.3);
+}
+.btn-primary:hover {
+  background: rgba(47, 129, 247, 0.4);
+  box-shadow: 0 0 10px rgba(47, 129, 247, 0.6);
+}

@@ -167,6 +167,46 @@
     <!-- Load GeoJSON Variables -->
     <script src="./data/Buoys_2.js"></script>
     <script src="./data/emergency_3.js"></script>
+
+    <!-- Deployment Terminal Modal -->
+    <div id="deployment-modal" class="modal-overlay" style="display: none;">
+      <div class="hud-panel deployment-panel">
+        <div class="hud-label">TACTICAL DEPLOYMENT TERMINAL</div>
+        <div class="deployment-content">
+          <label>DESIGNATION ID:</label>
+          <input type="text" id="deploy-name" placeholder="e.g. ALPHA-1" autocomplete="off" />
+          
+          <label>MARKER CATEGORY:</label>
+          <div class="category-toggle">
+            <button class="cat-btn active" data-cat="radar">RADAR BLIPS</button>
+            <button class="cat-btn" data-cat="marine">MARINE ICONS</button>
+          </div>
+
+          <label>SELECT MARKER TYPE:</label>
+          <div class="marker-grid" id="marker-grid-radar">
+            <div class="marker-option selected" data-type="blip" data-color="red"><div class="radar-blip blip-red"></div></div>
+            <div class="marker-option" data-type="blip" data-color="cyan"><div class="radar-blip blip-cyan"></div></div>
+            <div class="marker-option" data-type="blip" data-color="yellow"><div class="radar-blip blip-yellow"></div></div>
+            <div class="marker-option" data-type="blip" data-color="green"><div class="radar-blip blip-green"></div></div>
+            <div class="marker-option" data-type="blip" data-color="orange"><div class="radar-blip blip-orange"></div></div>
+            <div class="marker-option" data-type="blip" data-color="purple"><div class="radar-blip blip-purple"></div></div>
+          </div>
+          <div class="marker-grid" id="marker-grid-marine" style="display: none;">
+            <div class="marker-option" data-type="anchor" data-color="yellow"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-yellow"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg></div>
+            <div class="marker-option" data-type="warning" data-color="orange"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-orange"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
+            <div class="marker-option" data-type="buoy" data-color="green"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-green"><path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path></svg></div>
+            <div class="marker-option" data-type="target" data-color="red"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-red"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg></div>
+          </div>
+
+          <div class="deployment-actions">
+            <button id="btn-abort" class="btn-secondary">ABORT</button>
+            <button id="btn-deploy" class="btn-primary">DEPLOY SENSOR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
     <script type="module" src="./main.js"></script>
   </body>
 </html>
