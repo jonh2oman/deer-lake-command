@@ -767,6 +767,10 @@ async function renderBuoys() {
     } else if (supaBuoys) {
       logToFeed(`[TRACE] Added ${supaBuoys.length} Custom Buoys`);
       supaBuoys.forEach(b => {
+        if (b.lat === undefined || b.lng === undefined || isNaN(b.lat) || isNaN(b.lng)) {
+          console.warn('Invalid buoy skipped:', b);
+          return;
+        }
         allFeatures.push({
           type: "Feature",
           properties: { id: b.id, Buoys: b.name, isCustom: true, markerType: b.markerType, markerColor: b.markerColor },
