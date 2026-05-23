@@ -34,7 +34,11 @@ const secondaryMap1 = L.map('secondary-map-1', {
   zoomAnimation: false
 }).setView([49.0342, -57.5955], 14); // Centered on Buoys
 
-const secondaryMap2 = L.map('secondary-map-2', minimapOptions).setView(defaultCenter, defaultZoom);
+// EMS Map is independent and focused on the Hospital
+const secondaryMap2 = L.map('secondary-map-2', {
+  zoomControl: true,
+  zoomAnimation: false
+}).setView([48.92898, -57.92175], 15); // Centered on Hospital
 
 // Radar Map is independent and interactive
 const secondaryMap3 = L.map('secondary-map-3', {
@@ -243,23 +247,9 @@ function updateCoordinates() {
   coordReadout.innerHTML = `LAT: ${lat}<br>LON: ${lng}`;
 }
 
-let isSyncing = false;
-function syncMaps(e) {
-  if (isSyncing) return;
-  isSyncing = true;
-  
-  const center = primaryMap.getCenter();
-  const zoom = primaryMap.getZoom();
-  
-  secondaryMap2.setView(center, zoom, { animate: false });
-  
-  updateCoordinates();
-  isSyncing = false;
-}
-
-primaryMap.on('move', syncMaps);
+primaryMap.on('move', updateCoordinates);
 primaryMap.on('moveend', handleWeatherUpdate); // Trigger weather fetch on pan end
-primaryMap.on('zoom', syncMaps);
+primaryMap.on('zoom', updateCoordinates);
 updateCoordinates();
 handleWeatherUpdate(); // Initial fetch
 
