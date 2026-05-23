@@ -510,7 +510,6 @@ async function renderBuoys() {
   } catch (err) {
     console.warn("Supabase connection failed:", err);
   }
-  }
   
   const onFeatureClick = (feature, layer) => {
     // Add click interceptor for Edit Mode
