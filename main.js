@@ -130,6 +130,20 @@ async function toggleRadar() {
 
 radarToggle.addEventListener('change', toggleRadar);
 
+// --- Reticle Toggle Logic ---
+const reticleToggle = document.getElementById('reticle-toggle');
+const crosshairEl = document.querySelector('.crosshair');
+
+reticleToggle.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    crosshairEl.style.display = 'block';
+    logToFeed("SYS: TARGETING RETICLE ONLINE");
+  } else {
+    crosshairEl.style.display = 'none';
+    logToFeed("SYS: TARGETING RETICLE OFFLINE");
+  }
+});
+
 // Load Radar on Minimap 3 permanently
 async function loadRadarMinimap() {
   try {
