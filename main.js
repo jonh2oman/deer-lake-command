@@ -100,7 +100,11 @@ async function toggleRadar() {
       const latestPath = data.radar.past[data.radar.past.length - 1].path;
       const radarUrl = `${data.host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`;
       
-      radarLayer = L.tileLayer(radarUrl, { opacity: 0.6, zIndex: 1000 });
+      radarLayer = L.tileLayer(radarUrl, { 
+        opacity: 0.6, 
+        zIndex: 1000,
+        maxNativeZoom: 12 // Prevents 'Zoom Level Not Supported' tiles when zoomed in
+      });
       radarLayer.addTo(primaryMap);
     } catch (e) {
       logToFeed("RADAR UPLINK FAILED", true);
