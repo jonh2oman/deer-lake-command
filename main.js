@@ -517,6 +517,9 @@ async function renderBuoys() {
   let allFeatures = [];
   if (typeof window.json_Buoys_2 !== 'undefined' && window.json_Buoys_2.features) {
     allFeatures = [...window.json_Buoys_2.features];
+    console.log("[DIAG] Found Base Buoys:", allFeatures.length);
+  } else {
+    console.log("[DIAG] Base Buoys are UNDEFINED");
   }
   
   // Custom Buoys from Supabase
@@ -598,8 +601,7 @@ async function renderBuoys() {
   }
 }
 
-// Initial render
-renderBuoys();
+// Initial render handled by waitForDataAndRender()
 
 // --- Supabase Realtime Subscription ---
 supabase
@@ -617,16 +619,40 @@ function emergencyPopup(feature, layer) {
   layer.bindPopup(`<strong>EMERGENCY UNIT</strong><br/>ID: ${id}<br/>LOC: ${name}`);
 }
 
-if (typeof window.json_emergency_3 !== 'undefined') {
-  L.geoJSON(window.json_emergency_3, {
-    pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon }),
-    onEachFeature: emergencyPopup
-  }).addTo(primaryMap);
+function renderEmergencyServices() {
+  if (typeof window.json_emergency_3 !== 'undefined') {
+    L.geoJSON(window.json_emergency_3, {
+      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon }),
+      onEachFeature: emergencyPopup
+    }).addTo(primaryMap);
 
-  L.geoJSON(window.json_emergency_3, {
-    pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon })
-  }).addTo(secondaryMap2);
+    L.geoJSON(window.json_emergency_3, {
+      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon })
+    }).addTo(secondaryMap2);
+    logToFeed(`> LOADED EMS DATA: ${window.json_emergency_3.features.length} units`);
+  } else {
+    console.warn("Emergency data not found on window object.");
+  }
 }
+
+// Data Initialization Poller
+let retryCount = 0;
+function waitForDataAndRender() {
+  if (typeof window.json_Buoys_2 !== 'undefined' && typeof window.json_emergency_3 !== 'undefined') {
+    renderBuoys();
+    renderEmergencyServices();
+  } else if (retryCount < 20) {
+    retryCount++;
+    setTimeout(waitForDataAndRender, 100);
+  } else {
+    logToFeed("SYS ERROR: QGIS DATA FILES MISSING");
+    // Render anyway to show Supabase buoys if base buoys failed
+    renderBuoys();
+  }
+}
+
+// Start data polling
+waitForDataAndRender();
 
 setTimeout(() => {
   primaryMap.invalidateSize();
@@ -634,4 +660,4 @@ setTimeout(() => {
   secondaryMap2.invalidateSize();
   secondaryMap3.invalidateSize();
   secondaryMap4.invalidateSize();
-}, 100);
+}, 500);
