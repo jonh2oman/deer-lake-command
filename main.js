@@ -342,10 +342,85 @@ function updateClock() {
   const lm = String(now.getMinutes()).padStart(2, '0');
   const ls = String(now.getSeconds()).padStart(2, '0');
   localEl.textContent = `${lh}:${lm}:${ls} LOC`;
+  if (now.getUTCHours() === 0 && now.getUTCMinutes() === 0) {
+    dayCounter++;
+  }
 }
 setInterval(updateClock, 1000);
 updateClock();
 
+// --- HUD Draggable & Resizable Logic ---
+const hudPanels = document.querySelectorAll('.hud-panel');
+hudPanels.forEach(panel => {
+  const label = panel.querySelector('.hud-label');
+  const panelId = panel.classList[1]; // e.g. clock-panel
+  if (!label || !panelId) return;
+
+  // Restore saved state
+  const savedState = localStorage.getItem('hud_state_' + panelId);
+  if (savedState) {
+    const state = JSON.parse(savedState);
+    if (state.top) panel.style.top = state.top;
+    if (state.left) panel.style.left = state.left;
+    if (state.width) panel.style.width = state.width;
+    if (state.height) panel.style.height = state.height;
+    panel.style.bottom = 'auto'; // override css bottom
+    panel.style.right = 'auto';  // override css right
+  }
+
+  // Save state when resized (using ResizeObserver)
+  const resizeObserver = new ResizeObserver(() => {
+    savePanelState(panel, panelId);
+  });
+  resizeObserver.observe(panel);
+
+  // Drag logic
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  label.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const rect = panel.getBoundingClientRect();
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    panel.style.left = rect.left + 'px';
+    panel.style.top = rect.top + 'px';
+
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    hudPanels.forEach(p => p.style.zIndex = 1000);
+    panel.style.zIndex = 1001;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    panel.style.left = (initialLeft + dx) + 'px';
+    panel.style.top = (initialTop + dy) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      savePanelState(panel, panelId);
+    }
+  });
+});
+
+function savePanelState(panel, panelId) {
+  const state = {
+    top: panel.style.top,
+    left: panel.style.left,
+    width: panel.style.width,
+    height: panel.style.height
+  };
+  localStorage.setItem('hud_state_' + panelId, JSON.stringify(state));
+}
 
 // --- Load Data Layers with Radar Blips ---
 const buoyIcon = L.divIcon({
