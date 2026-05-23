@@ -379,6 +379,13 @@ input:checked + .slider:before {
   margin-bottom: 20px;
 }
 
+.minimap-panel {
+  margin-bottom: 12px;
+}
+.minimap-panel:last-child {
+  margin-bottom: 0;
+}
+
 .minimap-header h3 {
   font-family: var(--hud-font);
   font-size: 12px;
@@ -399,7 +406,7 @@ input:checked + .slider:before {
 }
 
 .minimap {
-  height: 180px;
+  height: 160px;
   border: 1px solid var(--border-color);
   background-color: #000;
 }

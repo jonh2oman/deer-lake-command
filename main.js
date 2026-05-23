@@ -28,6 +28,7 @@ const minimapOptions = {
 
 const secondaryMap1 = L.map('secondary-map-1', minimapOptions).setView(defaultCenter, defaultZoom);
 const secondaryMap2 = L.map('secondary-map-2', minimapOptions).setView(defaultCenter, defaultZoom);
+const secondaryMap3 = L.map('secondary-map-3', minimapOptions).setView(defaultCenter, defaultZoom);
 
 let currentTiles = [];
 
@@ -38,6 +39,7 @@ function setMapTiles(themeKey) {
   currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(primaryMap));
   currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap1));
   currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap2));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap3));
 }
 
 // --- Theme Switcher Logic ---
@@ -103,7 +105,7 @@ async function toggleRadar() {
       radarLayer = L.tileLayer(radarUrl, { 
         opacity: 0.6, 
         zIndex: 1000,
-        maxNativeZoom: 12 // Prevents 'Zoom Level Not Supported' tiles when zoomed in
+        maxNativeZoom: 12
       });
       radarLayer.addTo(primaryMap);
     } catch (e) {
@@ -120,6 +122,25 @@ async function toggleRadar() {
 }
 
 radarToggle.addEventListener('change', toggleRadar);
+
+// Load Radar on Minimap 3 permanently
+async function loadRadarMinimap() {
+  try {
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const data = await res.json();
+    const latestPath = data.radar.past[data.radar.past.length - 1].path;
+    const radarUrl = `${data.host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`;
+    
+    L.tileLayer(radarUrl, { 
+      opacity: 0.8, 
+      zIndex: 1000,
+      maxNativeZoom: 12 
+    }).addTo(secondaryMap3);
+  } catch (e) {
+    console.error("Minimap Radar Error:", e);
+  }
+}
+loadRadarMinimap();
 
 
 // --- Open-Meteo Environmental & Marine HUD ---
@@ -200,6 +221,7 @@ function syncMaps() {
   
   secondaryMap1.setView(center, zoom, { animate: false });
   secondaryMap2.setView(center, zoom, { animate: false });
+  secondaryMap3.setView(center, zoom, { animate: false });
   
   updateCoordinates();
   isSyncing = false;
@@ -288,4 +310,5 @@ setTimeout(() => {
   primaryMap.invalidateSize();
   secondaryMap1.invalidateSize();
   secondaryMap2.invalidateSize();
+  secondaryMap3.invalidateSize();
 }, 100);
