@@ -676,12 +676,36 @@ input:checked + .slider:before {
   transition: all 0.2s;
 }
 .marker-option:hover {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.1);
 }
 .marker-option.selected {
+  background: rgba(47, 129, 247, 0.3);
   border-color: var(--accent-color);
-  background: rgba(47, 129, 247, 0.1);
-  box-shadow: 0 0 8px rgba(47, 129, 247, 0.3);
+  box-shadow: 0 0 10px rgba(47, 129, 247, 0.5);
+}
+
+.color-selector {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  background: rgba(0,0,0,0.3);
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.color-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.color-circle:hover {
+  transform: scale(1.2);
+}
+.color-circle.selected {
+  border-color: #fff;
+  transform: scale(1.2);
 }
 
 /* Radar Blips positioning for the grid */

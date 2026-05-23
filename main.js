@@ -552,6 +552,26 @@ function getCustomIcon(feature) {
       svgPath = '<path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"></path><path d="M10 5 L10 5.01"></path><path d="M12 7 L12 7.01"></path><path d="M14 4 L14 4.01"></path>';
     } else if (type === 'warehouse') {
       svgPath = '<path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"></path><path d="M6 18h12"></path><path d="M6 14h12"></path><rect width="12" height="12" x="6" y="10"></rect>';
+    } else if (type === 'tent') {
+      svgPath = '<path d="M19 20 10 4"></path><path d="m5 20 9-16"></path><path d="M3 20h18"></path><path d="m12 15-3 5"></path><path d="m12 15 3 5"></path>';
+    } else if (type === 'medical') {
+      svgPath = '<path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z"></path>';
+    } else if (type === 'power') {
+      svgPath = '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>';
+    } else if (type === 'water') {
+      svgPath = '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path>';
+    } else if (type === 'comms') {
+      svgPath = '<circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path><path d="M12 14v8"></path>';
+    } else if (type === 'helipad') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M8 8v8"></path><path d="M16 8v8"></path><path d="M8 12h8"></path>';
+    } else if (type === 'parking') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 17V7h4a3 3 0 0 1 0 6H9"></path>';
+    } else if (type === 'shield') {
+      svgPath = '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>';
+    } else if (type === 'flame') {
+      svgPath = '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>';
+    } else if (type === 'tree') {
+      svgPath = '<path d="M12 20v-6M9 14h6"></path><path d="M12 2L8 8h3l-4 6h10l-4-6h3L12 2z"></path>';
     }
     
     return L.divIcon({
@@ -614,6 +634,13 @@ document.querySelectorAll('.marker-option').forEach(opt => {
   });
 });
 
+document.querySelectorAll('.color-circle').forEach(circle => {
+  circle.addEventListener('click', (e) => {
+    document.querySelectorAll('.color-circle').forEach(c => c.classList.remove('selected'));
+    e.currentTarget.classList.add('selected');
+  });
+});
+
 document.getElementById('btn-abort').addEventListener('click', () => {
   modal.style.display = 'none';
   pendingDeployCoords = null;
@@ -622,8 +649,10 @@ document.getElementById('btn-abort').addEventListener('click', () => {
 document.getElementById('btn-deploy').addEventListener('click', () => {
   const name = deployNameInput.value.trim() || "ALPHA-" + Math.floor(Math.random() * 100);
   const selectedOpt = document.querySelector('.marker-option.selected');
+  const selectedColorOpt = document.querySelector('.color-circle.selected');
+  
   const type = selectedOpt ? selectedOpt.dataset.type : 'blip';
-  const color = selectedOpt ? selectedOpt.dataset.color : 'red';
+  const color = selectedColorOpt ? selectedColorOpt.dataset.color : 'white';
   
   const newId = "CUSTOM-" + Date.now();
   logToFeed(`> DEPLOYING: ${name}...`);
