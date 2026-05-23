@@ -26,7 +26,12 @@ const minimapOptions = {
   zoomAnimation: false
 };
 
-const secondaryMap1 = L.map('secondary-map-1', minimapOptions).setView(defaultCenter, defaultZoom);
+// Buoys Map is independent and focused on the lake
+const secondaryMap1 = L.map('secondary-map-1', {
+  zoomControl: true,
+  zoomAnimation: false
+}).setView([49.0342, -57.5955], 14); // Centered on Buoys
+
 const secondaryMap2 = L.map('secondary-map-2', minimapOptions).setView(defaultCenter, defaultZoom);
 
 // Radar Map is independent and interactive
@@ -233,14 +238,13 @@ function updateCoordinates() {
 }
 
 let isSyncing = false;
-function syncMaps() {
+function syncMaps(e) {
   if (isSyncing) return;
   isSyncing = true;
   
   const center = primaryMap.getCenter();
   const zoom = primaryMap.getZoom();
   
-  secondaryMap1.setView(center, zoom, { animate: false });
   secondaryMap2.setView(center, zoom, { animate: false });
   
   updateCoordinates();
