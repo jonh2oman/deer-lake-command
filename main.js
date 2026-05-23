@@ -33,12 +33,8 @@ let currentTiles = [];
 
 function setMapTiles(themeKey) {
   const url = MAP_THEMES[themeKey] || MAP_THEMES.dark;
-  
-  // Remove old tiles
   currentTiles.forEach(t => t.remove());
   currentTiles = [];
-
-  // Add new tiles
   currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(primaryMap));
   currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap1));
   currentTiles.push(L.tileLayer(url, { maxZoom: 20 }).addTo(secondaryMap2));
@@ -49,30 +45,46 @@ const themeSelect = document.getElementById('theme-select');
 
 function applyTheme(theme) {
   let activeTheme = theme;
-  
   if (theme === 'system') {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     activeTheme = prefersDark ? 'dark' : 'light';
   }
-
-  // Update CSS Variables
   document.documentElement.setAttribute('data-theme', activeTheme);
-  
-  // Update Map Tiles
   setMapTiles(activeTheme);
 }
 
-// Listen for dropdown changes
 themeSelect.addEventListener('change', (e) => {
   const newTheme = e.target.value;
   localStorage.setItem('cmd-theme', newTheme);
   applyTheme(newTheme);
 });
 
-// Load saved theme or default
 const savedTheme = localStorage.getItem('cmd-theme') || 'dark';
 themeSelect.value = savedTheme;
 applyTheme(savedTheme);
+
+
+// --- Functional Intel Feed ---
+const feedEl = document.getElementById('activity-feed');
+
+function logToFeed(msg, isAlert = false) {
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  
+  const li = document.createElement('li');
+  if (isAlert) li.className = 'alert';
+  
+  const prefix = `<span class="timestamp">[${timeStr}]</span> ${isAlert ? 'WARNING: ' : '> '}`;
+  li.innerHTML = prefix + msg;
+  
+  feedEl.appendChild(li);
+  
+  if (feedEl.children.length > 8) {
+    feedEl.removeChild(feedEl.firstChild);
+  }
+}
+
+setTimeout(() => logToFeed("CMD CTR SYSTEM INITIALIZED"), 1500);
 
 
 // --- Weather Radar Logic (RainViewer) ---
@@ -81,24 +93,21 @@ let radarLayer = null;
 
 async function toggleRadar() {
   if (radarToggle.checked) {
+    logToFeed("SYS: WEATHER RADAR ONLINE");
     try {
-      // Fetch latest radar timestamps
       const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
       const data = await res.json();
       const latestPath = data.radar.past[data.radar.past.length - 1].path;
       const radarUrl = `${data.host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`;
       
-      radarLayer = L.tileLayer(radarUrl, {
-        opacity: 0.6,
-        zIndex: 1000
-      });
+      radarLayer = L.tileLayer(radarUrl, { opacity: 0.6, zIndex: 1000 });
       radarLayer.addTo(primaryMap);
     } catch (e) {
-      console.error("Failed to load radar:", e);
-      addFeedAlert("SYS ALERT: RADAR OFFLINE");
+      logToFeed("RADAR UPLINK FAILED", true);
       radarToggle.checked = false;
     }
   } else {
+    logToFeed("SYS: WEATHER RADAR OFFLINE");
     if (radarLayer) {
       radarLayer.remove();
       radarLayer = null;
@@ -109,30 +118,49 @@ async function toggleRadar() {
 radarToggle.addEventListener('change', toggleRadar);
 
 
-// --- Open-Meteo Weather HUD Logic ---
+// --- Open-Meteo Environmental & Marine HUD ---
 const weatherReadout = document.getElementById('weather-readout');
 let weatherDebounceTimer;
 
-async function fetchWeather(lat, lng) {
+async function fetchWeatherAndMarine(lat, lng) {
   weatherReadout.innerHTML = `SCANNING ATMOSPHERE...`;
   try {
-    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure`);
-    const data = await res.json();
+    // 1. Fetch Atmosphere
+    const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure`);
+    const weatherData = await weatherRes.json();
     
-    if (data && data.current) {
-      const t = data.current.temperature_2m;
-      const ws = data.current.wind_speed_10m;
-      const wd = data.current.wind_direction_10m;
-      const sp = data.current.surface_pressure;
+    // 2. Fetch Marine (Sea State)
+    const marineRes = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction`);
+    const marineData = await marineRes.json();
+    
+    if (weatherData && weatherData.current) {
+      const t = weatherData.current.temperature_2m;
+      const ws = weatherData.current.wind_speed_10m;
+      const wd = weatherData.current.wind_direction_10m;
+      const sp = weatherData.current.surface_pressure;
+      
+      let marineHtml = `WAVES: <span class="val">INLAND/NO DATA</span>`;
+      let waveLog = ``;
+      
+      if (marineData && marineData.current && marineData.current.wave_height !== null) {
+        const wh = marineData.current.wave_height;
+        const wDir = marineData.current.wave_direction;
+        marineHtml = `WAVES: <span class="val">${wh}m @ ${wDir}°</span>`;
+        waveLog = ` | SEA: ${wh}m @ ${wDir}°`;
+      }
       
       weatherReadout.innerHTML = `
         TEMP: <span class="val">${t}°C</span><br>
         WIND: <span class="val">${ws} km/h @ ${wd}°</span><br>
-        PRES: <span class="val">${sp} hPa</span>
+        PRES: <span class="val">${sp} hPa</span><br>
+        ${marineHtml}
       `;
+
+      logToFeed(`TELEMETRY RECV: WIND ${ws}km/h @ ${wd}°${waveLog}`);
     }
   } catch (e) {
     weatherReadout.innerHTML = `<span style="color:var(--danger-color)">SENSOR INTERFERENCE DETECTED</span>`;
+    logToFeed("ENV SENSOR INTERFERENCE", true);
   }
 }
 
@@ -140,7 +168,10 @@ function handleWeatherUpdate() {
   clearTimeout(weatherDebounceTimer);
   weatherDebounceTimer = setTimeout(() => {
     const center = primaryMap.getCenter();
-    fetchWeather(center.lat.toFixed(4), center.lng.toFixed(4));
+    const lat = center.lat.toFixed(4);
+    const lng = center.lng.toFixed(4);
+    logToFeed(`RE-TARGETING SENSORS TO [${lat}, ${lng}]`);
+    fetchWeatherAndMarine(lat, lng);
   }, 1000); // Wait 1 second after panning stops to fetch
 }
 
@@ -198,47 +229,6 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 updateClock();
-
-// --- Live Intel Feed ---
-const feedEl = document.getElementById('activity-feed');
-const mockMessages = [
-  "SENSOR PING DETECTED",
-  "UNIT 7 EN ROUTE TO SECTOR",
-  "BUOY TELEMETRY UPDATED",
-  "SCANNING REGION...",
-  "COMMUNICATION LINK ESTABLISHED",
-  "ANOMALY DETECTED AT 49.03, -57.59",
-  "EMERGENCY FREQUENCY MONITORING ACTIVE"
-];
-
-function addFeedMessage() {
-  const msg = mockMessages[Math.floor(Math.random() * mockMessages.length)];
-  const isAlert = Math.random() > 0.8;
-  
-  const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-  
-  const li = document.createElement('li');
-  if (isAlert) li.className = 'alert';
-  li.innerHTML = `<span class="timestamp">[${timeStr}]</span> ${isAlert ? 'WARNING: ' : ''}${msg}`;
-  
-  feedEl.appendChild(li);
-  
-  if (feedEl.children.length > 6) {
-    feedEl.removeChild(feedEl.firstChild);
-  }
-}
-setInterval(addFeedMessage, 3500);
-
-function addFeedAlert(msg) {
-  const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-  const li = document.createElement('li');
-  li.className = 'alert';
-  li.innerHTML = `<span class="timestamp">[${timeStr}]</span> WARNING: ${msg}`;
-  feedEl.appendChild(li);
-  if (feedEl.children.length > 6) feedEl.removeChild(feedEl.firstChild);
-}
 
 
 // --- Load Data Layers with Radar Blips ---
