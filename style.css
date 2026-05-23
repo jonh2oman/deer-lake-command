@@ -701,6 +701,35 @@ input:checked + .slider:before {
 .blip-purple::after { background-color: #cc00ff; box-shadow: 0 0 5px rgba(204,0,255,0.8); }
 .blip-purple::before { border: 2px solid #cc00ff; }
 
+/* GPS Blue Dot */
+.gps-blip {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+}
+.gps-blip::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background-color: #00ccff;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px rgba(0,204,255,1);
+}
+.gps-blip::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 50%;
+  background-color: rgba(0,204,255,0.4);
+  animation: gpsPulse 2s infinite ease-out;
+}
+@keyframes gpsPulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
 /* SVG Marine Icon Colors */
 .svg-red { color: var(--danger-color); filter: drop-shadow(0 0 3px var(--danger-color)); }
 .svg-cyan { color: #00ccff; filter: drop-shadow(0 0 3px #00ccff); }

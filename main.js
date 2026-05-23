@@ -637,6 +637,71 @@ primaryMap.on('click', async (e) => {
   deployNameInput.focus();
 });
 
+// --- GPS Tracking Logic ---
+let watchId = null;
+let gpsMarker = null;
+
+const gpsIcon = L.divIcon({
+  className: 'gps-blip',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
+
+document.getElementById('gps-track-toggle').addEventListener('change', (e) => {
+  if (e.target.checked) {
+    if ("geolocation" in navigator) {
+      logToFeed("SYS: GPS TRACKING ACTIVATED", true);
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const latlng = [position.coords.latitude, position.coords.longitude];
+          if (!gpsMarker) {
+            gpsMarker = L.marker(latlng, { icon: gpsIcon, zIndexOffset: 1000 }).addTo(primaryMap);
+            gpsMarker.bindPopup("<strong>YOUR DEVICE</strong>");
+          } else {
+            gpsMarker.setLatLng(latlng);
+          }
+        },
+        (error) => {
+          logToFeed(`SYS ERROR: GPS SIGNAL LOST (${error.message})`, true);
+          e.target.checked = false;
+        },
+        { enableHighAccuracy: true, maximumAge: 0 }
+      );
+    } else {
+      logToFeed("SYS ERROR: GPS NOT SUPPORTED", true);
+      e.target.checked = false;
+    }
+  } else {
+    logToFeed("SYS: GPS TRACKING DEACTIVATED");
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    if (gpsMarker) {
+      primaryMap.removeLayer(gpsMarker);
+      gpsMarker = null;
+    }
+  }
+});
+
+document.getElementById('btn-gps-deploy').addEventListener('click', () => {
+  if ("geolocation" in navigator) {
+    logToFeed("> ACQUIRING GPS LOCK...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        logToFeed("> GPS LOCK ACQUIRED");
+        pendingDeployCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        deployNameInput.value = "";
+        modal.style.display = 'flex';
+        deployNameInput.focus();
+      },
+      (error) => {
+        logToFeed(`SYS ERROR: GPS LOCK FAILED (${error.message})`, true);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  } else {
+    logToFeed("SYS ERROR: GPS NOT SUPPORTED", true);
+  }
+});
+
 // --- Buoy Rendering Logic ---
 const buoysLayerPrimary = L.layerGroup().addTo(primaryMap);
 const buoysLayerSecondary = L.layerGroup().addTo(secondaryMap1);
