@@ -370,7 +370,8 @@ hudPanels.forEach(panel => {
   let baseWidth = panel.offsetWidth;
 
   // Restore saved state
-  const savedState = localStorage.getItem('hud_state_' + panelId);
+  const HUD_VERSION = "v2";
+  const savedState = localStorage.getItem('hud_state_' + HUD_VERSION + '_' + panelId);
   if (savedState) {
     const state = JSON.parse(savedState);
     if (state.top) panel.style.top = state.top;
@@ -448,7 +449,7 @@ function savePanelState(panel, panelId, zoomScale, baseWidth) {
     zoom: zoomScale,
     baseWidth: baseWidth
   };
-  localStorage.setItem('hud_state_' + panelId, JSON.stringify(state));
+  localStorage.setItem('hud_state_v2_' + panelId, JSON.stringify(state));
 }
 
 // --- Load Data Layers with Radar Blips ---
@@ -580,6 +581,11 @@ async function renderBuoys() {
   };
 
   // Filter out deleted base buoys
+  // TEMP FIX: We clear it once so the user can see them again during this test
+  if (!localStorage.getItem('reset_v2_done')) {
+    localStorage.removeItem('deleted_base_buoys');
+    localStorage.setItem('reset_v2_done', 'true');
+  }
   const deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
   const visibleFeatures = allFeatures.filter(f => !deletedBase.includes(f.properties.id));
   
