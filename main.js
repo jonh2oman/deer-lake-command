@@ -442,13 +442,15 @@ hudPanels.forEach(panel => {
   const savedState = localStorage.getItem('hud_state_' + HUD_VERSION + '_' + panelId);
   if (savedState) {
     const state = JSON.parse(savedState);
-    if (state.top) panel.style.top = state.top;
-    if (state.left) panel.style.left = state.left;
+    if (state.top && state.left) {
+      panel.style.top = state.top;
+      panel.style.left = state.left;
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+    }
     if (state.width) panel.style.width = state.width;
     if (state.height) panel.style.height = state.height;
     if (state.zoom && contentContainer) contentContainer.style.zoom = state.zoom;
-    panel.style.bottom = 'auto';
-    panel.style.right = 'auto';
     baseWidth = state.baseWidth || panel.offsetWidth;
   }
 
