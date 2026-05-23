@@ -475,9 +475,17 @@ async function renderBuoys() {
     onEachFeature: onFeatureClick
   }).addTo(buoysLayerPrimary);
 
-  L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
+  const geojsonSecondary = L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
     pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon })
   }).addTo(buoysLayerSecondary);
+
+  // Automatically fit the minimap to the deployed buoys
+  if (visibleFeatures.length > 0) {
+    // Small timeout ensures the map is fully rendered before fitting bounds
+    setTimeout(() => {
+      secondaryMap1.fitBounds(geojsonSecondary.getBounds(), { padding: [10, 10], maxZoom: 16 });
+    }, 100);
+  }
 }
 
 // Initial render
