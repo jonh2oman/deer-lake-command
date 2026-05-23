@@ -356,6 +356,9 @@ hudPanels.forEach(panel => {
   const panelId = panel.classList[1]; // e.g. clock-panel
   if (!label || !panelId) return;
 
+  const contentContainer = panel.querySelector('div:not(.hud-label), ul');
+  let baseWidth = panel.offsetWidth;
+
   // Restore saved state
   const savedState = localStorage.getItem('hud_state_' + panelId);
   if (savedState) {
@@ -364,13 +367,27 @@ hudPanels.forEach(panel => {
     if (state.left) panel.style.left = state.left;
     if (state.width) panel.style.width = state.width;
     if (state.height) panel.style.height = state.height;
-    panel.style.bottom = 'auto'; // override css bottom
-    panel.style.right = 'auto';  // override css right
+    if (state.zoom && contentContainer) contentContainer.style.zoom = state.zoom;
+    panel.style.bottom = 'auto';
+    panel.style.right = 'auto';
+    baseWidth = state.baseWidth || panel.offsetWidth;
   }
 
   // Save state when resized (using ResizeObserver)
-  const resizeObserver = new ResizeObserver(() => {
-    savePanelState(panel, panelId);
+  const resizeObserver = new ResizeObserver((entries) => {
+    for (let entry of entries) {
+      if (!baseWidth) baseWidth = panel.offsetWidth;
+      
+      const newWidth = entry.borderBoxSize ? entry.borderBoxSize[0].inlineSize : panel.offsetWidth;
+      if (newWidth && baseWidth && contentContainer) {
+        const scale = newWidth / baseWidth;
+        // Don't apply zoom if it's the first render or a tiny glitch
+        if (scale > 0.1 && Math.abs(scale - 1.0) > 0.05) {
+          contentContainer.style.zoom = scale;
+        }
+      }
+    }
+    savePanelState(panel, panelId, contentContainer ? contentContainer.style.zoom : null, baseWidth);
   });
   resizeObserver.observe(panel);
 
@@ -383,14 +400,14 @@ hudPanels.forEach(panel => {
     startX = e.clientX;
     startY = e.clientY;
 
-    const rect = panel.getBoundingClientRect();
+    // Use offset to avoid jumping relative to parent
+    initialLeft = panel.offsetLeft;
+    initialTop = panel.offsetTop;
+
     panel.style.right = 'auto';
     panel.style.bottom = 'auto';
-    panel.style.left = rect.left + 'px';
-    panel.style.top = rect.top + 'px';
-
-    initialLeft = rect.left;
-    initialTop = rect.top;
+    panel.style.left = initialLeft + 'px';
+    panel.style.top = initialTop + 'px';
 
     hudPanels.forEach(p => p.style.zIndex = 1000);
     panel.style.zIndex = 1001;
@@ -407,17 +424,19 @@ hudPanels.forEach(panel => {
   document.addEventListener('mouseup', () => {
     if (isDragging) {
       isDragging = false;
-      savePanelState(panel, panelId);
+      savePanelState(panel, panelId, contentContainer ? contentContainer.style.zoom : null, baseWidth);
     }
   });
 });
 
-function savePanelState(panel, panelId) {
+function savePanelState(panel, panelId, zoomScale, baseWidth) {
   const state = {
     top: panel.style.top,
     left: panel.style.left,
     width: panel.style.width,
-    height: panel.style.height
+    height: panel.style.height,
+    zoom: zoomScale,
+    baseWidth: baseWidth
   };
   localStorage.setItem('hud_state_' + panelId, JSON.stringify(state));
 }
