@@ -63,8 +63,11 @@
         </div>
       </div>
 
+      <!-- Sidebar Toggle Tab -->
+      <button id="sidebar-toggle-btn" onclick="window.toggleSidebar()">[ < MENU ]</button>
+
       <!-- Secondary Sidebar -->
-      <div class="sidebar">
+      <div class="sidebar" id="right-sidebar">
         <div class="sidebar-header">
           <h1>CMD CTR // DEER LAKE</h1>
           <p>SYS.STATUS: <span class="status-ok">ONLINE</span></p>
@@ -103,21 +106,30 @@
           <div class="minimap-panel" id="panel-buoys">
             <div class="panel-header">
               <div class="hud-label">LAYER: TACTICAL BUOYS</div>
-              <button class="expand-btn" onclick="window.toggleExpand('panel-buoys', 'secondaryMap1')">[+]</button>
+              <div>
+                <button class="expand-btn" onclick="window.toggleRollup('panel-buoys')">[-]</button>
+                <button class="expand-btn" onclick="window.toggleExpand('panel-buoys', 'secondaryMap1')">[+]</button>
+              </div>
             </div>
             <div id="secondary-map-1" class="minimap"></div>
           </div>
           <div class="minimap-panel" id="panel-ems">
             <div class="panel-header">
               <div class="hud-label">LAYER: EMERGENCY SVCS</div>
-              <button class="expand-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[+]</button>
+              <div>
+                <button class="expand-btn" onclick="window.toggleRollup('panel-ems')">[-]</button>
+                <button class="expand-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[+]</button>
+              </div>
             </div>
             <div id="secondary-map-2" class="minimap"></div>
           </div>
           <div class="minimap-panel" id="panel-radar">
             <div class="panel-header">
               <div class="hud-label">LAYER: DOPPLER RADAR</div>
-              <button class="expand-btn" onclick="window.toggleExpand('panel-radar', 'secondaryMap3')">[+]</button>
+              <div>
+                <button class="expand-btn" onclick="window.toggleRollup('panel-radar')">[-]</button>
+                <button class="expand-btn" onclick="window.toggleExpand('panel-radar', 'secondaryMap3')">[+]</button>
+              </div>
             </div>
             <div id="secondary-map-3" class="minimap"></div>
           </div>

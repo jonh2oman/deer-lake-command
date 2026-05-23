@@ -253,10 +253,48 @@ primaryMap.on('zoom', updateCoordinates);
 updateCoordinates();
 handleWeatherUpdate(); // Initial fetch
 
-// --- Expandable Minimap Logic ---
+// --- Expandable/Collapsible Minimap & Sidebar Logic ---
+window.toggleSidebar = function() {
+  const sidebar = document.getElementById('right-sidebar');
+  const btn = document.getElementById('sidebar-toggle-btn');
+  const isCollapsed = sidebar.classList.contains('collapsed');
+  
+  if (isCollapsed) {
+    sidebar.classList.remove('collapsed');
+    btn.classList.remove('collapsed');
+    btn.textContent = '[ < MENU ]';
+    logToFeed("SYS: SIDEBAR RESTORED");
+  } else {
+    sidebar.classList.add('collapsed');
+    btn.classList.add('collapsed');
+    btn.textContent = '[ MENU > ]';
+    logToFeed("SYS: SIDEBAR COLLAPSED");
+  }
+  
+  // Wait for sidebar animation to finish then tell primary map to resize
+  setTimeout(() => {
+    primaryMap.invalidateSize();
+  }, 350);
+};
+
+window.toggleRollup = function(panelId) {
+  const panel = document.getElementById(panelId);
+  const btn = panel.querySelector('.expand-btn'); // Get the first one (rollup btn)
+  const isRolledUp = panel.classList.contains('rolled-up');
+  
+  if (isRolledUp) {
+    panel.classList.remove('rolled-up');
+    btn.textContent = '[-]';
+  } else {
+    panel.classList.add('rolled-up');
+    btn.textContent = '[+]';
+  }
+};
+
 window.toggleExpand = function(panelId, mapVarName) {
   const panel = document.getElementById(panelId);
-  const btn = panel.querySelector('.expand-btn');
+  const btns = panel.querySelectorAll('.expand-btn');
+  const btn = btns[1]; // Get the second one (expand btn)
   const isExpanded = panel.classList.contains('expanded');
   
   if (isExpanded) {
