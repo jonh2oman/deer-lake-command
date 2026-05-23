@@ -660,7 +660,8 @@ input:checked + .slider:before {
   border: 1px solid rgba(255,255,255,0.1);
   min-height: 50px;
 }
-.marker-grid[id="marker-grid-marine"] {
+.marker-grid[id="marker-grid-marine"],
+.marker-grid[id="marker-grid-infrastructure"] {
   grid-template-columns: repeat(4, 1fr);
 }
 
@@ -736,6 +737,7 @@ input:checked + .slider:before {
 .svg-yellow { color: #ffea00; filter: drop-shadow(0 0 3px #ffea00); }
 .svg-green { color: #00ff00; filter: drop-shadow(0 0 3px #00ff00); }
 .svg-orange { color: #ff9900; filter: drop-shadow(0 0 3px #ff9900); }
+.svg-white { color: #e2e8f0; filter: drop-shadow(0 0 3px #e2e8f0); }
 
 /* SVG wrapper for Leaflet icon */
 .marine-icon-wrapper {

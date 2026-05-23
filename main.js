@@ -544,6 +544,14 @@ function getCustomIcon(feature) {
       svgPath = '<path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path>';
     } else if (type === 'target') {
       svgPath = '<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>';
+    } else if (type === 'building') {
+      svgPath = '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path>';
+    } else if (type === 'utensils') {
+      svgPath = '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>';
+    } else if (type === 'bath') {
+      svgPath = '<path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"></path><path d="M10 5 L10 5.01"></path><path d="M12 7 L12 7.01"></path><path d="M14 4 L14 4.01"></path>';
+    } else if (type === 'warehouse') {
+      svgPath = '<path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"></path><path d="M6 18h12"></path><path d="M6 14h12"></path><rect width="12" height="12" x="6" y="10"></rect>';
     }
     
     return L.divIcon({
@@ -588,6 +596,7 @@ document.querySelectorAll('.cat-btn').forEach(btn => {
     
     document.getElementById('marker-grid-radar').style.display = 'none';
     document.getElementById('marker-grid-marine').style.display = 'none';
+    document.getElementById('marker-grid-infrastructure').style.display = 'none';
     
     const targetGrid = document.getElementById(`marker-grid-${e.target.dataset.cat}`);
     targetGrid.style.display = 'grid';
