@@ -52,6 +52,16 @@ const secondaryMap4 = L.map('secondary-map-4', {
   zoomAnimation: false
 }).setView([49.0149167, -57.5865278], 15); // Centered on Pasadena Forestry Center
 
+// Feature: Click any minimap to sync the primary map to its exact view
+[secondaryMap1, secondaryMap2, secondaryMap3, secondaryMap4].forEach(miniMap => {
+  miniMap.on('click', () => {
+    primaryMap.flyTo(miniMap.getCenter(), miniMap.getZoom(), {
+      duration: 0.6,
+      easeLinearity: 0.25
+    });
+  });
+});
+
 let currentTiles = [];
 
 function setMapTiles(themeKey) {
