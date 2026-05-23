@@ -411,23 +411,30 @@ async function renderBuoys() {
   
   // Base Buoys from QGIS
   let allFeatures = [];
-  if (typeof json_Buoys_2 !== 'undefined' && json_Buoys_2.features) {
-    allFeatures = [...json_Buoys_2.features];
+  if (typeof window.json_Buoys_2 !== 'undefined' && window.json_Buoys_2.features) {
+    allFeatures = [...window.json_Buoys_2.features];
   }
   
   // Custom Buoys from Supabase
-  const { data: supaBuoys, error } = await supabase
-    .from('tactical_buoys')
-    .select('*');
-    
-  if (!error && supaBuoys) {
-    supaBuoys.forEach(b => {
-      allFeatures.push({
-        type: "Feature",
-        properties: { id: b.id, Buoys: b.name, isCustom: true },
-        geometry: { type: "Point", coordinates: [b.lng, b.lat] }
+  try {
+    const { data: supaBuoys, error } = await supabase
+      .from('tactical_buoys')
+      .select('*');
+      
+    if (error) {
+      console.warn("Supabase select error (table might not exist):", error.message);
+    } else if (supaBuoys) {
+      supaBuoys.forEach(b => {
+        allFeatures.push({
+          type: "Feature",
+          properties: { id: b.id, Buoys: b.name, isCustom: true },
+          geometry: { type: "Point", coordinates: [b.lng, b.lat] }
+        });
       });
-    });
+    }
+  } catch (err) {
+    console.warn("Supabase connection failed:", err);
+  }
   }
   
   const onFeatureClick = (feature, layer) => {
@@ -507,13 +514,13 @@ function emergencyPopup(feature, layer) {
   layer.bindPopup(`<strong>EMERGENCY UNIT</strong><br/>ID: ${id}<br/>LOC: ${name}`);
 }
 
-if (typeof json_emergency_3 !== 'undefined') {
-  L.geoJSON(json_emergency_3, {
+if (typeof window.json_emergency_3 !== 'undefined') {
+  L.geoJSON(window.json_emergency_3, {
     pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon }),
     onEachFeature: emergencyPopup
   }).addTo(primaryMap);
 
-  L.geoJSON(json_emergency_3, {
+  L.geoJSON(window.json_emergency_3, {
     pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon })
   }).addTo(secondaryMap2);
 }
