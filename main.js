@@ -46,6 +46,12 @@ const secondaryMap3 = L.map('secondary-map-3', {
   zoomAnimation: false
 }).setView([48.5, -56.0], 6); // Centered on Newfoundland
 
+// Forestry Map is independent and focused on Pasadena Forestry Center
+const secondaryMap4 = L.map('secondary-map-4', {
+  zoomControl: true,
+  zoomAnimation: false
+}).setView([49.0149167, -57.5865278], 15); // Centered on Pasadena Forestry Center
+
 let currentTiles = [];
 
 function setMapTiles(themeKey) {
@@ -62,6 +68,7 @@ function setMapTiles(themeKey) {
   currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap1));
   currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap2));
   currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap3));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap4));
 }
 
 // --- Theme Switcher Logic ---
@@ -312,6 +319,7 @@ window.toggleExpand = function(panelId, mapVarName) {
     if (mapVarName === 'secondaryMap1') secondaryMap1.invalidateSize();
     if (mapVarName === 'secondaryMap2') secondaryMap2.invalidateSize();
     if (mapVarName === 'secondaryMap3') secondaryMap3.invalidateSize();
+    if (mapVarName === 'secondaryMap4') secondaryMap4.invalidateSize();
   }, 300); // match CSS transition duration
 };
 
@@ -393,4 +401,5 @@ setTimeout(() => {
   secondaryMap1.invalidateSize();
   secondaryMap2.invalidateSize();
   secondaryMap3.invalidateSize();
+  secondaryMap4.invalidateSize();
 }, 100);
