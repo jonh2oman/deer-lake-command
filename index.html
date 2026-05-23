@@ -90,16 +90,25 @@
         </div>
         
         <div class="minimap-container">
-          <div class="minimap-panel">
-            <div class="hud-label">LAYER: TACTICAL BUOYS</div>
+          <div class="minimap-panel" id="panel-buoys">
+            <div class="panel-header">
+              <div class="hud-label">LAYER: TACTICAL BUOYS</div>
+              <button class="expand-btn" onclick="window.toggleExpand('panel-buoys', 'secondaryMap1')">[+]</button>
+            </div>
             <div id="secondary-map-1" class="minimap"></div>
           </div>
-          <div class="minimap-panel">
-            <div class="hud-label">LAYER: EMERGENCY SVCS</div>
+          <div class="minimap-panel" id="panel-ems">
+            <div class="panel-header">
+              <div class="hud-label">LAYER: EMERGENCY SVCS</div>
+              <button class="expand-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[+]</button>
+            </div>
             <div id="secondary-map-2" class="minimap"></div>
           </div>
-          <div class="minimap-panel">
-            <div class="hud-label">LAYER: DOPPLER RADAR</div>
+          <div class="minimap-panel" id="panel-radar">
+            <div class="panel-header">
+              <div class="hud-label">LAYER: DOPPLER RADAR</div>
+              <button class="expand-btn" onclick="window.toggleExpand('panel-radar', 'secondaryMap3')">[+]</button>
+            </div>
             <div id="secondary-map-3" class="minimap"></div>
           </div>
         </div>

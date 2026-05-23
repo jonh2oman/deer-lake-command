@@ -381,9 +381,68 @@ input:checked + .slider:before {
 
 .minimap-panel {
   margin-bottom: 12px;
+  transition: all 0.3s ease;
 }
 .minimap-panel:last-child {
   margin-bottom: 0;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.panel-header .hud-label {
+  margin-bottom: 0; /* Override default */
+}
+
+.expand-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-color);
+  font-family: var(--hud-font);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.expand-btn:hover {
+  color: #fff;
+  background: rgba(47, 129, 247, 0.2);
+}
+
+/* Expanded Holographic Overlay */
+.minimap-panel.expanded {
+  position: fixed;
+  top: 10%;
+  left: 10%;
+  width: 80vw;
+  height: 80vh;
+  z-index: 9999;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 2px solid var(--accent-color);
+  box-shadow: 0 0 50px rgba(0,0,0,0.9), inset 0 0 30px rgba(47, 129, 247, 0.2);
+  padding: 24px;
+  margin: 0;
+}
+
+.minimap-panel.expanded .panel-header {
+  margin-bottom: 16px;
+}
+
+.minimap-panel.expanded .panel-header .hud-label {
+  font-size: 18px;
+}
+
+.minimap-panel.expanded .expand-btn {
+  font-size: 14px;
+}
+
+.minimap-panel.expanded .minimap {
+  height: calc(100% - 40px);
 }
 
 .minimap-header h3 {

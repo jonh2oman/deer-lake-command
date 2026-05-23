@@ -28,7 +28,12 @@ const minimapOptions = {
 
 const secondaryMap1 = L.map('secondary-map-1', minimapOptions).setView(defaultCenter, defaultZoom);
 const secondaryMap2 = L.map('secondary-map-2', minimapOptions).setView(defaultCenter, defaultZoom);
-const secondaryMap3 = L.map('secondary-map-3', minimapOptions).setView(defaultCenter, defaultZoom);
+
+// Radar Map is independent and interactive
+const secondaryMap3 = L.map('secondary-map-3', {
+  zoomControl: true,
+  zoomAnimation: false
+}).setView([48.5, -56.0], 6); // Centered on Newfoundland
 
 let currentTiles = [];
 
@@ -221,7 +226,6 @@ function syncMaps() {
   
   secondaryMap1.setView(center, zoom, { animate: false });
   secondaryMap2.setView(center, zoom, { animate: false });
-  secondaryMap3.setView(center, zoom, { animate: false });
   
   updateCoordinates();
   isSyncing = false;
@@ -232,6 +236,30 @@ primaryMap.on('moveend', handleWeatherUpdate); // Trigger weather fetch on pan e
 primaryMap.on('zoom', syncMaps);
 updateCoordinates();
 handleWeatherUpdate(); // Initial fetch
+
+// --- Expandable Minimap Logic ---
+window.toggleExpand = function(panelId, mapVarName) {
+  const panel = document.getElementById(panelId);
+  const btn = panel.querySelector('.expand-btn');
+  const isExpanded = panel.classList.contains('expanded');
+  
+  if (isExpanded) {
+    panel.classList.remove('expanded');
+    btn.textContent = '[+]';
+    logToFeed(`MINIMIZING ${panelId}`);
+  } else {
+    panel.classList.add('expanded');
+    btn.textContent = '[-]';
+    logToFeed(`EXPANDING ${panelId} TO MAIN VIEW`);
+  }
+  
+  // We must tell Leaflet the container size changed so it redraws tiles
+  setTimeout(() => {
+    if (mapVarName === 'secondaryMap1') secondaryMap1.invalidateSize();
+    if (mapVarName === 'secondaryMap2') secondaryMap2.invalidateSize();
+    if (mapVarName === 'secondaryMap3') secondaryMap3.invalidateSize();
+  }, 300); // match CSS transition duration
+};
 
 
 // --- Clock Logic ---
