@@ -360,23 +360,103 @@ const emergencyIcon = L.divIcon({
   iconAnchor: [10, 10]
 });
 
-// Buoys
-function buoysPopup(feature, layer) {
-  const id = feature.properties['id'] || 'N/A';
-  const name = feature.properties['Buoys'] || 'Unnamed Buoy';
-  layer.bindPopup(`<strong>TACTICAL BUOY</strong><br/>ID: ${id}<br/>NAME: ${name}`);
-}
+// --- Edit Mode Logic ---
+let isEditMode = false;
+const editToggle = document.getElementById('edit-toggle');
 
-if (typeof json_Buoys_2 !== 'undefined') {
-  L.geoJSON(json_Buoys_2, {
+editToggle.addEventListener('change', (e) => {
+  isEditMode = e.target.checked;
+  if (isEditMode) {
+    document.getElementById('primary-map-container').style.cursor = 'crosshair';
+    logToFeed("SYS: TACTICAL EDIT MODE ONLINE", true);
+  } else {
+    document.getElementById('primary-map-container').style.cursor = '';
+    logToFeed("SYS: TACTICAL EDIT MODE OFFLINE");
+  }
+});
+
+primaryMap.on('click', (e) => {
+  if (!isEditMode) return;
+  
+  const name = prompt("Enter designation for new Tactical Buoy:", "Alpha-" + Math.floor(Math.random() * 100));
+  if (!name) return; // User cancelled
+  
+  const newBuoy = {
+    type: "Feature",
+    properties: { id: "CUSTOM-" + Date.now(), Buoys: name, isCustom: true },
+    geometry: { type: "Point", coordinates: [e.latlng.lng, e.latlng.lat] }
+  };
+  
+  const customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+  customBuoys.push(newBuoy);
+  localStorage.setItem('custom_buoys', JSON.stringify(customBuoys));
+  
+  logToFeed(`> DEPLOYED NEW BUOY: ${name}`);
+  renderBuoys();
+});
+
+// --- Buoy Rendering Logic ---
+const buoysLayerPrimary = L.layerGroup().addTo(primaryMap);
+const buoysLayerSecondary = L.layerGroup().addTo(secondaryMap1);
+
+function renderBuoys() {
+  buoysLayerPrimary.clearLayers();
+  buoysLayerSecondary.clearLayers();
+  
+  // Base Buoys from QGIS
+  let allFeatures = [];
+  if (typeof json_Buoys_2 !== 'undefined' && json_Buoys_2.features) {
+    allFeatures = [...json_Buoys_2.features];
+  }
+  
+  // Custom Buoys from LocalStorage
+  const customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+  allFeatures = allFeatures.concat(customBuoys);
+  
+  const onFeatureClick = (feature, layer) => {
+    // Add click interceptor for Edit Mode
+    layer.on('click', (e) => {
+      if (isEditMode) {
+        if (confirm(`Remove Tactical Buoy: ${feature.properties['Buoys']}?`)) {
+          if (feature.properties.isCustom) {
+            // Remove from custom buoys
+            let custom = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+            custom = custom.filter(b => b.properties.id !== feature.properties.id);
+            localStorage.setItem('custom_buoys', JSON.stringify(custom));
+          } else {
+             // For base buoys, add to hidden list
+             let deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
+             deletedBase.push(feature.properties.id);
+             localStorage.setItem('deleted_base_buoys', JSON.stringify(deletedBase));
+          }
+          logToFeed(`> REMOVED BUOY: ${feature.properties['Buoys']}`, true);
+          renderBuoys();
+        }
+      }
+    });
+    
+    // Setup normal popup
+    const id = feature.properties['id'] || 'N/A';
+    const name = feature.properties['Buoys'] || 'Unnamed Buoy';
+    layer.bindPopup(`<strong>TACTICAL BUOY</strong><br/>ID: ${id}<br/>NAME: ${name}`);
+  };
+
+  // Filter out deleted base buoys
+  const deletedBase = JSON.parse(localStorage.getItem('deleted_base_buoys') || '[]');
+  const visibleFeatures = allFeatures.filter(f => !deletedBase.includes(f.properties.id));
+  
+  L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
     pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon }),
-    onEachFeature: buoysPopup
-  }).addTo(primaryMap);
+    onEachFeature: onFeatureClick
+  }).addTo(buoysLayerPrimary);
 
-  L.geoJSON(json_Buoys_2, {
+  L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
     pointToLayer: (feature, latlng) => L.marker(latlng, { icon: buoyIcon })
-  }).addTo(secondaryMap1);
+  }).addTo(buoysLayerSecondary);
 }
+
+// Initial render
+renderBuoys();
 
 // Emergency Services
 function emergencyPopup(feature, layer) {
