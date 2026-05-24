@@ -8,6 +8,7 @@ const MAP_THEMES = {
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   sea: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
   satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  'google-satellite': 'http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
   street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   'night-vision': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 };
@@ -19,7 +20,7 @@ const defaultZoom = 13;
 const primaryMap = L.map('primary-map', {
   zoomControl: true,
   minZoom: 5,
-  maxZoom: 18,
+  maxZoom: 22,
   zoomAnimation: false // Snappier for tactical feel
 }).setView(defaultCenter, defaultZoom);
 
@@ -137,16 +138,17 @@ function setMapTiles(themeKey) {
   
   let maxNative = 20;
   if (themeKey === 'sea') maxNative = 13;
-  if (themeKey === 'satellite') maxNative = 18;
+  if (themeKey === 'satellite') maxNative = 18; // Force stretching past 18
+  if (themeKey === 'google-satellite') maxNative = 18; // Google often returns error tiles past 18 in rural areas
   if (themeKey === 'street') maxNative = 19;
   
   currentTiles.forEach(t => t.remove());
   currentTiles = [];
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(primaryMap));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap1));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap2));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap3));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 20, maxNativeZoom: maxNative }).addTo(secondaryMap4));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(primaryMap));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap1));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap2));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap3));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap4));
 }
 
 // --- Theme Switcher Logic ---
