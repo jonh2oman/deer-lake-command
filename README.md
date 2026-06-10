@@ -1,6 +1,6 @@
 # Deer Lake Tactical Command Center & Cadet Uplink GIS
 
-Version: **1.4.0**
+Version: **1.4.1**
 
 A feature-rich, high-performance, real-time collaboration GIS system designed for command center dispatchers and field responders. The system consists of a central multi-map dispatcher dashboard and a mobile-optimized responder transmitter app.
 

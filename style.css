@@ -755,10 +755,11 @@ input:checked + .slider:before {
 
 .deployment-panel {
   position: static;
-  width: 480px;
+  width: 580px;
   max-width: 95vw;
   max-height: 90vh;
-  overflow: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   resize: none !important;
   animation: modalIn 0.3s ease-out;
 }
