@@ -755,9 +755,19 @@ input:checked + .slider:before {
 
 .deployment-panel {
   position: static;
-  width: 400px;
-  max-width: 90vw;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow: auto !important;
+  resize: none !important;
   animation: modalIn 0.3s ease-out;
+}
+.deployment-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.deployment-panel::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
 @keyframes modalIn {
@@ -1306,17 +1316,10 @@ input:checked + .slider:before {
 /* Military Infrastructure layout overrides */
 #marker-grid-infrastructure {
   grid-template-columns: repeat(2, 1fr) !important;
-  max-height: 280px;
-  overflow-y: auto;
+  max-height: none !important;
+  overflow: visible !important;
   gap: 8px;
   padding: 8px;
-}
-#marker-grid-infrastructure::-webkit-scrollbar {
-  width: 4px;
-}
-#marker-grid-infrastructure::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 2px;
 }
 #marker-grid-infrastructure .marker-option {
   aspect-ratio: auto !important;
