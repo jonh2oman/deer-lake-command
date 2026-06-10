@@ -921,6 +921,30 @@ function getCustomIcon(feature) {
       svgPath = '<path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path>';
     } else if (type === 'target') {
       svgPath = '<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>';
+    } else if (type === 'buoy-port') {
+      svgPath = '<path d="M6 18h12V8H6v10zM4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-starboard') {
+      svgPath = '<path d="M12 4L6 18h12L12 4zM4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-fairway') {
+      svgPath = '<rect x="8" y="4" width="8" height="14" rx="2"></rect><line x1="12" y1="4" x2="12" y2="18"></line><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-bifurcation') {
+      svgPath = '<path d="M12 4L7 9h10l-5-5zM12 18V9M4 18h16M2 21h20"></path><line x1="9" y1="12" x2="15" y2="12"></line>';
+    } else if (type === 'buoy-isolated-danger') {
+      svgPath = '<circle cx="12" cy="4" r="2" fill="currentColor"></circle><circle cx="12" cy="9" r="2" fill="currentColor"></circle><rect x="9" y="12" width="6" height="6"></rect><line x1="9" y1="15" x2="15" y2="15"></line><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-cardinal') {
+      svgPath = '<path d="M12 2l-3 4h6zM12 11l-3-4h6zM9 12h6v6H9z"></path><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-hazard') {
+      svgPath = '<rect x="8" y="4" width="8" height="14" rx="1"></rect><path d="M12 7l2 2-2 2-2-2 2-2z"></path><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="16" x2="16" y2="16"></line><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-mooring') {
+      svgPath = '<circle cx="12" cy="14" r="5"></circle><path d="M12 9V5a2 2 0 1 1 0-4 2 2 0 0 1 0 4v4"></path><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-information') {
+      svgPath = '<rect x="7" y="4" width="10" height="14" rx="1"></rect><rect x="10" y="8" width="4" height="4"></rect><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-control') {
+      svgPath = '<rect x="7" y="4" width="10" height="14" rx="1"></rect><circle cx="12" cy="10" r="2.5"></circle><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-keep-out') {
+      svgPath = '<rect x="7" y="4" width="10" height="14" rx="1"></rect><path d="M12 7l2 3-2 3-2-3 2-3zM10 10h4M12 8v4"></path><path d="M4 18h16M2 21h20"></path>';
+    } else if (type === 'buoy-cautionary') {
+      svgPath = '<path d="M10 2l4 4M14 2l-4 4"></path><rect x="8" y="6" width="8" height="12" rx="1"></rect><path d="M4 18h16M2 21h20"></path>';
     } else if (type === 'hq') {
       svgPath = '<path d="M4 22V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18M12 18h.01"></path><polygon points="12,6 13,9 16,9 13.5,11 14.5,14 12,12.5 9.5,14 10.5,11 8,9 11,9"></polygon>';
     } else if (type === 'mod-tent') {

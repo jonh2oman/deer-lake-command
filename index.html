@@ -321,10 +321,86 @@
             </div>
           </div>
           <div class="marker-grid" id="marker-grid-marine" style="display: none;">
-            <div class="marker-option" data-type="anchor" title="Anchor"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg></div>
-            <div class="marker-option" data-type="warning" title="Warning"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
-            <div class="marker-option" data-type="buoy" title="Marine Buoy"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path></svg></div>
-            <div class="marker-option" data-type="target" title="Target Crosshair"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg></div>
+            <!-- 1. Anchor -->
+            <div class="marker-option selected" data-type="anchor" title="Anchor">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>
+              <span class="marker-label">Anchor</span>
+            </div>
+            <!-- 2. Warning Marker -->
+            <div class="marker-option" data-type="warning" title="Warning Marker">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <span class="marker-label">Warning Marker</span>
+            </div>
+            <!-- 3. Standard Buoy -->
+            <div class="marker-option" data-type="buoy" title="Standard Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path></svg>
+              <span class="marker-label">Standard Buoy</span>
+            </div>
+            <!-- 4. Target Crosshair -->
+            <div class="marker-option" data-type="target" title="Target Crosshair">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+              <span class="marker-label">Target Crosshair</span>
+            </div>
+            <!-- 5. Port-Hand Buoy -->
+            <div class="marker-option" data-type="buoy-port" title="Port-Hand Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M6 18h12V8H6v10zM4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Port-Hand Buoy</span>
+            </div>
+            <!-- 6. Starboard-Hand Buoy -->
+            <div class="marker-option" data-type="buoy-starboard" title="Starboard-Hand Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M12 4L6 18h12L12 4zM4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Starboard-Hand Buoy</span>
+            </div>
+            <!-- 7. Fairway Buoy -->
+            <div class="marker-option" data-type="buoy-fairway" title="Fairway Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><rect x="8" y="4" width="8" height="14" rx="2"></rect><line x1="12" y1="4" x2="12" y2="18"></line><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Fairway Buoy</span>
+            </div>
+            <!-- 8. Bifurcation Buoy -->
+            <div class="marker-option" data-type="buoy-bifurcation" title="Bifurcation Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M12 4L7 9h10l-5-5zM12 18V9M4 18h16M2 21h20"></path><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+              <span class="marker-label">Bifurcation Buoy</span>
+            </div>
+            <!-- 9. Isolated Danger Buoy -->
+            <div class="marker-option" data-type="buoy-isolated-danger" title="Isolated Danger Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><circle cx="12" cy="4" r="2" fill="currentColor"></circle><circle cx="12" cy="9" r="2" fill="currentColor"></circle><rect x="9" y="12" width="6" height="6"></rect><line x1="9" y1="15" x2="15" y2="15"></line><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Isolated Danger</span>
+            </div>
+            <!-- 10. Cardinal Buoy -->
+            <div class="marker-option" data-type="buoy-cardinal" title="Cardinal Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M12 2l-3 4h6zM12 11l-3-4h6zM9 12h6v6H9z"></path><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Cardinal Buoy</span>
+            </div>
+            <!-- 11. Hazard Buoy -->
+            <div class="marker-option" data-type="buoy-hazard" title="Hazard Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><rect x="8" y="4" width="8" height="14" rx="1"></rect><path d="M12 7l2 2-2 2-2-2 2-2z"></path><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="16" x2="16" y2="16"></line><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Hazard Buoy</span>
+            </div>
+            <!-- 12. Mooring Buoy -->
+            <div class="marker-option" data-type="buoy-mooring" title="Mooring Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><circle cx="12" cy="14" r="5"></circle><path d="M12 9V5a2 2 0 1 1 0-4 2 2 0 0 1 0 4v4"></path><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Mooring Buoy</span>
+            </div>
+            <!-- 13. Information Buoy -->
+            <div class="marker-option" data-type="buoy-information" title="Information Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><rect x="7" y="4" width="10" height="14" rx="1"></rect><rect x="10" y="8" width="4" height="4"></rect><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Info Buoy</span>
+            </div>
+            <!-- 14. Control Buoy -->
+            <div class="marker-option" data-type="buoy-control" title="Control Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><rect x="7" y="4" width="10" height="14" rx="1"></rect><circle cx="12" cy="10" r="2.5"></circle><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Control Buoy</span>
+            </div>
+            <!-- 15. Keep-Out Buoy -->
+            <div class="marker-option" data-type="buoy-keep-out" title="Keep-Out Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><rect x="7" y="4" width="10" height="14" rx="1"></rect><path d="M12 7l2 3-2 3-2-3 2-3zM10 10h4M12 8v4"></path><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Keep-Out Buoy</span>
+            </div>
+            <!-- 16. Cautionary Buoy -->
+            <div class="marker-option" data-type="buoy-cautionary" title="Cautionary Buoy">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-white"><path d="M10 2l4 4M14 2l-4 4"></path><rect x="8" y="6" width="8" height="12" rx="1"></rect><path d="M4 18h16M2 21h20"></path></svg>
+              <span class="marker-label">Cautionary Buoy</span>
+            </div>
           </div>
           <div class="marker-grid" id="marker-grid-infrastructure" style="display: none;">
             <!-- 1. HQ / Command Post -->

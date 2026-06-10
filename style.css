@@ -1313,15 +1313,17 @@ input:checked + .slider:before {
   to { transform: rotate(360deg); }
 }
 
-/* Military Infrastructure layout overrides */
-#marker-grid-infrastructure {
+/* Military Infrastructure & Marine Buoys layout overrides */
+#marker-grid-infrastructure,
+#marker-grid-marine {
   grid-template-columns: repeat(2, 1fr) !important;
   max-height: none !important;
   overflow: visible !important;
   gap: 8px;
   padding: 8px;
 }
-#marker-grid-infrastructure .marker-option {
+#marker-grid-infrastructure .marker-option,
+#marker-grid-marine .marker-option {
   aspect-ratio: auto !important;
   display: flex !important;
   flex-direction: row !important;
@@ -1334,19 +1336,23 @@ input:checked + .slider:before {
   border-radius: 4px;
   height: 38px !important;
 }
-#marker-grid-infrastructure .marker-option:hover {
+#marker-grid-infrastructure .marker-option:hover,
+#marker-grid-marine .marker-option:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--accent-color);
 }
-#marker-grid-infrastructure .marker-option.selected {
+#marker-grid-infrastructure .marker-option.selected,
+#marker-grid-marine .marker-option.selected {
   border-color: var(--accent-color);
   background: rgba(0, 210, 255, 0.2);
   box-shadow: 0 0 8px var(--accent-glow);
 }
-#marker-grid-infrastructure .marker-option svg {
+#marker-grid-infrastructure .marker-option svg,
+#marker-grid-marine .marker-option svg {
   flex-shrink: 0;
 }
-#marker-grid-infrastructure .marker-label {
+#marker-grid-infrastructure .marker-label,
+#marker-grid-marine .marker-label {
   font-family: var(--hud-font);
   font-size: 11px;
   color: var(--text-primary);
