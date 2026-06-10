@@ -641,12 +641,12 @@ window.toggleSidebar = function() {
   if (isCollapsed) {
     sidebar.classList.remove('collapsed');
     btn.classList.remove('collapsed');
-    btn.textContent = '[ < MENU ]';
+    btn.textContent = '[ < VIEWS ]';
     logToFeed("SYS: SIDEBAR RESTORED");
   } else {
     sidebar.classList.add('collapsed');
     btn.classList.add('collapsed');
-    btn.textContent = '[ MENU > ]';
+    btn.textContent = '[ VIEWS > ]';
     // Remove expanded state if collapsing
     if (sidebar.classList.contains('expanded-sidebar')) {
       sidebar.classList.remove('expanded-sidebar');
@@ -679,7 +679,7 @@ window.toggleSidebarExpand = function() {
       sidebar.classList.remove('collapsed');
       if (toggleBtn) {
         toggleBtn.classList.remove('collapsed');
-        toggleBtn.textContent = '[ < MENU ]';
+        toggleBtn.textContent = '[ < VIEWS ]';
       }
     }
     
@@ -1382,6 +1382,29 @@ document.getElementById('btn-welcome-enter').addEventListener('click', () => {
   sessionStorage.setItem('welcome_dismissed', 'true');
   logToFeed("SYS: COMMAND TERMINAL ONLINE", true);
 });
+
+// --- Settings Configuration Terminal Logic ---
+const settingsModal = document.getElementById('settings-modal');
+const settingsBtn = document.getElementById('settings-btn');
+const btnCloseSettings = document.getElementById('btn-close-settings');
+
+if (settingsBtn && settingsModal) {
+  settingsBtn.addEventListener('click', () => {
+    settingsModal.style.display = 'flex';
+  });
+}
+if (btnCloseSettings && settingsModal) {
+  btnCloseSettings.addEventListener('click', () => {
+    settingsModal.style.display = 'none';
+  });
+}
+if (settingsModal) {
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+      settingsModal.style.display = 'none';
+    }
+  });
+}
 
 // --- Help Terminal Logic ---
 const helpBtn = document.getElementById('help-btn');

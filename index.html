@@ -114,134 +114,9 @@
       <!-- Secondary Sidebar -->
       <div class="sidebar" id="right-sidebar">
         <div class="sidebar-top-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-shrink: 0;">
-          <div class="hud-label" style="font-size: 12px; font-weight: bold; margin-bottom: 0; letter-spacing: 1px;">MENU SYSTEM</div>
+          <div class="hud-label" style="font-size: 12px; font-weight: bold; margin-bottom: 0; letter-spacing: 1px;">TACTICAL VIEWS</div>
           <button id="sidebar-expand-btn" class="btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="window.toggleSidebarExpand()">[ EXPAND &lt;&lt; ]</button>
         </div>
-        <div class="sidebar-header">
-          <div class="sidebar-controls-container">
-            <div class="theme-control">
-            <label for="theme-select">VISUAL MODE:</label>
-            <select id="theme-select">
-              <option value="system">SYSTEM (AUTO)</option>
-              <option value="dark">DARK (DEFAULT)</option>
-              <option value="light">LIGHT (DAY OPS)</option>
-              <option value="sea">SEA (MARITIME)</option>
-              <option value="satellite">SATELLITE (ESRI)</option>
-              <option value="google-satellite">SATELLITE (HIGH-RES)</option>
-              <option value="street">STREET (OSM)</option>
-              <option value="topo">TOPO (OPENTOPOMAP)</option>
-              <option value="night-vision">NIGHT VISION</option>
-            </select>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="radar-toggle">
-              <span class="slider"></span>
-            </label>
-            <span class="radar-label">SYS: WEATHER RADAR</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="reticle-toggle" checked>
-              <span class="slider"></span>
-            </label>
-            <span class="radar-label">SYS: TARGETING RETICLE</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="nautical-toggle">
-              <span class="slider" style="background-color: var(--nautical-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--nautical-color);">SYS: NAUTICAL OVERLAY</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="trails-toggle">
-              <span class="slider" style="background-color: var(--trails-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--trails-color);">SYS: HIKING TRAILS</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="mtb-toggle">
-              <span class="slider" style="background-color: var(--mtb-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--mtb-color);">SYS: MTB & OFF-ROAD</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="topo-overlay-toggle">
-              <span class="slider" style="background-color: var(--accent-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--accent-color);">SYS: TOPO OVERLAY</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="labels-toggle">
-              <span class="slider" style="background-color: var(--text-primary);"></span>
-            </label>
-            <span class="radar-label">SYS: ROADS & LABELS</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="grid-toggle">
-              <span class="slider"></span>
-            </label>
-            <span class="radar-label">SYS: COORDINATE GRID</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="compass-toggle">
-              <span class="slider"></span>
-            </label>
-            <span class="radar-label">SYS: COMPASS ROSE</span>
-          </div>
-
-          <div class="radar-control" style="margin-bottom: 8px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="default-buoys-toggle" checked>
-              <span class="slider" style="background-color: var(--nautical-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--nautical-color);">SYS: DEFAULT BUOYS</span>
-          </div>
-
-          <div class="radar-control">
-            <label class="toggle-switch">
-              <input type="checkbox" id="edit-toggle">
-              <span class="slider" style="background-color: var(--danger-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--danger-color);">SYS: TACTICAL EDIT MODE</span>
-          </div>
-          <div class="radar-control" style="margin-top: -20px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="scale-toggle" checked>
-              <span class="slider"></span>
-            </label>
-            <span class="radar-label">SYS: MAP SCALE VISIBILITY</span>
-          </div>
-          
-          <div class="radar-control" style="margin-top: -20px;">
-            <label class="toggle-switch">
-              <input type="checkbox" id="gps-track-toggle">
-              <span class="slider" style="background-color: var(--gps-color);"></span>
-            </label>
-            <span class="radar-label" style="color: var(--gps-color);">SYS: LIVE GPS TRACKING</span>
-          </div>
-
-          <div style="margin-top: 15px; text-align: center;">
-            <button id="btn-gps-deploy" class="btn-primary" style="width: 100%; font-size: 11px; letter-spacing: 1px;">[ DEPLOY SENSOR AT CURRENT GPS ]</button>
-          </div>
-        </div>
-      </div>
         
         <div class="minimap-container">
           <div class="minimap-panel" id="panel-buoys">
@@ -292,7 +167,7 @@
       </div>
 
       <!-- Sidebar Toggle Tab -->
-      <button id="sidebar-toggle-btn" onclick="window.toggleSidebar()">[ &lt; MENU ]</button>
+      <button id="sidebar-toggle-btn" onclick="window.toggleSidebar()">[ &lt; VIEWS ]</button>
     </div>
     
     <!-- Load GeoJSON Variables -->
@@ -554,6 +429,166 @@
       </div>
     </div>
 
+    <!-- Floating Settings/Menu Button -->
+    <div id="settings-btn" class="settings-btn" title="System Configuration">⚙</div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+      <div class="hud-panel settings-panel">
+        <div class="hud-label" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <span>SYSTEM CONFIGURATION</span>
+          <button id="btn-close-settings" class="btn-secondary" style="padding: 2px 6px; font-size: 10px;">[X]</button>
+        </div>
+        <div class="settings-content">
+          
+          <!-- Section 1: Map Themes & HUD Instruments -->
+          <div class="settings-section">
+            <div class="settings-section-title">MAP THEMES & HUD</div>
+            
+            <div class="theme-control" style="margin-bottom: 15px;">
+              <label for="theme-select" style="font-size: 11px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 6px;">VISUAL MODE:</label>
+              <select id="theme-select" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 13px; outline: none;">
+                <option value="system">SYSTEM (AUTO)</option>
+                <option value="dark">DARK (DEFAULT)</option>
+                <option value="light">LIGHT (DAY OPS)</option>
+                <option value="sea">SEA (MARITIME)</option>
+                <option value="satellite">SATELLITE (ESRI)</option>
+                <option value="google-satellite">SATELLITE (HIGH-RES)</option>
+                <option value="street">STREET (OSM)</option>
+                <option value="topo">TOPO (OPENTOPOMAP)</option>
+                <option value="night-vision">NIGHT VISION</option>
+              </select>
+            </div>
+            
+            <div class="settings-grid">
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="labels-toggle">
+                  <span class="slider"></span>
+                </label>
+                <span class="radar-label">ROADS & LABELS</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="grid-toggle">
+                  <span class="slider"></span>
+                </label>
+                <span class="radar-label">COORDINATE GRID</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="compass-toggle">
+                  <span class="slider"></span>
+                </label>
+                <span class="radar-label">COMPASS ROSE</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="scale-toggle" checked>
+                  <span class="slider"></span>
+                </label>
+                <span class="radar-label">MAP SCALE</span>
+              </div>
+
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="reticle-toggle" checked>
+                  <span class="slider"></span>
+                </label>
+                <span class="radar-label">TARGETING RETICLE</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: GIS Overlays & Layers -->
+          <div class="settings-section">
+            <div class="settings-section-title">GIS OVERLAYS & LAYERS</div>
+            
+            <div class="settings-grid">
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="nautical-toggle">
+                  <span class="slider" style="background-color: var(--nautical-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--nautical-color);">NAUTICAL OVERLAY</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="default-buoys-toggle" checked>
+                  <span class="slider" style="background-color: var(--nautical-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--nautical-color);">DEFAULT BUOYS</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="trails-toggle">
+                  <span class="slider" style="background-color: var(--trails-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--trails-color);">HIKING TRAILS</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="mtb-toggle">
+                  <span class="slider" style="background-color: var(--mtb-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--mtb-color);">MTB & OFF-ROAD</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="topo-overlay-toggle">
+                  <span class="slider" style="background-color: var(--accent-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--accent-color);">TOPO OVERLAY</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="radar-toggle">
+                  <span class="slider"></span>
+                </label>
+                <span class="radar-label">WEATHER RADAR</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Tactical & Telemetry Controls -->
+          <div class="settings-section">
+            <div class="settings-section-title">TACTICAL & TELEMETRY</div>
+            
+            <div class="settings-grid">
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="edit-toggle">
+                  <span class="slider" style="background-color: var(--danger-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--danger-color);">TACTICAL EDIT MODE</span>
+              </div>
+              
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="gps-track-toggle">
+                  <span class="slider" style="background-color: var(--gps-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--gps-color);">LIVE GPS TRACKING</span>
+              </div>
+            </div>
+            
+            <div style="margin-top: 15px;">
+              <button id="btn-gps-deploy" class="btn-primary" style="width: 100%; font-size: 11px; letter-spacing: 1px; padding: 8px;">[ DEPLOY SENSOR AT CURRENT GPS ]</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
     <!-- Floating Help Button -->
     <div id="help-btn" class="help-btn">?</div>
 
@@ -568,44 +603,48 @@
         
         <div class="help-topics-container" id="help-topics-container">
           <div class="help-topic">
+            <h3>System Configuration Menu</h3>
+            <p>Click the gear icon (⚙) button in the bottom-right corner to open the <strong>System Configuration</strong> menu. This central tactical dashboard groups all map themes, coordinate grid displays, scale toggles, GIS overlays, and operational telemetry switches into structured categories.</p>
+          </div>
+          <div class="help-topic">
             <h3>Live GPS Tracking</h3>
-            <p>Toggle 'SYS: LIVE GPS TRACKING' to connect to your device's physical GPS antenna. A pulsing Blue Dot will appear on the map and track your movements in real-time. Use the 'DEPLOY SENSOR AT CURRENT GPS' button to drop a marker at your exact physical coordinates.</p>
+            <p>Toggle 'LIVE GPS TRACKING' inside the System Configuration menu to connect to your device's physical GPS antenna. A pulsing Blue Dot will appear on the map and track your movements in real-time. Use the 'DEPLOY SENSOR AT CURRENT GPS' button inside the menu to drop a marker at your exact physical coordinates.</p>
           </div>
           <div class="help-topic">
             <h3>Tactical Edit Mode & Custom Deployment</h3>
-            <p>Toggle 'SYS: TACTICAL EDIT MODE' to enable map clicking. When active, clicking anywhere on the primary map (or using 'DEPLOY SENSOR AT CURRENT GPS') opens the Deployment Terminal. You can choose a marker category (Radar Blips, Marine Icons, Infrastructure), icon type, and color to deploy custom sensors.</p>
+            <p>Toggle 'TACTICAL EDIT MODE' inside the System Configuration menu to enable map clicking. When active, clicking anywhere on the primary map (or using 'DEPLOY SENSOR AT CURRENT GPS') opens the Deployment Terminal. You can choose a marker category (Radar Blips, Marine Icons, Infrastructure), icon type, and color to deploy custom sensors.</p>
           </div>
           <div class="help-topic">
             <h3>Compass Rose & Coordinate Grid</h3>
-            <p><strong>SYS: COMPASS ROSE:</strong> Displays a glowing vector dial in the bottom-left corner. The inner needle rotates to indicate true north, while the outer radar dial rotates slowly for orientation context.<br>
-            <strong>SYS: COORDINATE GRID:</strong> Overlays latitude and longitude grid lines. Spacing scales dynamically based on zoom to prevent overcrowding. Labels align with the map center crosshair to remain readable and uncluttered.</p>
+            <p><strong>COMPASS ROSE:</strong> Displays a glowing vector dial in the bottom-left corner. The inner needle rotates to indicate true north, while the outer radar dial rotates slowly for orientation context. Toggle it inside the System Configuration menu.<br>
+            <strong>COORDINATE GRID:</strong> Overlays latitude and longitude grid lines. Spacing scales dynamically based on zoom to prevent overcrowding. Labels align with the map center crosshair to remain readable and uncluttered.</p>
           </div>
           <div class="help-topic">
             <h3>Advanced Tactical GIS Overlays</h3>
-            <p>Toggle specialized transparent overlays on top of your base maps:<br>
-            <strong>SYS: TOPO OVERLAY:</strong> Displays topographic contour lines to inspect local elevations.<br>
-            <strong>SYS: ROADS & LABELS:</strong> Overlays road lines and town labels. Highly useful when viewing raw Satellite base maps.<br>
-            <strong>SYS: MTB & OFF-ROAD:</strong> Displays mountain biking trails, dirt tracks, and multi-use routes (like the Newfoundland T'Railway) for off-road navigation.<br>
-            <strong>SYS: NAUTICAL OVERLAY & HIKING TRAILS:</strong> Overlays marine buoys (OpenSeaMap) and official hiking routes.<br>
-            <strong>SYS: WEATHER RADAR:</strong> Overlays live precipitation radar imagery (sourced in real-time from RainViewer).<br>
-            <strong>SYS: TARGETING RETICLE:</strong> Toggles the HUD crosshair overlay centered on the primary viewport.<br>
-            <strong>SYS: MAP SCALE VISIBILITY:</strong> Toggles the map distance scale ruler in the bottom left.</p>
+            <p>Toggle specialized transparent overlays inside the System Configuration menu on top of your base maps:<br>
+            <strong>ROADS & LABELS:</strong> Overlays road lines and town labels. Highly useful when viewing raw Satellite base maps.<br>
+            <strong>MTB & OFF-ROAD:</strong> Displays mountain biking trails, dirt tracks, and multi-use routes (like the Newfoundland T'Railway) for off-road navigation.<br>
+            <strong>NAUTICAL OVERLAY & HIKING TRAILS:</strong> Overlays marine buoys (OpenSeaMap) and official hiking routes.<br>
+            <strong>WEATHER RADAR:</strong> Overlays live precipitation radar imagery (sourced in real-time from RainViewer).<br>
+            <strong>TOPO OVERLAY:</strong> Displays topographic contour lines to inspect local elevations.<br>
+            <strong>TARGETING RETICLE:</strong> Toggles the HUD crosshair overlay centered on the primary viewport.<br>
+            <strong>MAP SCALE:</strong> Toggles the map distance scale ruler in the bottom left.</p>
           </div>
           <div class="help-topic">
             <h3>Default Buoys Visibility</h3>
-            <p>Toggle 'SYS: DEFAULT BUOYS' to show or hide the three default preloaded buoys in Deer Lake, letting you isolate only the custom tactical buoys you deploy during operations.</p>
+            <p>Toggle 'DEFAULT BUOYS' inside the System Configuration menu to show or hide the three default preloaded buoys in Deer Lake, letting you isolate only the custom tactical buoys you deploy during operations.</p>
           </div>
           <div class="help-topic">
             <h3>Visual Modes & Map Themes</h3>
-            <p>Select different basemaps from the <strong>VISUAL MODE</strong> dropdown menu. Available options include system preference, dark, light, sea (maritime), ESRI satellite, high-resolution satellite, street map, topographic map, and night vision (which applies a green monochrome phosphor filter to the entire application).</p>
+            <p>Select different basemaps from the <strong>VISUAL MODE</strong> dropdown menu inside the System Configuration menu. Available options include system preference, dark, light, sea (maritime), ESRI satellite, high-resolution satellite, street map, topographic map, and night vision (which applies a green monochrome phosphor filter to the entire application).</p>
           </div>
           <div class="help-topic">
             <h3>Live Cadet Tracking & Uplink</h3>
             <p>Monitor cadet positions in real-time under the <strong>LIVE CADET TRACKING</strong> dashboard panel. Remote personnel can access the Cadet Uplink at <a href="./transmit.html" class="glow-link">/transmit.html</a> to register their call sign, select their vehicle/party type, specify party size, and select a custom tactical icon (radar blip, power boat, zodiac, sailboat, ship, truck, or hiker) and color to broadcast their live GPS location. Active SOS states trigger glowing red emergency warnings and audio alarms in the Command Center.</p>
           </div>
           <div class="help-topic">
-            <h3>Minimaps & Expandable Sidebar</h3>
-            <p>The right menu features secondary minimaps to isolate layers (Buoys, EMS, Radar, Forestry). Click the <strong>[ EXPAND &lt;&lt; ]</strong> button at the top of the menu to widen the sidebar to 750px. This snaps the minimaps into a 2x2 grid, increases their heights, and arranges all toggles in a neat horizontal bar across the top. Click <strong>[ COLLAPSE &gt;&gt; ]</strong> to return to narrow view. Use <strong>[-]</strong> to roll them up, <strong>[⛶]</strong> to maximize a minimap within the sidebar (spanning both columns and hiding other panels), and <strong>[↗]</strong> to pop a minimap out to a full-screen holographic overlay. <strong>Click any minimap</strong> to instantly fly the main map view to that minimap's center.</p>
+            <h3>Minimaps & Expandable Views Panel</h3>
+            <p>The right views panel features secondary minimaps to isolate layers (Buoys, EMS, Radar, Forestry). Click the <strong>[ EXPAND &lt;&lt; ]</strong> button at the top of the panel to widen the sidebar to 750px. This snaps the minimaps into a 2x2 grid and increases their heights. Click <strong>[ COLLAPSE &gt;&gt; ]</strong> to return to narrow view. Use <strong>[-]</strong> to roll them up, <strong>[⛶]</strong> to maximize a minimap within the panel (spanning both columns and hiding other panels), and <strong>[↗]</strong> to pop a minimap out to a full-screen holographic overlay. <strong>Click any minimap</strong> to instantly fly the main map view to that minimap's center. Click <strong>[ &lt; VIEWS ]</strong> at the far right edge to collapse or slide the panel completely out of sight.</p>
           </div>
           <div class="help-topic">
             <h3>Intel Feed</h3>

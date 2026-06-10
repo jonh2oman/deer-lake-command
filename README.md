@@ -1,6 +1,6 @@
 # Deer Lake Tactical Command Center & Cadet Uplink GIS
 
-Version: **1.4.1**
+Version: **1.5.0**
 
 A feature-rich, high-performance, real-time collaboration GIS system designed for command center dispatchers and field responders. The system consists of a central multi-map dispatcher dashboard and a mobile-optimized responder transmitter app.
 
@@ -10,21 +10,16 @@ A feature-rich, high-performance, real-time collaboration GIS system designed fo
 
 ### 1. Central Dispatcher Dashboard (`index.html`)
 * **Multi-Theme Base Maps:** Select from dark, light, street, satellite, high-resolution satellite, topographic, and full-screen Night Vision (monochrome phosphor green) modes.
+* **System Configuration Terminal (Settings Modal):** Accessible via a floating gear button (⚙) in the bottom-right corner. It groups all controls and switches logically:
+  * **Map Themes & HUD:** Visual theme mode dropdown, Coordinate Grid, Compass Rose, Map Scale, Roads & Labels, and Targeting Reticle toggles.
+  * **GIS Overlays & Layers:** Nautical (OpenSeaMap), Default QGIS Buoys, Hiking Trails, MTB/Off-Road Trails, Topographic Contours, and Weather Radar (RainViewer) toggles.
+  * **Tactical & Telemetry:** Tactical Edit Mode, Live GPS Tracking, and GPS deploy sensor actions.
 * **Tactical Deployment Terminal:** Deploys custom markers onto the map (Radar Blips, Marine Icons, Infrastructure).
   * **Military Infrastructure Options:** Features 24 custom military-focused tactical assets including *HQ/Command Post, Modular Tent/TOC, Bivouac Site, J4 Warehouse/Depot, Admin Building, Mess Hall, Medical Station, Comms Post, Security Checkpoint, Ammo Depot, Helipad/LZ, Motor Pool, Observation Post, Power Generator, Water Point, Fuel Farm, Barracks, Retail Store/PX, Guard Tower, Armory, Runway/Airstrip, Latrines/Showers, Gym/Fitness, and Decon Station*.
   * **Advanced Marine Buoy Options:** Features 16 detailed marine symbols and buoys including *Anchor, Warning Marker, Standard Buoy, Target Crosshair, Port-Hand Buoy, Starboard-Hand Buoy, Fairway Buoy, Bifurcation Buoy, Isolated Danger Buoy, Cardinal Buoy, Hazard Buoy, Mooring Buoy, Information Buoy, Control Buoy, Keep-Out Buoy, and Cautionary Buoy*.
   * **Visible Text Labels:** Direct textual descriptions inside the deployment grid rather than simple hover tooltips, styled in a scrollable, two-column flex layout.
-* **Transparent Tactical Overlays:** Toggle-able layers including:
-  * **OpenSeaMap:** Marine navigation markers, buoys, and sea-marks.
-  * **Hiking Trails:** Official OSM hiking routes.
-  * **MTB & Off-Road Trails:** Forest tracks, dirt paths, and multi-use railway beds.
-  * **Topography overlay:** Elevation contour lines.
-  * **Roads & Labels:** Dynamic labels overlay (essential for satellite views).
-  * **Weather Radar:** Real-time precipitation Doppler radar (via RainViewer API).
-  * **Coordinate Grid:** Dynamic latitude/longitude grid lines that dynamically scale grid spacing on zoom and center labels to prevent screen clutter.
-  * **Targeting Reticle:** Viewport-centered crosshair HUD.
-* **Holographic Minimaps Sidebar:** Four secondary maps that track specific areas (Buoys, Emergency Services, Pasadena Forestry, Doppler Radar).
-  * **Expandable Layout:** Expand the sidebar from 350px to 750px to view minimaps in a 2x2 grid.
+* **Holographic Views Sidebar (Minimaps):** Four secondary maps that track specific areas (Buoys, Emergency Services, Pasadena Forestry, Doppler Radar). Free of all control switches for a decluttered viewport.
+  * **Expandable Layout:** Expand the views panel from 350px to 750px to view minimaps in a 2x2 grid.
   * **Panel Rollup/Minimize:** Collapse or expand sections.
   * **Minimap Maximization:** Focus a single minimap to span both columns for detailed investigation.
   * **Full-Screen Hologram:** Pop a minimap out to a full-screen overlay.
