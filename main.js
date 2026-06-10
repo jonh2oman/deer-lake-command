@@ -977,6 +977,22 @@ function getCustomIcon(feature) {
       svgPath = '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path>';
     } else if (type === 'fuel-farm') {
       svgPath = '<ellipse cx="12" cy="5" rx="6" ry="2"></ellipse><path d="M6 5v14c0 1.1 2.7 2 6 2s6-.9 6-2V5"></path><ellipse cx="12" cy="12" rx="6" ry="2" opacity="0.7"></ellipse>';
+    } else if (type === 'barracks') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M6 8h12M6 14h12M6 17h12M6 11h1M17 11h1M6 5v14M18 5v14"></path>';
+    } else if (type === 'retail-store') {
+      svgPath = '<path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9zm0 0L6 3h12l3 6M9 9a3 3 0 0 1-6 0m12 0a3 3 0 0 1-6 0m12 0a3 3 0 0 1-6 0"></path>';
+    } else if (type === 'guard-tower') {
+      svgPath = '<path d="M6 22L9 8M18 22L15 8M9 8h6M7 8h10v4H7zm3-4l2-2 2 2H10zM12 2v4"></path>';
+    } else if (type === 'armory') {
+      svgPath = '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4M12 15v3"></path>';
+    } else if (type === 'runway') {
+      svgPath = '<path d="M5 2h14v20H5V2zM12 4v3M12 11v3M12 18v2"></path><path d="M12 8l-4 4h3v4h2v-4h3l-4-4z"></path>';
+    } else if (type === 'latrines') {
+      svgPath = '<path d="M7 21h10M12 21V5a2 2 0 0 1 2-2h4M9 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm6 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path>';
+    } else if (type === 'fitness-center') {
+      svgPath = '<rect x="2" y="6" width="3" height="12" rx="1"></rect><rect x="19" y="6" width="3" height="12" rx="1"></rect><line x1="5" y1="12" x2="19" y2="12" stroke-width="3"></line><rect x="5" y="8" width="2" height="8"></rect><rect x="17" y="8" width="2" height="8"></rect>';
+    } else if (type === 'decon-station') {
+      svgPath = '<path d="M4 4h16v16H4V4zm8 0v4M8 12a4 4 0 1 1 8 0M12 14v4"></path>';
     // Backward compatibility mappings
     } else if (type === 'building') {
       svgPath = '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path>';

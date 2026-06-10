@@ -1,6 +1,6 @@
 # Deer Lake Tactical Command Center & Cadet Uplink GIS
 
-Version: **1.3.0**
+Version: **1.4.0**
 
 A feature-rich, high-performance, real-time collaboration GIS system designed for command center dispatchers and field responders. The system consists of a central multi-map dispatcher dashboard and a mobile-optimized responder transmitter app.
 
@@ -11,7 +11,7 @@ A feature-rich, high-performance, real-time collaboration GIS system designed fo
 ### 1. Central Dispatcher Dashboard (`index.html`)
 * **Multi-Theme Base Maps:** Select from dark, light, street, satellite, high-resolution satellite, topographic, and full-screen Night Vision (monochrome phosphor green) modes.
 * **Tactical Deployment Terminal:** Deploys custom markers onto the map (Radar Blips, Marine Icons, Infrastructure).
-  * **Military Infrastructure Options:** Features 16 custom military-focused tactical assets including *HQ/Command Post, Modular Tent/TOC, Bivouac Site, J4 Warehouse/Depot, Admin Building, Mess Hall, Medical Station, Comms Post, Security Checkpoint, Ammo Depot, Helipad/LZ, Motor Pool, Observation Post, Power Generator, Water Point, and Fuel Farm*.
+  * **Military Infrastructure Options:** Features 24 custom military-focused tactical assets including *HQ/Command Post, Modular Tent/TOC, Bivouac Site, J4 Warehouse/Depot, Admin Building, Mess Hall, Medical Station, Comms Post, Security Checkpoint, Ammo Depot, Helipad/LZ, Motor Pool, Observation Post, Power Generator, Water Point, Fuel Farm, Barracks, Retail Store/PX, Guard Tower, Armory, Runway/Airstrip, Latrines/Showers, Gym/Fitness, and Decon Station*.
   * **Advanced Marine Buoy Options:** Features 16 detailed marine symbols and buoys including *Anchor, Warning Marker, Standard Buoy, Target Crosshair, Port-Hand Buoy, Starboard-Hand Buoy, Fairway Buoy, Bifurcation Buoy, Isolated Danger Buoy, Cardinal Buoy, Hazard Buoy, Mooring Buoy, Information Buoy, Control Buoy, Keep-Out Buoy, and Cautionary Buoy*.
   * **Visible Text Labels:** Direct textual descriptions inside the deployment grid rather than simple hover tooltips, styled in a scrollable, two-column flex layout.
 * **Transparent Tactical Overlays:** Toggle-able layers including:
