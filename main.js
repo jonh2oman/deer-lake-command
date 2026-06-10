@@ -911,7 +911,7 @@ function getCustomIcon(feature) {
       iconAnchor: [10, 10]
     });
   } else {
-    // Marine SVGs
+    // Marine SVGs & Infrastructure SVGs
     let svgPath = '';
     if (type === 'anchor') {
       svgPath = '<circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path>';
@@ -921,6 +921,39 @@ function getCustomIcon(feature) {
       svgPath = '<path d="M12 2v20"></path><path d="M8 6h8"></path><path d="M6 14h12"></path><path d="M4 22h16"></path><path d="M6 10l6-4 6 4"></path>';
     } else if (type === 'target') {
       svgPath = '<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle>';
+    } else if (type === 'hq') {
+      svgPath = '<path d="M4 22V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18M12 18h.01"></path><polygon points="12,6 13,9 16,9 13.5,11 14.5,14 12,12.5 9.5,14 10.5,11 8,9 11,9"></polygon>';
+    } else if (type === 'mod-tent') {
+      svgPath = '<path d="M2 20L12 4l10 16H2zM12 4v16M2 20h20M7 12h10"></path>';
+    } else if (type === 'bivouac') {
+      svgPath = '<path d="M4 18L9 9l5 9M10 18l5-9 5 9M2 18h20"></path><circle cx="7" cy="18" r="1"></circle><circle cx="17" cy="18" r="1"></circle>';
+    } else if (type === 'j4-warehouse') {
+      svgPath = '<path d="M3 10V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10M2 10l10-6 10 6M6 14h12v6H6zM10 14v6M14 14v6"></path>';
+    } else if (type === 'admin-bldg') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 21V9h6v12M8 6h2M14 6h2M8 10h2M14 10h2M8 14h2M14 14h2"></path>';
+    } else if (type === 'mess-hall') {
+      svgPath = '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>';
+    } else if (type === 'medical-station') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M12 8v8M8 12h8"></path>';
+    } else if (type === 'comms-post') {
+      svgPath = '<circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path><path d="M12 14v8"></path>';
+    } else if (type === 'security-checkpoint') {
+      svgPath = '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM8 11h8M8 15h8"></path>';
+    } else if (type === 'ammo-depot') {
+      svgPath = '<path d="M12 2v6M12 8a4 4 0 0 0-4 4v7a3 3 0 0 0 6 0v-7a4 4 0 0 0-4-4zM8 15h8"></path>';
+    } else if (type === 'helipad-lz') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M8 8v8"></path><path d="M16 8v8"></path><path d="M8 12h8"></path>';
+    } else if (type === 'motor-pool') {
+      svgPath = '<path d="M2 17h20M5 17V8l7-4 7 4v9M9 13h6M8 17v-4h8v4"></path>';
+    } else if (type === 'observation-post') {
+      svgPath = '<path d="M6 22l2-14M18 22l-2-14M8 8h8M8 4h8v4H8zM12 8v14M5 4h14"></path>';
+    } else if (type === 'power-unit') {
+      svgPath = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polygon points="13 7 8 13 12 13 11 17 16 11 12 11 13 7"></polygon>';
+    } else if (type === 'water-point') {
+      svgPath = '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path>';
+    } else if (type === 'fuel-farm') {
+      svgPath = '<ellipse cx="12" cy="5" rx="6" ry="2"></ellipse><path d="M6 5v14c0 1.1 2.7 2 6 2s6-.9 6-2V5"></path><ellipse cx="12" cy="12" rx="6" ry="2" opacity="0.7"></ellipse>';
+    // Backward compatibility mappings
     } else if (type === 'building') {
       svgPath = '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path>';
     } else if (type === 'utensils') {

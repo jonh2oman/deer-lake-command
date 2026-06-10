@@ -1,6 +1,6 @@
 # Deer Lake Tactical Command Center & Cadet Uplink GIS
 
-Version: **1.1.0**
+Version: **1.2.0**
 
 A feature-rich, high-performance, real-time collaboration GIS system designed for command center dispatchers and field responders. The system consists of a central multi-map dispatcher dashboard and a mobile-optimized responder transmitter app.
 
@@ -10,6 +10,9 @@ A feature-rich, high-performance, real-time collaboration GIS system designed fo
 
 ### 1. Central Dispatcher Dashboard (`index.html`)
 * **Multi-Theme Base Maps:** Select from dark, light, street, satellite, high-resolution satellite, topographic, and full-screen Night Vision (monochrome phosphor green) modes.
+* **Tactical Deployment Terminal:** Deploys custom markers onto the map (Radar Blips, Marine Icons, Infrastructure).
+  * **Military Infrastructure Options:** Features 16 custom military-focused tactical assets including *HQ/Command Post, Modular Tent/TOC, Bivouac Site, J4 Warehouse/Depot, Admin Building, Mess Hall, Medical Station, Comms Post, Security Checkpoint, Ammo Depot, Helipad/LZ, Motor Pool, Observation Post, Power Generator, Water Point, and Fuel Farm*.
+  * **Visible Text Labels:** Direct textual descriptions inside the deployment grid rather than simple hover tooltips.
 * **Transparent Tactical Overlays:** Toggle-able layers including:
   * **OpenSeaMap:** Marine navigation markers, buoys, and sea-marks.
   * **Hiking Trails:** Official OSM hiking routes.
