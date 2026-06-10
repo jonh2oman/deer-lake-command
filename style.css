@@ -1,46 +1,71 @@
 /* Base Dark Theme (Default) */
 :root, [data-theme="dark"] {
   --bg-color: #0d1117;
-  --panel-bg: rgba(10, 15, 20, 0.75);
-  --border-color: rgba(47, 129, 247, 0.3);
-  --text-primary: #e6edf3;
-  --text-secondary: #7d8590;
-  --accent-color: #2f81f7;
-  --accent-glow: rgba(47, 129, 247, 0.6);
-  --danger-color: #f85149;
-  --danger-glow: rgba(248, 81, 73, 0.6);
-  --success-color: #2ea043;
+  --panel-bg: rgba(6, 9, 13, 0.92); /* Darker and more opaque to block busy map details */
+  --border-color: rgba(0, 210, 255, 0.5); /* Brighter cyan border */
+  --text-primary: #f0f6fc; /* Bright off-white for main text */
+  --text-secondary: #8b949e; /* Clear medium-gray for metadata */
+  --accent-color: #00d2ff; /* Vibrant high-contrast neon cyan */
+  --accent-glow: rgba(0, 210, 255, 0.65);
+  --danger-color: #ff5555; /* More vibrant red */
+  --danger-glow: rgba(255, 85, 85, 0.6);
+  --success-color: #39ff14; /* Neon green */
   --tactical-green: #39ff14;
+  --nautical-color: #00ffcc;
+  --trails-color: #ffaa00;
+  --gps-color: #00ccff;
+  --mtb-color: #ff00ff;
   --hud-font: 'Share Tech Mono', monospace;
 }
 
 [data-theme="light"] {
   --bg-color: #f6f8fa;
-  --panel-bg: rgba(255, 255, 255, 0.85);
-  --border-color: rgba(0, 0, 0, 0.2);
-  --text-primary: #1f2328;
-  --text-secondary: #656d76;
-  --accent-color: #0969da;
-  --accent-glow: rgba(9, 105, 218, 0.4);
+  --panel-bg: rgba(255, 255, 255, 0.96);
+  --border-color: rgba(0, 90, 180, 0.45);
+  --text-primary: #0f1419;
+  --text-secondary: #4b535d;
+  --accent-color: #0056b3; /* Deep high-contrast blue for light mode */
+  --accent-glow: rgba(0, 86, 179, 0.25);
   --danger-color: #cf222e;
-  --danger-glow: rgba(207, 34, 46, 0.4);
+  --danger-glow: rgba(207, 34, 46, 0.25);
+  --success-color: #1b852e; /* Darker green for white background legibility */
+  --tactical-green: #1b852e;
+  --nautical-color: #007755; /* Rich teal/green */
+  --trails-color: #b35900; /* Rich orange/brown */
+  --gps-color: #005580; /* Rich blue */
+  --mtb-color: #880088; /* Rich purple */
+}
+
+/* Disable text-shadow glow in light mode to prevent blurry text */
+[data-theme="light"] * {
+  text-shadow: none !important;
 }
 
 [data-theme="sea"] {
   --bg-color: #021a24;
-  --panel-bg: rgba(4, 38, 51, 0.8);
-  --border-color: rgba(0, 188, 212, 0.4);
+  --panel-bg: rgba(4, 30, 42, 0.92); /* Opaque deep ocean background */
+  --border-color: rgba(0, 229, 255, 0.65);
   --text-primary: #e0f7fa;
-  --text-secondary: #80deea;
-  --accent-color: #00bcd4;
-  --accent-glow: rgba(0, 188, 212, 0.6);
+  --text-secondary: #a7ffeb;
+  --accent-color: #00e5ff; /* Vibrant neon cyan */
+  --accent-glow: rgba(0, 229, 255, 0.6);
   --danger-color: #ff5252;
   --danger-glow: rgba(255, 82, 82, 0.6);
+  --success-color: #39ff14;
+  --tactical-green: #39ff14;
+  --nautical-color: #00ffcc;
+  --trails-color: #ffaa00;
+  --gps-color: #00ccff;
+  --mtb-color: #e040fb;
 }
 
 /* Night Vision is primarily a CSS filter over the dark theme */
 [data-theme="night-vision"] {
   --tactical-green: #39ff14;
+  --nautical-color: #00ffcc;
+  --trails-color: #ffaa00;
+  --gps-color: #00ccff;
+  --mtb-color: #ff00ff;
 }
 
 [data-theme="night-vision"] body::after {
@@ -190,13 +215,43 @@ body {
 }
 
 .coord-panel {
-  bottom: 20px;
-  left: 20px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.8), inset 0 0 10px rgba(0, 210, 255, 0.1);
+  font-family: var(--hud-font);
+  width: 155px;
+  height: 60px; /* Match standard height of Leaflet zoom buttons */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Shove Leaflet zoom controls to the right to make room for coord-panel */
+#primary-map .leaflet-top.leaflet-left .leaflet-control-zoom {
+  margin-left: 175px !important;
+  margin-top: 10px !important;
+}
+
+.coord-label {
+  font-size: 10px;
+  color: var(--accent-color);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .coord-display {
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   color: var(--tactical-green);
   text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
 }
@@ -358,11 +413,118 @@ input:checked + .slider:before {
   padding: 24px;
   z-index: 1000;
   box-shadow: -4px 0 24px rgba(0,0,0,0.8);
-  transition: margin-right 0.3s ease;
+  transition: width 0.3s ease, min-width 0.3s ease, margin-right 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for Sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.3);
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
 }
 
 .sidebar.collapsed {
   margin-right: -350px;
+}
+
+/* Expanded Sidebar State */
+.sidebar.expanded-sidebar {
+  width: 750px;
+  min-width: 750px;
+}
+
+.sidebar.expanded-sidebar ~ #sidebar-toggle-btn {
+  right: 750px;
+}
+
+/* Horizontal alignment of controls in expanded view */
+.sidebar.expanded-sidebar .sidebar-controls-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+  width: 100%;
+}
+
+.sidebar.expanded-sidebar .theme-control {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.sidebar.expanded-sidebar .theme-control label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.sidebar.expanded-sidebar .theme-control select {
+  width: auto;
+  min-width: 130px;
+}
+
+.sidebar.expanded-sidebar .radar-control {
+  margin: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+}
+
+.sidebar.expanded-sidebar .radar-label {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.sidebar.expanded-sidebar .sidebar-controls-container > div:last-child {
+  margin: 0 !important;
+  min-width: 220px;
+}
+
+.sidebar.expanded-sidebar .sidebar-controls-container > div:last-child button {
+  padding: 4px 10px;
+}
+
+/* Minimaps in expanded view (2-column grid) */
+.sidebar.expanded-sidebar .minimap-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.sidebar.expanded-sidebar .minimap {
+  height: 220px;
+}
+
+.sidebar.expanded-sidebar .minimap-panel.rolled-up {
+  grid-column: span 1;
+}
+
+/* Maximized minimap within sidebar */
+.sidebar.expanded-sidebar .minimap-panel.maximized-sidebar {
+  grid-column: span 2;
+}
+
+.minimap-panel.maximized-sidebar .minimap {
+  height: 480px !important;
 }
 
 /* Sidebar Toggle Button */
@@ -410,7 +572,7 @@ input:checked + .slider:before {
 #top-title-bar h1 {
   font-family: var(--hud-font);
   font-size: 24px;
-  color: #fff;
+  color: var(--text-primary);
   text-shadow: 0 0 8px var(--accent-glow);
   margin-bottom: 2px;
   letter-spacing: 2px;
@@ -758,6 +920,8 @@ input:checked + .slider:before {
 /* SVG Marine Icon Colors */
 .svg-red { color: var(--danger-color); filter: drop-shadow(0 0 3px var(--danger-color)); }
 .svg-cyan { color: #00ccff; filter: drop-shadow(0 0 3px #00ccff); }
+.svg-blue { color: #00d2ff; filter: drop-shadow(0 0 3px #00d2ff); }
+.svg-purple { color: #d000ff; filter: drop-shadow(0 0 3px #d000ff); }
 .svg-yellow { color: #ffea00; filter: drop-shadow(0 0 3px #ffea00); }
 .svg-green { color: #00ff00; filter: drop-shadow(0 0 3px #00ff00); }
 .svg-orange { color: #ff9900; filter: drop-shadow(0 0 3px #ff9900); }
@@ -919,3 +1083,223 @@ input:checked + .slider:before {
   background: rgba(47, 129, 247, 0.4);
   box-shadow: 0 0 10px rgba(47, 129, 247, 0.6);
 }
+
+/* Cadet HUD panel layout */
+.cadets-panel {
+  top: 140px;
+  right: 20px;
+  width: 250px;
+}
+
+/* Cadet Blips styling */
+.cadet-blip {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+.cadet-blip::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+.cadet-blip::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 50%;
+  animation: radarPulse 1.8s infinite ease-out;
+}
+
+/* Cadet Blip Colors */
+.cadet-blip.blip-green::after { background-color: var(--tactical-green); box-shadow: 0 0 6px var(--tactical-green); }
+.cadet-blip.blip-green::before { border: 2px solid var(--tactical-green); }
+
+.cadet-blip.blip-blue::after { background-color: var(--gps-color); box-shadow: 0 0 6px var(--gps-color); }
+.cadet-blip.blip-blue::before { border: 2px solid var(--gps-color); }
+
+.cadet-blip.blip-orange::after { background-color: var(--trails-color); box-shadow: 0 0 6px var(--trails-color); }
+.cadet-blip.blip-orange::before { border: 2px solid var(--trails-color); }
+
+.cadet-blip.blip-purple::after { background-color: var(--mtb-color); box-shadow: 0 0 6px var(--mtb-color); }
+.cadet-blip.blip-purple::before { border: 2px solid var(--mtb-color); }
+
+.cadet-blip.blip-yellow::after { background-color: #ffcc00; box-shadow: 0 0 6px #ffcc00; }
+.cadet-blip.blip-yellow::before { border: 2px solid #ffcc00; }
+
+.cadet-blip.blip-white::after { background-color: #ffffff; box-shadow: 0 0 6px #ffffff; }
+.cadet-blip.blip-white::before { border: 2px solid #ffffff; }
+
+.cadet-blip.blip-red::after { background-color: var(--danger-color); box-shadow: 0 0 10px var(--danger-color); }
+.cadet-blip.blip-red::before { border: 3px solid var(--danger-color); animation: radarPulse 1s infinite ease-out; }
+
+/* SOS Pulse animations for SVG markers */
+@keyframes sosPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px var(--danger-color)); }
+  50% { transform: scale(1.2); filter: drop-shadow(0 0 12px var(--danger-color)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px var(--danger-color)); }
+}
+.sos-pulse {
+  animation: sosPulse 1s infinite alternate;
+}
+
+/* Cadet label next to marker */
+.cadet-blip-label {
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  font-family: var(--hud-font);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+.val-active { color: var(--tactical-green); }
+.val-training { color: #ffcc00; }
+.val-sos { color: var(--danger-color); font-weight: bold; text-shadow: 0 0 5px var(--danger-glow); }
+
+.hud-status-badge {
+  font-family: var(--hud-font);
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.hud-status-badge.status-ok {
+  background: rgba(57, 255, 20, 0.2);
+  border: 1px solid var(--tactical-green);
+  color: var(--tactical-green);
+}
+.hud-status-badge.status-warning {
+  background: rgba(255, 204, 0, 0.2);
+  border: 1px solid #ffcc00;
+  color: #ffcc00;
+}
+.hud-status-badge.status-danger {
+  background: rgba(248, 81, 73, 0.3);
+  border: 1px solid var(--danger-color);
+  color: var(--danger-color);
+  animation: alertPulse 1s infinite alternate;
+}
+
+@keyframes alertPulse {
+  from { background: rgba(248, 81, 73, 0.2); box-shadow: 0 0 2px rgba(248, 81, 73, 0.4); }
+  to { background: rgba(248, 81, 73, 0.6); box-shadow: 0 0 10px rgba(248, 81, 73, 0.8); }
+}
+
+.glow-link {
+  transition: text-shadow 0.2s, color 0.2s;
+}
+
+.glow-link:hover {
+  text-shadow: 0 0 10px var(--accent-glow), 0 0 20px var(--accent-glow) !important;
+  color: #fff !important;
+}
+
+/* Compass Rose Widget */
+.compass-rose-container {
+  position: absolute;
+  bottom: 80px; /* Float above the Leaflet scale control */
+  left: 10px;
+  width: 90px;
+  height: 90px;
+  z-index: 1000;
+  pointer-events: none; /* Let clicks pass through to map */
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  padding: 6px;
+  box-shadow: 0 0 12px rgba(0,0,0,0.85), inset 0 0 10px rgba(0, 210, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.compass-rose-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.compass-ring-outer {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 1;
+  stroke-dasharray: 4, 3;
+  animation: rotateCompassRing 120s linear infinite;
+  transform-origin: center;
+}
+
+.compass-ring-inner {
+  fill: none;
+  stroke: var(--accent-color);
+  stroke-width: 0.8;
+  opacity: 0.5;
+}
+
+.compass-direction {
+  font-family: var(--hud-font);
+  font-size: 10px;
+  font-weight: bold;
+  fill: var(--text-primary);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.compass-north {
+  fill: var(--danger-color);
+  text-shadow: 0 0 4px var(--danger-glow);
+}
+
+.compass-ticks line {
+  stroke: var(--text-secondary);
+  stroke-width: 0.8;
+}
+
+.compass-needle-n {
+  fill: var(--danger-color);
+  stroke: var(--danger-color);
+  stroke-width: 0.5;
+}
+
+.compass-needle-s {
+  fill: var(--text-secondary);
+  stroke: var(--text-secondary);
+  stroke-width: 0.5;
+}
+
+.compass-needle-e, .compass-needle-w {
+  fill: rgba(0, 210, 255, 0.2);
+  stroke: var(--accent-color);
+  stroke-width: 0.4;
+}
+
+[data-theme="light"] .compass-needle-e, 
+[data-theme="light"] .compass-needle-w {
+  fill: rgba(0, 86, 179, 0.15);
+  stroke: var(--accent-color);
+}
+
+.compass-center-dot {
+  fill: var(--accent-color);
+}
+
+@keyframes rotateCompassRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+

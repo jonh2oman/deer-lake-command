@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadet Sensor Uplink</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="node_modules/leaflet/dist/leaflet.css" />
+    <style>
+      :root {
+        --bg-color: #0d1117;
+        --panel-bg: rgba(10, 15, 20, 0.95);
+        --border-color: rgba(0, 210, 255, 0.4);
+        --text-primary: #e6edf3;
+        --text-secondary: #7d8590;
+        --accent-color: #00d2ff;
+        --accent-glow: rgba(0, 210, 255, 0.6);
+        --danger-color: #ff5555;
+        --danger-glow: rgba(255, 85, 85, 0.6);
+        --success-color: #39ff14;
+        --hud-font: 'Share Tech Mono', monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 16px;
+        overflow-x: hidden;
+      }
+
+      /* CRT Effects */
+      .scanlines {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+        background-size: 100% 3px;
+        pointer-events: none;
+        z-index: 9999;
+      }
+
+      .vignette {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: radial-gradient(circle, rgba(0,0,0,0) 65%, rgba(0,0,0,0.85) 100%);
+        pointer-events: none;
+        z-index: 9998;
+      }
+
+      .uplink-container {
+        width: 100%;
+        max-width: 480px;
+        background: var(--panel-bg);
+        border: 2px solid var(--border-color);
+        box-shadow: 0 0 25px rgba(0, 210, 255, 0.25), inset 0 0 15px rgba(0, 210, 255, 0.1);
+        padding: 24px;
+        z-index: 10;
+        font-family: var(--hud-font);
+      }
+
+      .uplink-header {
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
+      }
+
+      .uplink-header h1 {
+        font-size: 20px;
+        letter-spacing: 2px;
+        text-shadow: 0 0 8px var(--accent-glow);
+        color: #fff;
+      }
+
+      .uplink-header p {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        letter-spacing: 1px;
+      }
+
+      /* Auth Tabs */
+      .auth-tabs {
+        display: flex;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 20px;
+      }
+
+      .auth-tab {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-family: var(--hud-font);
+        font-size: 14px;
+        padding: 10px;
+        cursor: pointer;
+        text-align: center;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+      }
+
+      .auth-tab.active {
+        color: var(--accent-color);
+        border-bottom: 2px solid var(--accent-color);
+        text-shadow: 0 0 5px var(--accent-glow);
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+
+      .form-group label {
+        color: var(--accent-color);
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .form-group input, .form-group select {
+        background: rgba(0,0,0,0.6);
+        border: 1px solid var(--border-color);
+        color: #fff;
+        padding: 10px;
+        font-family: var(--hud-font);
+        font-size: 15px;
+        outline: none;
+      }
+
+      .form-group input:focus, .form-group select:focus {
+        border-color: #fff;
+        box-shadow: 0 0 8px var(--accent-glow);
+      }
+
+      /* Icons selector grid */
+      .icon-label-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin-top: 5px;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 8px;
+      }
+
+      .icon-option {
+        aspect-ratio: 1;
+        cursor: pointer;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s;
+        color: var(--text-secondary);
+      }
+
+      .icon-option svg {
+        pointer-events: none;
+      }
+
+      .icon-option:hover {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+      }
+
+      .icon-option.selected {
+        border-color: var(--accent-color);
+        background: rgba(0, 210, 255, 0.15);
+        color: var(--accent-color);
+        box-shadow: 0 0 8px var(--accent-glow);
+      }
+
+      /* Color circles picker */
+      .color-picker {
+        display: flex;
+        justify-content: space-between;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 8px 12px;
+        margin-top: 5px;
+      }
+
+      .color-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+      }
+
+      .color-dot:hover {
+        transform: scale(1.15);
+      }
+
+      .color-dot.selected {
+        border-color: #fff;
+        transform: scale(1.15);
+        box-shadow: 0 0 10px rgba(255,255,255,0.8);
+      }
+
+      .broadcast-panel {
+        border: 1px solid var(--border-color);
+        background: rgba(0,0,0,0.4);
+        padding: 12px;
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .telemetry-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+      }
+
+      .telemetry-row .label {
+        color: var(--text-secondary);
+      }
+
+      .telemetry-row .value {
+        color: var(--success-color);
+        text-shadow: 0 0 4px rgba(57, 255, 20, 0.4);
+      }
+
+      .btn-broadcast {
+        width: 100%;
+        background: transparent;
+        border: 2px solid var(--accent-color);
+        color: #fff;
+        padding: 14px;
+        font-family: var(--hud-font);
+        font-size: 15px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(0, 210, 255, 0.15);
+        transition: all 0.3s;
+        margin-bottom: 12px;
+      }
+
+      .btn-broadcast.active {
+        background: rgba(0, 210, 255, 0.2);
+        box-shadow: 0 0 20px var(--accent-glow);
+        border-color: #fff;
+        animation: pulseButton 2s infinite;
+      }
+
+      @keyframes pulseButton {
+        0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+        50% { box-shadow: 0 0 22px var(--accent-glow); }
+      }
+
+      .btn-sos {
+        width: 100%;
+        background: rgba(255, 85, 85, 0.1);
+        border: 2px solid var(--danger-color);
+        color: var(--danger-color);
+        padding: 14px;
+        font-family: var(--hud-font);
+        font-size: 16px;
+        font-weight: bold;
+        letter-spacing: 3px;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(255, 85, 85, 0.2);
+        transition: all 0.3s;
+        margin-bottom: 16px;
+      }
+
+      .btn-sos.active {
+        background: var(--danger-color);
+        color: #fff;
+        box-shadow: 0 0 30px var(--danger-color);
+        animation: flashSos 1s infinite alternate;
+      }
+
+      @keyframes flashSos {
+        from { background: var(--danger-color); box-shadow: 0 0 15px var(--danger-color); }
+        to { background: rgba(0,0,0,0.8); box-shadow: 0 0 30px var(--danger-color); }
+      }
+
+      .btn-logout {
+        width: 100%;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: var(--text-secondary);
+        padding: 10px;
+        font-family: var(--hud-font);
+        font-size: 12px;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-logout:hover {
+        background: rgba(255, 85, 85, 0.15);
+        color: var(--danger-color);
+        border-color: var(--danger-color);
+      }
+
+      .auth-message {
+        color: var(--danger-color);
+        font-size: 12px;
+        text-align: center;
+        margin-bottom: 12px;
+        min-height: 15px;
+      }
+
+      .transmission-log-panel {
+        margin-top: 20px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 16px;
+      }
+
+      .transmission-log-panel h3 {
+        font-size: 12px;
+        color: var(--accent-color);
+        margin-bottom: 8px;
+        letter-spacing: 1px;
+      }
+
+      .log-list {
+        list-style: none;
+        font-size: 11px;
+        max-height: 80px;
+        overflow-y: auto;
+        color: var(--text-secondary);
+      }
+
+      .log-list li {
+        margin-bottom: 4px;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        padding-bottom: 2px;
+      }
+
+      .log-list li.success {
+        color: var(--success-color);
+      }
+
+      .log-list li.fail {
+        color: var(--danger-color);
+      }
+
+      .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 24px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+
+      .back-link:hover {
+        color: var(--accent-color);
+      }
+
+      /* Glow Helpers */
+      .svg-green { color: #39ff14; filter: drop-shadow(0 0 3px #39ff14); }
+      .svg-red { color: #ff5555; filter: drop-shadow(0 0 3px #ff5555); }
+      .svg-blue { color: #00d2ff; filter: drop-shadow(0 0 3px #00d2ff); }
+      .svg-orange { color: #ffaa00; filter: drop-shadow(0 0 3px #ffaa00); }
+      .svg-purple { color: #d000ff; filter: drop-shadow(0 0 3px #d000ff); }
+      .svg-yellow { color: #ffea00; filter: drop-shadow(0 0 3px #ffea00); }
+      .svg-white { color: #ffffff; filter: drop-shadow(0 0 3px #ffffff); }
+    </style>
+  </head>
+  <body>
+    <!-- CRT Overlay -->
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <div class="uplink-container">
+      <!-- 1. AUTH CARD (Tabbed Sign In / Sign Up) -->
+      <div id="auth-card">
+        <div class="uplink-header">
+          <h1>RESPONDER LOCK-ON</h1>
+          <p>CADET SENSOR UPLINK PORTAL</p>
+        </div>
+        <div class="auth-tabs">
+          <button id="tab-login" class="auth-tab active">SIGN IN</button>
+          <button id="tab-register" class="auth-tab">REGISTER</button>
+        </div>
+        
+        <div id="auth-message" class="auth-message"></div>
+
+        <div class="form-group" id="group-name" style="display: none;">
+          <label for="reg-name">CALL SIGN (E.G. SAFETY BOAT 1)</label>
+          <input type="text" id="reg-name" placeholder="CALL SIGN" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label for="auth-email">EMAIL ADDRESS</label>
+          <input type="email" id="auth-email" placeholder="EMAIL" autocomplete="on" />
+        </div>
+
+        <div class="form-group">
+          <label for="auth-password">PASSWORD</label>
+          <input type="password" id="auth-password" placeholder="PASSWORD" autocomplete="on" />
+        </div>
+
+        <button id="btn-auth-submit" class="btn-broadcast">AUTHENTICATE SYSTEM</button>
+        <a href="./index.html" class="back-link">&lt;&lt; BACK TO MAIN SCREEN</a>
+      </div>
+
+      <!-- 2. TRANSMITTER CARD (Simplified Mobile Tracking controls) -->
+      <div id="transmitter-card" style="display: none;">
+        <div class="uplink-header">
+          <h1>CADET SENSOR UPLINK</h1>
+          <p>STATUS: <span id="connection-status" style="color: var(--danger-color);">OFFLINE</span></p>
+        </div>
+
+        <div class="form-group">
+          <label for="cadet-name">CALL SIGN / NAME</label>
+          <input type="text" id="cadet-name" placeholder="CALL SIGN" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label for="party-type">VEHICLE / PARTY TYPE</label>
+          <select id="party-type">
+            <option value="Boat">Boat (Maritime)</option>
+            <option value="Vehicle">Vehicle (Truck/Car)</option>
+            <option value="On Foot">On Foot (Hiker/SAR)</option>
+            <option value="Aircraft">Aircraft (Helo/Plane)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="party-size">PERSONS IN PARTY</label>
+          <input type="number" id="party-size" value="1" min="1" step="1" />
+        </div>
+
+        <!-- Custom Graphical Icon Picker -->
+        <div class="form-group">
+          <label>SELECT TAC ICON</label>
+          <div class="icon-grid" id="icon-picker">
+            <!-- Icon choices rendered inline as SVG -->
+            <div class="icon-option selected" data-icon="blip" title="Radar Blip">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="2" fill="currentColor"></circle></svg>
+            </div>
+            <div class="icon-option" data-icon="boat" title="Power Boat">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2a1 1 0 00.9-.5l1.5-2.5v-3H2v3z M17 14l-1.5-4h-7L7 14"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="zodiac" title="Zodiac / RIB">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 14a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1z M18 12.5L16.5 8h-6L9 12.5 M2 12h2v4H2z"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="sailboat" title="Sailboat">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 18h20l-3-4H5l-3 4z M12 3v11 M12 3l8 8h-8 M12 5l-7 6h7"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="ship" title="Large Ship">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2a1 1 0 00.9-.5l1.5-2.5V13H2v4z M7 13V9h4v4 M13 13V7h6v6"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="truck" title="Truck / Land Unit">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            </div>
+            <div class="icon-option" data-icon="user" title="Person / Hiker">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="5" r="2"></circle><path d="M9 22l2-6M15 22l-2-6M12 10v6M9 12h6"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="anchor" title="Anchor / Safe Port">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="medical" title="Medical / Rescue">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z"></path></svg>
+            </div>
+            <div class="icon-option" data-icon="warning" title="Warning / Hazard">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Graphical Color Picker -->
+        <div class="form-group">
+          <label>SELECT TAC COLOR</label>
+          <div class="color-picker" id="color-picker">
+            <div class="color-dot selected" data-color="green" style="background-color: #39ff14;"></div>
+            <div class="color-dot" data-color="blue" style="background-color: #00d2ff;"></div>
+            <div class="color-dot" data-color="orange" style="background-color: #ffaa00;"></div>
+            <div class="color-dot" data-color="purple" style="background-color: #d000ff;"></div>
+            <div class="color-dot" data-color="yellow" style="background-color: #ffea00;"></div>
+            <div class="color-dot" data-color="white" style="background-color: #ffffff;"></div>
+            <div class="color-dot" data-color="red" style="background-color: #ff5555;"></div>
+          </div>
+        </div>
+
+        <!-- Telemetry Mode Selector -->
+        <div class="form-group" style="margin-top: 16px;">
+          <label>GPS SIGNAL SOURCE</label>
+          <div style="display: flex; gap: 8px; margin-top: 5px;">
+            <button id="btn-mode-gps" class="auth-tab active" style="flex: 1; border: 1px solid var(--border-color); background: rgba(0,0,0,0.6); padding: 8px; font-size: 13px; font-weight: bold; cursor: pointer; color: var(--accent-color);">REAL GPS</button>
+            <button id="btn-mode-sim" class="auth-tab" style="flex: 1; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); padding: 8px; font-size: 13px; font-weight: bold; cursor: pointer; color: var(--text-secondary);">SIMULATOR</button>
+          </div>
+        </div>
+
+        <!-- Simulated Map Container -->
+        <div id="sim-map-container" style="display: none; margin-bottom: 16px;">
+          <label style="color: var(--accent-color); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">CLICK / TAP MAP TO POSITION SENSOR</label>
+          <div id="sim-map" style="width: 100%; height: 180px; border: 1px solid var(--border-color); background: #000;"></div>
+        </div>
+
+        <div class="broadcast-panel">
+          <div class="telemetry-row">
+            <span class="label">LATITUDE:</span>
+            <span class="value" id="telemetry-lat">--.----</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="label">LONGITUDE:</span>
+            <span class="value" id="telemetry-lng">--.----</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="label">ACCURACY:</span>
+            <span class="value" id="telemetry-acc">--m</span>
+          </div>
+        </div>
+
+        <button id="btn-broadcast-toggle" class="btn-broadcast">START LIVE GPS TRANSMISSION</button>
+        <button id="btn-sos-toggle" class="btn-sos">TRIGGER SOS</button>
+        
+        <button id="btn-logout" class="btn-logout">LOG OUT RESPONDER SESSION</button>
+
+        <div class="transmission-log-panel">
+          <h3>UPLINK ACTIVITY LOG</h3>
+          <ul id="log-list" class="log-list">
+            <li>Secure session validated. Ready for broadcast lock...</li>
+          </ul>
+        </div>
+
+        <a href="./index.html" class="back-link">&lt;&lt; RETURN TO CENTRAL MAP</a>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="./transmit.js"></script>
+  </body>
+</html>

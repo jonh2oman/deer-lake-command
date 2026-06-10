@@ -1,6 +1,49 @@
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 import L from 'leaflet'
+import { createClient } from '@supabase/supabase-js'
+
+// --- Supabase Setup ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+
+// --- Custom Transparent Map Overlays ---
+const OpenSeaMapUrl = 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png';
+const WaymarkedTrailsUrl = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
+const OpenTopoMapUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+const CartoDbLabelsUrl = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
+
+const nauticalLayer = L.tileLayer(OpenSeaMapUrl, {
+  maxZoom: 18,
+  opacity: 0.85,
+  zIndex: 900
+});
+
+const trailsLayer = L.tileLayer(WaymarkedTrailsUrl, {
+  maxZoom: 18,
+  opacity: 0.8,
+  zIndex: 900
+});
+
+const WaymarkedMtbUrl = 'https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png';
+const mtbLayer = L.tileLayer(WaymarkedMtbUrl, {
+  maxZoom: 18,
+  opacity: 0.85,
+  zIndex: 900
+});
+
+const topoOverlay = L.tileLayer(OpenTopoMapUrl, {
+  maxZoom: 17,
+  opacity: 0.55,
+  zIndex: 890
+});
+
+const labelsLayer = L.tileLayer(CartoDbLabelsUrl, {
+  maxZoom: 22,
+  opacity: 0.9,
+  zIndex: 950
+});
 
 // Map Themes
 const MAP_THEMES = {
@@ -10,8 +53,129 @@ const MAP_THEMES = {
   satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   'google-satellite': 'http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
   street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
   'night-vision': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 };
+
+// --- Dynamic Canvas Graticule (Lat/Lon Grid) ---
+const CanvasGraticule = L.GridLayer.extend({
+  createTile: function(coords) {
+    const tile = document.createElement('canvas');
+    const size = this.getTileSize();
+    tile.width = size.x;
+    tile.height = size.y;
+    const ctx = tile.getContext('2d');
+    
+    const map = this._map || primaryMap;
+    if (!map) return tile;
+
+    const nwPoint = L.point(coords.x * size.x, coords.y * size.y);
+    const sePoint = L.point((coords.x + 1) * size.x, (coords.y + 1) * size.y);
+    const nw = map.unproject(nwPoint, coords.z);
+    const se = map.unproject(sePoint, coords.z);
+    
+    const zoom = coords.z;
+    let gridSpacing;
+    if (zoom >= 18) gridSpacing = 0.001;
+    else if (zoom >= 17) gridSpacing = 0.002;
+    else if (zoom >= 16) gridSpacing = 0.005;
+    else if (zoom >= 15) gridSpacing = 0.01;
+    else if (zoom >= 14) gridSpacing = 0.02;
+    else if (zoom >= 13) gridSpacing = 0.05;
+    else if (zoom >= 12) gridSpacing = 0.1;
+    else if (zoom >= 11) gridSpacing = 0.2;
+    else if (zoom >= 10) gridSpacing = 0.5;
+    else if (zoom >= 9) gridSpacing = 1.0;
+    else if (zoom >= 8) gridSpacing = 2.0;
+    else if (zoom >= 7) gridSpacing = 5.0;
+    else if (zoom >= 6) gridSpacing = 10.0;
+    else gridSpacing = 20.0;
+    
+    // Theme-specific colors
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    let strokeColor = 'rgba(0, 210, 255, 0.2)';
+    let textColor = 'rgba(0, 210, 255, 0.7)';
+    
+    if (activeTheme === 'light') {
+      strokeColor = 'rgba(0, 86, 179, 0.15)';
+      textColor = 'rgba(0, 86, 179, 0.7)';
+    } else if (activeTheme === 'sea') {
+      strokeColor = 'rgba(0, 229, 255, 0.15)';
+      textColor = 'rgba(0, 229, 255, 0.7)';
+    } else if (activeTheme === 'night-vision') {
+      strokeColor = 'rgba(57, 255, 20, 0.15)';
+      textColor = 'rgba(57, 255, 20, 0.7)';
+    }
+    
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1;
+    ctx.font = '10px "Share Tech Mono", monospace';
+    ctx.fillStyle = textColor;
+    
+    // Draw latitude lines (horizontal)
+    const minLat = Math.min(nw.lat, se.lat);
+    const maxLat = Math.max(nw.lat, se.lat);
+    const latStart = Math.ceil(minLat / gridSpacing) * gridSpacing;
+    
+    // Only draw latitude labels on tiles crossing the center longitude of the viewport
+    const center = map.getCenter();
+    const minLng = Math.min(nw.lng, se.lng);
+    const maxLng = Math.max(nw.lng, se.lng);
+    const drawLatLabels = (center.lng >= minLng && center.lng <= maxLng);
+    
+    for (let lat = latStart; lat <= maxLat; lat += gridSpacing) {
+      const latPoint = map.project([lat, nw.lng], coords.z);
+      const y = latPoint.y - nwPoint.y;
+      
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(size.x, y);
+      ctx.stroke();
+      
+      if (drawLatLabels) {
+        // Format latitude label
+        const latDir = lat >= 0 ? 'N' : 'S';
+        const labelText = Math.abs(lat).toFixed(4) + '° ' + latDir;
+        ctx.fillText(labelText, 5, y - 3);
+      }
+    }
+    
+    // Draw longitude lines (vertical)
+    const minLngTile = Math.min(nw.lng, se.lng);
+    const maxLngTile = Math.max(nw.lng, se.lng);
+    const lngStart = Math.ceil(minLngTile / gridSpacing) * gridSpacing;
+    
+    // Only draw longitude labels on tiles crossing the center latitude of the viewport
+    const minLatTile = Math.min(nw.lat, se.lat);
+    const maxLatTile = Math.max(nw.lat, se.lat);
+    const drawLngLabels = (center.lat >= minLatTile && center.lat <= maxLatTile);
+    
+    for (let lng = lngStart; lng <= maxLngTile; lng += gridSpacing) {
+      const lngPoint = map.project([nw.lat, lng], coords.z);
+      const x = lngPoint.x - nwPoint.x;
+      
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, size.y);
+      ctx.stroke();
+      
+      if (drawLngLabels) {
+        // Format longitude label
+        const lngDir = lng >= 0 ? 'E' : 'W';
+        const labelText = Math.abs(lng).toFixed(4) + '° ' + lngDir;
+        
+        // Label (rotated vertically)
+        ctx.save();
+        ctx.translate(x + 3, size.y - 5);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(labelText, 0, 0);
+        ctx.restore();
+      }
+    }
+    
+    return tile;
+  }
+});
 
 const defaultCenter = [49.0342, -57.5955]; 
 const defaultZoom = 13;
@@ -23,6 +187,12 @@ const primaryMap = L.map('primary-map', {
   maxZoom: 22,
   zoomAnimation: false // Snappier for tactical feel
 }).setView(defaultCenter, defaultZoom);
+
+const graticuleLayer = new CanvasGraticule({ zIndex: 850 });
+
+// --- Cadet GPS Tracking Layer ---
+const cadetsLayer = L.layerGroup().addTo(primaryMap);
+const cadetMarkers = new Map();
 
 // --- Dynamic Scale Control ---
 let currentScaleMode = 0; // 0 = Both, 1 = Metric, 2 = Imperial
@@ -138,17 +308,18 @@ function setMapTiles(themeKey) {
   
   let maxNative = 20;
   if (themeKey === 'sea') maxNative = 13;
-  if (themeKey === 'satellite') maxNative = 18; // Force stretching past 18
-  if (themeKey === 'google-satellite') maxNative = 18; // Google often returns error tiles past 18 in rural areas
+  if (themeKey === 'satellite') maxNative = 15; // ESRI Max resolution in rural areas is 15; stretching beyond prevents error tiles
+  if (themeKey === 'google-satellite') maxNative = 19; // Google has high-res imagery up to zoom 19 in this region
   if (themeKey === 'street') maxNative = 19;
+  if (themeKey === 'topo') maxNative = 17;
   
   currentTiles.forEach(t => t.remove());
   currentTiles = [];
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(primaryMap));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap1));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap2));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap3));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative }).addTo(secondaryMap4));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(primaryMap));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap1));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap2));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap3));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap4));
 }
 
 // --- Theme Switcher Logic ---
@@ -162,6 +333,18 @@ function applyTheme(theme) {
   }
   document.documentElement.setAttribute('data-theme', activeTheme);
   setMapTiles(activeTheme);
+  
+  // Theme-aware updates for labels overlay
+  if (labelsLayer) {
+    const isLightTheme = activeTheme === 'light' || activeTheme === 'street' || activeTheme === 'topo';
+    const labelType = isLightTheme ? 'light_only_labels' : 'dark_only_labels';
+    labelsLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${labelType}/{z}/{x}/{y}{r}.png`);
+  }
+  
+  // Theme-aware updates for graticule grid lines
+  if (graticuleLayer && primaryMap.hasLayer(graticuleLayer)) {
+    graticuleLayer.redraw();
+  }
 }
 
 themeSelect.addEventListener('change', (e) => {
@@ -231,6 +414,109 @@ async function toggleRadar() {
 }
 
 radarToggle.addEventListener('change', toggleRadar);
+
+// --- Map Overlays Logic ---
+const nauticalToggle = document.getElementById('nautical-toggle');
+const trailsToggle = document.getElementById('trails-toggle');
+
+nauticalToggle.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    nauticalLayer.addTo(primaryMap);
+    logToFeed("SYS: NAUTICAL OVERLAY ONLINE");
+  } else {
+    nauticalLayer.remove();
+    logToFeed("SYS: NAUTICAL OVERLAY OFFLINE");
+  }
+});
+
+trailsToggle.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    trailsLayer.addTo(primaryMap);
+    logToFeed("SYS: HIKING TRAILS ONLINE");
+  } else {
+    trailsLayer.remove();
+    logToFeed("SYS: HIKING TRAILS OFFLINE");
+  }
+});
+
+const mtbToggle = document.getElementById('mtb-toggle');
+const topoOverlayToggle = document.getElementById('topo-overlay-toggle');
+const labelsToggle = document.getElementById('labels-toggle');
+const gridToggle = document.getElementById('grid-toggle');
+const compassToggle = document.getElementById('compass-toggle');
+const compassRose = document.getElementById('compass-rose');
+const defaultBuoysToggle = document.getElementById('default-buoys-toggle');
+
+if (mtbToggle) {
+  mtbToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      mtbLayer.addTo(primaryMap);
+      logToFeed("SYS: MTB & OFF-ROAD TRAILS ONLINE");
+    } else {
+      mtbLayer.remove();
+      logToFeed("SYS: MTB & OFF-ROAD TRAILS OFFLINE");
+    }
+  });
+}
+
+if (topoOverlayToggle) {
+  topoOverlayToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      topoOverlay.addTo(primaryMap);
+      logToFeed("SYS: TOPOGRAPHIC OVERLAY ONLINE");
+    } else {
+      topoOverlay.remove();
+      logToFeed("SYS: TOPOGRAPHIC OVERLAY OFFLINE");
+    }
+  });
+}
+
+if (labelsToggle) {
+  labelsToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      labelsLayer.addTo(primaryMap);
+      logToFeed("SYS: ROADS & LABELS OVERLAY ONLINE");
+    } else {
+      labelsLayer.remove();
+      logToFeed("SYS: ROADS & LABELS OVERLAY OFFLINE");
+    }
+  });
+}
+
+if (gridToggle) {
+  gridToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      graticuleLayer.addTo(primaryMap);
+      logToFeed("SYS: COORDINATE GRID ONLINE");
+    } else {
+      graticuleLayer.remove();
+      logToFeed("SYS: COORDINATE GRID OFFLINE");
+    }
+  });
+}
+
+if (compassToggle) {
+  compassToggle.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      if (compassRose) compassRose.style.display = 'flex';
+      logToFeed("SYS: COMPASS ROSE ONLINE");
+    } else {
+      if (compassRose) compassRose.style.display = 'none';
+      logToFeed("SYS: COMPASS ROSE OFFLINE");
+    }
+  });
+}
+
+if (defaultBuoysToggle) {
+  defaultBuoysToggle.addEventListener('change', (e) => {
+    renderBuoys();
+    if (e.target.checked) {
+      logToFeed("SYS: DEFAULT BUOYS ONLINE");
+    } else {
+      logToFeed("SYS: DEFAULT BUOYS OFFLINE");
+    }
+  });
+}
 
 // --- Reticle Toggle Logic ---
 const reticleToggle = document.getElementById('reticle-toggle');
@@ -335,7 +621,12 @@ function updateCoordinates() {
 }
 
 primaryMap.on('move', updateCoordinates);
-primaryMap.on('moveend', handleWeatherUpdate); // Trigger weather fetch on pan end
+primaryMap.on('moveend', () => {
+  handleWeatherUpdate();
+  if (graticuleLayer && primaryMap.hasLayer(graticuleLayer)) {
+    graticuleLayer.redraw();
+  }
+});
 primaryMap.on('zoom', updateCoordinates);
 updateCoordinates();
 handleWeatherUpdate(); // Initial fetch
@@ -344,6 +635,7 @@ handleWeatherUpdate(); // Initial fetch
 window.toggleSidebar = function() {
   const sidebar = document.getElementById('right-sidebar');
   const btn = document.getElementById('sidebar-toggle-btn');
+  const expandBtn = document.getElementById('sidebar-expand-btn');
   const isCollapsed = sidebar.classList.contains('collapsed');
   
   if (isCollapsed) {
@@ -355,6 +647,11 @@ window.toggleSidebar = function() {
     sidebar.classList.add('collapsed');
     btn.classList.add('collapsed');
     btn.textContent = '[ MENU > ]';
+    // Remove expanded state if collapsing
+    if (sidebar.classList.contains('expanded-sidebar')) {
+      sidebar.classList.remove('expanded-sidebar');
+      if (expandBtn) expandBtn.textContent = '[ EXPAND << ]';
+    }
     logToFeed("SYS: SIDEBAR COLLAPSED");
   }
   
@@ -364,9 +661,46 @@ window.toggleSidebar = function() {
   }, 350);
 };
 
+window.toggleSidebarExpand = function() {
+  const sidebar = document.getElementById('right-sidebar');
+  const expandBtn = document.getElementById('sidebar-expand-btn');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (!sidebar || !expandBtn) return;
+  
+  const isExpanded = sidebar.classList.contains('expanded-sidebar');
+  
+  if (isExpanded) {
+    sidebar.classList.remove('expanded-sidebar');
+    expandBtn.textContent = '[ EXPAND << ]';
+    logToFeed("SYS: SIDEBAR RESTORED TO NARROW VIEW");
+  } else {
+    // If collapsed, open it first
+    if (sidebar.classList.contains('collapsed')) {
+      sidebar.classList.remove('collapsed');
+      if (toggleBtn) {
+        toggleBtn.classList.remove('collapsed');
+        toggleBtn.textContent = '[ < MENU ]';
+      }
+    }
+    
+    sidebar.classList.add('expanded-sidebar');
+    expandBtn.textContent = '[ COLLAPSE >> ]';
+    logToFeed("SYS: SIDEBAR EXPANDED TO WIDE VIEW");
+  }
+  
+  // We must tell Leaflet the container size changed so it redraws tiles
+  setTimeout(() => {
+    primaryMap.invalidateSize();
+    secondaryMap1.invalidateSize();
+    secondaryMap2.invalidateSize();
+    secondaryMap3.invalidateSize();
+    secondaryMap4.invalidateSize();
+  }, 350); // match CSS transition duration
+};
+
 window.toggleRollup = function(panelId) {
   const panel = document.getElementById(panelId);
-  const btn = panel.querySelector('.expand-btn'); // Get the first one (rollup btn)
+  const btn = panel.querySelector('.rollup-btn');
   const isRolledUp = panel.classList.contains('rolled-up');
   
   if (isRolledUp) {
@@ -378,19 +712,60 @@ window.toggleRollup = function(panelId) {
   }
 };
 
+window.toggleMaximize = function(panelId, mapVarName) {
+  const panel = document.getElementById(panelId);
+  const container = panel.closest('.minimap-container');
+  const allPanels = container.querySelectorAll('.minimap-panel');
+  const btn = panel.querySelector('.maximize-btn');
+  
+  const isMaximized = panel.classList.contains('maximized-sidebar');
+  
+  if (isMaximized) {
+    // Restore all panels
+    allPanels.forEach(p => {
+      p.classList.remove('maximized-sidebar');
+      p.style.display = ''; // restore visibility
+    });
+    btn.textContent = '[⛶]';
+    logToFeed(`SYS: RESTORED ${panelId.replace('panel-', '').toUpperCase()} MINIMAP`);
+  } else {
+    // If panel is rolled up, un-rollup it first
+    if (panel.classList.contains('rolled-up')) {
+      window.toggleRollup(panelId);
+    }
+    // Maximize this panel and hide the others
+    allPanels.forEach(p => {
+      if (p === panel) {
+        p.classList.add('maximized-sidebar');
+      } else {
+        p.style.display = 'none'; // hide others
+      }
+    });
+    btn.textContent = '[⧉]';
+    logToFeed(`SYS: MAXIMIZED ${panelId.replace('panel-', '').toUpperCase()} MINIMAP IN SIDEBAR`);
+  }
+  
+  // Invalidate Leaflet map size
+  setTimeout(() => {
+    if (mapVarName === 'secondaryMap1') secondaryMap1.invalidateSize();
+    if (mapVarName === 'secondaryMap2') secondaryMap2.invalidateSize();
+    if (mapVarName === 'secondaryMap3') secondaryMap3.invalidateSize();
+    if (mapVarName === 'secondaryMap4') secondaryMap4.invalidateSize();
+  }, 300);
+};
+
 window.toggleExpand = function(panelId, mapVarName) {
   const panel = document.getElementById(panelId);
-  const btns = panel.querySelectorAll('.expand-btn');
-  const btn = btns[1]; // Get the second one (expand btn)
+  const btn = panel.querySelector('.fullscreen-btn');
   const isExpanded = panel.classList.contains('expanded');
   
   if (isExpanded) {
     panel.classList.remove('expanded');
-    btn.textContent = '[+]';
+    btn.textContent = '[↗]';
     logToFeed(`MINIMIZING ${panelId}`);
   } else {
     panel.classList.add('expanded');
-    btn.textContent = '[-]';
+    btn.textContent = '[↙]';
     logToFeed(`EXPANDING ${panelId} TO MAIN VIEW`);
   }
   
@@ -751,12 +1126,15 @@ async function renderBuoys() {
   buoysLayerPrimary.clearLayers();
   buoysLayerSecondary.clearLayers();
   
+  const defaultBuoysToggle = document.getElementById('default-buoys-toggle');
+  const showDefault = defaultBuoysToggle ? defaultBuoysToggle.checked : true;
+  
   let allFeatures = [];
-  if (typeof window.json_Buoys_2 !== 'undefined' && window.json_Buoys_2.features) {
+  if (showDefault && typeof window.json_Buoys_2 !== 'undefined' && window.json_Buoys_2.features) {
     allFeatures = [...window.json_Buoys_2.features];
     logToFeed(`[TRACE] Added ${allFeatures.length} Base Buoys`);
   } else {
-    logToFeed('[TRACE] Base Buoys UNDEFINED');
+    logToFeed('[TRACE] Base Buoys SKIPPED or UNDEFINED');
   }
   
   try {
@@ -960,3 +1338,282 @@ helpSearch.addEventListener('input', (e) => {
     }
   });
 });
+
+// --- Cadet Real-time Tracking & Audio SFX ---
+function playSfx(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (type === 'sos') {
+      const now = ctx.currentTime;
+      // High pitch double beep
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.15, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.3);
+      gain2.gain.setValueAtTime(0.15, now + 0.3);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.3);
+      osc2.stop(now + 0.6);
+    }
+  } catch (e) {
+    console.error("Audio Context failed:", e);
+  }
+}
+function getCadetIcon(record) {
+  const name = record.name || 'Unit';
+  const type = record.icon_type || 'blip';
+  let color = record.icon_color || 'green';
+  const status = record.status || 'active';
+  
+  // SOS overrides color to red
+  if (status === 'sos') {
+    color = 'red';
+  }
+  
+  if (type === 'blip') {
+    const blipClass = (status === 'sos') ? 'cadet-blip blip-red alert' : `cadet-blip blip-${color}`;
+    return L.divIcon({
+      className: blipClass,
+      html: `<div class="cadet-blip-label">${name}</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+  } else {
+    // Render selected SVG icon
+    let svgPath = '';
+    if (type === 'boat') {
+      svgPath = '<path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2a1 1 0 00.9-.5l1.5-2.5v-3H2v3z M17 14l-1.5-4h-7L7 14"></path>';
+    } else if (type === 'zodiac') {
+      svgPath = '<path d="M4 14a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1z M18 12.5L16.5 8h-6L9 12.5 M2 12h2v4H2z"></path>';
+    } else if (type === 'sailboat') {
+      svgPath = '<path d="M2 18h20l-3-4H5l-3 4z M12 3v11 M12 3l8 8h-8 M12 5l-7 6h7"></path>';
+    } else if (type === 'ship') {
+      svgPath = '<path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2a1 1 0 00.9-.5l1.5-2.5V13H2v4z M7 13V9h4v4 M13 13V7h6v6"></path>';
+    } else if (type === 'truck') {
+      svgPath = '<rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle>';
+    } else if (type === 'user') {
+      svgPath = '<circle cx="12" cy="5" r="2"></circle><path d="M9 22l2-6M15 22l-2-6M12 10v6M9 12h6"></path>';
+    } else if (type === 'anchor') {
+      svgPath = '<circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line><path d="M5 12H2a10 10 0 0 0 20 0h-3"></path>';
+    } else if (type === 'medical') {
+      svgPath = '<path d="M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z"></path>';
+    } else if (type === 'warning') {
+      svgPath = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>';
+    }
+    
+    const wrapperClass = (status === 'sos') ? 'marine-icon-wrapper sos-pulse' : 'marine-icon-wrapper';
+    
+    return L.divIcon({
+      className: `marine-icon`,
+      html: `<div class="${wrapperClass}"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-${color}">${svgPath}</svg><div class="cadet-blip-label" style="top: 26px;">${name}</div></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+  }
+}
+
+
+function updateCadetsHudList() {
+  const listEl = document.getElementById('cadets-list');
+  if (!listEl) return;
+  
+  if (cadetMarkers.size === 0) {
+    listEl.innerHTML = 'NO ACTIVE TRANSMITTERS';
+    return;
+  }
+  
+  let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+  cadetMarkers.forEach((marker, id) => {
+    const data = marker.cadetData;
+    const name = data.name || id;
+    const type = data.icon_type || 'blip';
+    let color = data.icon_color || 'green';
+    let statusClass = 'status-ok';
+    if (data.status === 'sos') {
+      statusClass = 'status-danger';
+      color = 'red';
+    }
+    
+    let iconHtml = '';
+    if (type === 'blip') {
+      iconHtml = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: currentColor; margin-right: 6px; box-shadow: 0 0 5px currentColor;" class="svg-${color}"></span>`;
+    } else {
+      let svgPath = '';
+      if (type === 'boat') {
+        svgPath = '<path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2v-3H2z"></path>';
+      } else if (type === 'zodiac') {
+        svgPath = '<path d="M4 14a2 2 0 0 1 2-2h12v3H4z"></path>';
+      } else if (type === 'sailboat') {
+        svgPath = '<path d="M2 18h20l-3-4H5z M12 3v11"></path>';
+      } else if (type === 'ship') {
+        svgPath = '<path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2v-7H2z"></path>';
+      } else if (type === 'truck') {
+        svgPath = '<rect x="1" y="3" width="15" height="13"></rect><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle>';
+      } else if (type === 'user') {
+        svgPath = '<circle cx="12" cy="5" r="2"></circle><path d="M9 22l2-6M15 22l-2-6"></path>';
+      } else if (type === 'anchor') {
+        svgPath = '<circle cx="12" cy="5" r="3"></circle><line x1="12" y1="22" x2="12" y2="8"></line>';
+      } else if (type === 'medical') {
+        svgPath = '<path d="M11 2a2 2 0 0 0-2 2v5H4v2h5v5h2v-5h5V9h-5V4z"></path>';
+      } else if (type === 'warning') {
+        svgPath = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>';
+      }
+      
+      iconHtml = `<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="margin-right: 6px; vertical-align: middle;" class="svg-${color}">${svgPath}</svg>`;
+    }
+    
+    const partyInfo = `${data.party_type || 'Party'} (x${data.party_size || 1})`;
+    
+    html += `<li style="margin-bottom: 8px; display: flex; flex-direction: column; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="display: flex; align-items: center;">
+          ${iconHtml}
+          <strong>${name}</strong>
+        </span>
+        <span class="hud-status-badge ${statusClass}" style="font-size: 9px; padding: 1px 4px; font-weight: bold;">${data.status.toUpperCase()}</span>
+      </div>
+      <div style="font-size: 10px; color: var(--text-secondary); margin-left: 14px; margin-top: 2px;">
+        ${partyInfo}
+      </div>
+    </li>`;
+  });
+  html += '</ul>';
+  listEl.innerHTML = html;
+}
+
+function handleCadetLocationUpdate(payload) {
+  const { eventType, new: newRecord, old: oldRecord } = payload;
+  
+  if (eventType === 'DELETE') {
+    const id = oldRecord.id;
+    if (cadetMarkers.has(id)) {
+      const marker = cadetMarkers.get(id);
+      primaryMap.removeLayer(marker);
+      cadetMarkers.delete(id);
+      logToFeed(`SYS: RESPONDER DISCONNECTED [${oldRecord.name || 'UNIT'}]`);
+    }
+  } else {
+    // INSERT or UPDATE
+    const id = newRecord.id;
+    const name = newRecord.name;
+    const lat = newRecord.latitude;
+    const lng = newRecord.longitude;
+    const status = newRecord.status || 'active';
+    
+    if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) return;
+    
+    const latlng = [lat, lng];
+    
+    if (cadetMarkers.has(id)) {
+      const marker = cadetMarkers.get(id);
+      marker.setLatLng(latlng);
+      marker.setIcon(getCadetIcon(newRecord));
+      
+      const oldStatus = marker.cadetData.status;
+      marker.cadetData = newRecord;
+      
+      marker.getPopup().setContent(`
+        <strong>TACTICAL TRANSMITTER</strong><br/>
+        CALLSIGN: <strong>${name}</strong><br/>
+        UNIT TYPE: ${newRecord.party_type || 'Party'}<br/>
+        PARTY SIZE: ${newRecord.party_size || 1}<br/>
+        STATUS: <span class="val-${status}">${status.toUpperCase()}</span><br/>
+        LAT: ${lat.toFixed(4)}<br/>
+        LON: ${lng.toFixed(4)}<br/>
+        ACCURACY: ${newRecord.accuracy ? newRecord.accuracy.toFixed(1) + 'm' : 'N/A'}
+      `);
+      
+      if (status === 'sos' && oldStatus !== 'sos') {
+        logToFeed(`SOS TRANSMISSION RECEIVED: ${name} IS IN DISTRESS!`, true);
+        playSfx('sos');
+      } else {
+        logToFeed(`SYS: LOCATION UPDATE: ${name} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+      }
+    } else {
+      const marker = L.marker(latlng, { icon: getCadetIcon(newRecord) }).addTo(cadetsLayer);
+      marker.cadetData = newRecord;
+      marker.bindPopup(`
+        <strong>TACTICAL TRANSMITTER</strong><br/>
+        CALLSIGN: <strong>${name}</strong><br/>
+        UNIT TYPE: ${newRecord.party_type || 'Party'}<br/>
+        PARTY SIZE: ${newRecord.party_size || 1}<br/>
+        STATUS: <span class="val-${status}">${status.toUpperCase()}</span><br/>
+        LAT: ${lat.toFixed(4)}<br/>
+        LON: ${lng.toFixed(4)}<br/>
+        ACCURACY: ${newRecord.accuracy ? newRecord.accuracy.toFixed(1) + 'm' : 'N/A'}
+      `);
+      
+      cadetMarkers.set(id, marker);
+      logToFeed(`SYS: RESPONDER ONLINE [${name}]`);
+      if (status === 'sos') {
+        logToFeed(`SOS TRANSMISSION RECEIVED: ${name} IS IN DISTRESS!`, true);
+        playSfx('sos');
+      }
+    }
+  }
+  updateCadetsHudList();
+}
+
+async function loadInitialCadets() {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.from('cadet_locations').select('*');
+    if (error) {
+      console.error("Error loading initial cadets:", error.message);
+    } else if (data) {
+      data.forEach(cadet => {
+        handleCadetLocationUpdate({ eventType: 'INSERT', new: cadet });
+      });
+    }
+  } catch (err) {
+    console.error("Initial load throw:", err);
+  }
+}
+
+function subscribeToCadets() {
+  if (!supabase) {
+    logToFeed("SYS: COLLABORATIVE DATABASE OFFLINE (NO CREDENTIALS)");
+    return;
+  }
+  
+  logToFeed("SYS: ESTABLISHING COLLABORATION CHANNELS...");
+  
+  supabase
+    .channel('public:cadet_locations')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cadet_locations' }, (payload) => {
+      handleCadetLocationUpdate(payload);
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        logToFeed("SYS: REAL-TIME COLLABORATION LINK ESTABLISHED");
+        loadInitialCadets();
+      } else {
+        logToFeed(`SYS: REAL-TIME LINK STATUS - ${status}`);
+      }
+    });
+}
+
+// Start Supabase subscription
+subscribeToCadets();
+
+// --- Global Error / Rejection Log Hooks ---
+window.addEventListener('error', (e) => {
+  logToFeed(`SYS ERROR: ${e.message}`, true);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  logToFeed(`SYS REJECTION: ${e.reason}`, true);
+});
+

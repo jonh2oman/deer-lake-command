@@ -20,7 +20,12 @@
       <div id="primary-map-container">
         <div id="top-title-bar">
           <h1>CMD CTR // DEER LAKE</h1>
-          <p>SYS.STATUS: <span class="status-ok">ONLINE</span></p>
+          <p style="margin-bottom: 4px;">SYS.STATUS: <span class="status-ok">ONLINE</span></p>
+          <div class="clock-display" style="font-size: 13px; font-family: var(--hud-font); letter-spacing: 1px; color: var(--text-primary); text-shadow: 0 0 5px var(--accent-glow);">
+            <span id="time-zulu">--:--:--Z</span>
+            <span class="clock-divider" style="margin: 0 6px; color: var(--text-secondary);">|</span>
+            <span id="time-local">--:--:-- LOC</span>
+          </div>
         </div>
         <div id="primary-map"></div>
         
@@ -31,23 +36,48 @@
           <div class="ch-center"></div>
         </div>
 
-        <!-- HUD: Clock -->
-        <div class="hud-panel clock-panel">
-          <div class="hud-label">SYSTEM TIME</div>
-          <div class="clock-display">
-            <span id="time-zulu">--:--:--Z</span>
-            <span class="clock-divider">|</span>
-            <span id="time-local">--:--:-- LOC</span>
-          </div>
-        </div>
 
-        <!-- HUD: Coordinates -->
-        <div class="hud-panel coord-panel">
-          <div class="hud-label">TARGETING (CENTER)</div>
+        <!-- HUD: Coordinates (Fixed top-left) -->
+        <div class="coord-panel">
+          <div class="coord-label">TARGETING (CENTER)</div>
           <div class="coord-display" id="coord-readout">
             LAT: --.----<br>
             LON: --.----
           </div>
+        </div>
+
+        <!-- HUD: Compass Rose -->
+        <div id="compass-rose" class="compass-rose-container" style="display: none;">
+          <svg viewBox="0 0 100 100" class="compass-rose-svg">
+            <!-- Outer Dial -->
+            <circle cx="50" cy="50" r="45" class="compass-ring-outer" />
+            <circle cx="50" cy="50" r="40" class="compass-ring-inner" />
+            
+            <!-- Direction markings -->
+            <text x="50" y="24" class="compass-direction compass-north">N</text>
+            <text x="76" y="51" class="compass-direction">E</text>
+            <text x="50" y="79" class="compass-direction">S</text>
+            <text x="24" y="51" class="compass-direction">W</text>
+            
+            <!-- Compass Tick Marks (every 30 degrees) -->
+            <g class="compass-ticks">
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(30 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(60 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(120 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(150 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(210 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(240 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(300 50 50)" />
+              <line x1="50" y1="8" x2="50" y2="12" transform="rotate(330 50 50)" />
+            </g>
+            
+            <!-- Center Needle / Star -->
+            <polygon points="50,22 53,47 50,50 47,47" class="compass-needle-n" />
+            <polygon points="50,78 53,53 50,50 47,53" class="compass-needle-s" />
+            <polygon points="78,50 53,53 50,50 53,47" class="compass-needle-e" />
+            <polygon points="22,50 47,53 50,50 47,47" class="compass-needle-w" />
+            <circle cx="50" cy="50" r="3" class="compass-center-dot" />
+          </svg>
         </div>
 
         <!-- HUD: Intelligence Feed -->
@@ -65,16 +95,31 @@
             ACQUIRING SENSOR DATA...
           </div>
         </div>
+        
+        <!-- HUD: Live Cadet Tracking -->
+        <div class="hud-panel cadets-panel">
+          <div class="hud-label">LIVE CADET TRACKING</div>
+          <div class="cadets-display" style="padding: 10px; font-size: 13px;">
+            <div id="cadets-list" style="max-height: 100px; overflow-y: auto;">
+              NO ACTIVE TRANSMITTERS
+            </div>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 8px 0;">
+            <div style="text-align: center; margin-top: 6px;">
+              <a href="./transmit.html" target="_blank" class="glow-link" style="color: var(--accent-color); text-decoration: none; font-family: var(--hud-font); font-weight: bold; text-shadow: 0 0 5px var(--accent-glow);">[ OPEN MOBILE TRANSMITTER ]</a>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <!-- Sidebar Toggle Tab -->
-      <button id="sidebar-toggle-btn" onclick="window.toggleSidebar()">[ &lt; MENU ]</button>
 
       <!-- Secondary Sidebar -->
       <div class="sidebar" id="right-sidebar">
+        <div class="sidebar-top-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-shrink: 0;">
+          <div class="hud-label" style="font-size: 12px; font-weight: bold; margin-bottom: 0; letter-spacing: 1px;">MENU SYSTEM</div>
+          <button id="sidebar-expand-btn" class="btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="window.toggleSidebarExpand()">[ EXPAND &lt;&lt; ]</button>
+        </div>
         <div class="sidebar-header">
-          
-          <div class="theme-control">
+          <div class="sidebar-controls-container">
+            <div class="theme-control">
             <label for="theme-select">VISUAL MODE:</label>
             <select id="theme-select">
               <option value="system">SYSTEM (AUTO)</option>
@@ -84,6 +129,7 @@
               <option value="satellite">SATELLITE (ESRI)</option>
               <option value="google-satellite">SATELLITE (HIGH-RES)</option>
               <option value="street">STREET (OSM)</option>
+              <option value="topo">TOPO (OPENTOPOMAP)</option>
               <option value="night-vision">NIGHT VISION</option>
             </select>
           </div>
@@ -104,6 +150,70 @@
             <span class="radar-label">SYS: TARGETING RETICLE</span>
           </div>
 
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="nautical-toggle">
+              <span class="slider" style="background-color: var(--nautical-color);"></span>
+            </label>
+            <span class="radar-label" style="color: var(--nautical-color);">SYS: NAUTICAL OVERLAY</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="trails-toggle">
+              <span class="slider" style="background-color: var(--trails-color);"></span>
+            </label>
+            <span class="radar-label" style="color: var(--trails-color);">SYS: HIKING TRAILS</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="mtb-toggle">
+              <span class="slider" style="background-color: var(--mtb-color);"></span>
+            </label>
+            <span class="radar-label" style="color: var(--mtb-color);">SYS: MTB & OFF-ROAD</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="topo-overlay-toggle">
+              <span class="slider" style="background-color: var(--accent-color);"></span>
+            </label>
+            <span class="radar-label" style="color: var(--accent-color);">SYS: TOPO OVERLAY</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="labels-toggle">
+              <span class="slider" style="background-color: var(--text-primary);"></span>
+            </label>
+            <span class="radar-label">SYS: ROADS & LABELS</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="grid-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="radar-label">SYS: COORDINATE GRID</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="compass-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="radar-label">SYS: COMPASS ROSE</span>
+          </div>
+
+          <div class="radar-control" style="margin-bottom: 8px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="default-buoys-toggle" checked>
+              <span class="slider" style="background-color: var(--nautical-color);"></span>
+            </label>
+            <span class="radar-label" style="color: var(--nautical-color);">SYS: DEFAULT BUOYS</span>
+          </div>
+
           <div class="radar-control">
             <label class="toggle-switch">
               <input type="checkbox" id="edit-toggle">
@@ -122,23 +232,25 @@
           <div class="radar-control" style="margin-top: -20px;">
             <label class="toggle-switch">
               <input type="checkbox" id="gps-track-toggle">
-              <span class="slider" style="background-color: #00ccff;"></span>
+              <span class="slider" style="background-color: var(--gps-color);"></span>
             </label>
-            <span class="radar-label" style="color: #00ccff;">SYS: LIVE GPS TRACKING</span>
+            <span class="radar-label" style="color: var(--gps-color);">SYS: LIVE GPS TRACKING</span>
           </div>
 
           <div style="margin-top: 15px; text-align: center;">
             <button id="btn-gps-deploy" class="btn-primary" style="width: 100%; font-size: 11px; letter-spacing: 1px;">[ DEPLOY SENSOR AT CURRENT GPS ]</button>
           </div>
         </div>
+      </div>
         
         <div class="minimap-container">
           <div class="minimap-panel" id="panel-buoys">
             <div class="panel-header">
               <div class="hud-label">LAYER: TACTICAL BUOYS</div>
               <div>
-                <button class="expand-btn" onclick="window.toggleRollup('panel-buoys')">[-]</button>
-                <button class="expand-btn" onclick="window.toggleExpand('panel-buoys', 'secondaryMap1')">[+]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-buoys')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-buoys', 'secondaryMap1')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-buoys', 'secondaryMap1')">[↗]</button>
               </div>
             </div>
             <div id="secondary-map-1" class="minimap"></div>
@@ -147,8 +259,9 @@
             <div class="panel-header">
               <div class="hud-label">LAYER: EMERGENCY SVCS</div>
               <div>
-                <button class="expand-btn" onclick="window.toggleRollup('panel-ems')">[-]</button>
-                <button class="expand-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[+]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-ems')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-ems', 'secondaryMap2')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[↗]</button>
               </div>
             </div>
             <div id="secondary-map-2" class="minimap"></div>
@@ -157,8 +270,9 @@
             <div class="panel-header">
               <div class="hud-label">LAYER: PASADENA FORESTRY</div>
               <div>
-                <button class="expand-btn" onclick="window.toggleRollup('panel-forestry')">[-]</button>
-                <button class="expand-btn" onclick="window.toggleExpand('panel-forestry', 'secondaryMap4')">[+]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-forestry')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-forestry', 'secondaryMap4')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-forestry', 'secondaryMap4')">[↗]</button>
               </div>
             </div>
             <div id="secondary-map-4" class="minimap"></div>
@@ -167,14 +281,18 @@
             <div class="panel-header">
               <div class="hud-label">LAYER: DOPPLER RADAR</div>
               <div>
-                <button class="expand-btn" onclick="window.toggleRollup('panel-radar')">[-]</button>
-                <button class="expand-btn" onclick="window.toggleExpand('panel-radar', 'secondaryMap3')">[+]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-radar')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-radar', 'secondaryMap3')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-radar', 'secondaryMap3')">[↗]</button>
               </div>
             </div>
             <div id="secondary-map-3" class="minimap"></div>
           </div>
         </div>
       </div>
+
+      <!-- Sidebar Toggle Tab -->
+      <button id="sidebar-toggle-btn" onclick="window.toggleSidebar()">[ &lt; MENU ]</button>
     </div>
     
     <!-- Load GeoJSON Variables -->
@@ -272,22 +390,44 @@
             <p>Toggle 'SYS: LIVE GPS TRACKING' to connect to your device's physical GPS antenna. A pulsing Blue Dot will appear on the map and track your movements in real-time. Use the 'DEPLOY SENSOR AT CURRENT GPS' button to drop a marker at your exact physical coordinates.</p>
           </div>
           <div class="help-topic">
-            <h3>Tactical Edit Mode</h3>
-            <p>Toggle 'SYS: TACTICAL EDIT MODE' to enable map clicking. When active, clicking anywhere on the primary map will open the Deployment Terminal to place a new asset.</p>
+            <h3>Tactical Edit Mode & Custom Deployment</h3>
+            <p>Toggle 'SYS: TACTICAL EDIT MODE' to enable map clicking. When active, clicking anywhere on the primary map (or using 'DEPLOY SENSOR AT CURRENT GPS') opens the Deployment Terminal. You can choose a marker category (Radar Blips, Marine Icons, Infrastructure), icon type, and color to deploy custom sensors.</p>
           </div>
           <div class="help-topic">
-            <h3>Marker Types (Deployments)</h3>
-            <p><strong>Radar Blips:</strong> Animated, pulsing colored circles.<br>
-            <strong>Marine Icons:</strong> Tactical SVGs for Anchors, Warnings, Buoys, and Targets.<br>
-            <strong>Infrastructure:</strong> Land-based SVGs for Buildings, Kitchens, Restrooms, and Warehouses.</p>
+            <h3>Compass Rose & Coordinate Grid</h3>
+            <p><strong>SYS: COMPASS ROSE:</strong> Displays a glowing vector dial in the bottom-left corner. The inner needle rotates to indicate true north, while the outer radar dial rotates slowly for orientation context.<br>
+            <strong>SYS: COORDINATE GRID:</strong> Overlays latitude and longitude grid lines. Spacing scales dynamically based on zoom to prevent overcrowding. Labels align with the map center crosshair to remain readable and uncluttered.</p>
           </div>
           <div class="help-topic">
-            <h3>Minimaps & HUD Rollups</h3>
-            <p>The right side of the screen features Secondary Minimaps for isolating specific data layers (e.g., Tactical Buoys vs Emergency Services). Use the [-] button to rollup a minimap to save screen space, or [+] to pop it out into the primary view.</p>
+            <h3>Advanced Tactical GIS Overlays</h3>
+            <p>Toggle specialized transparent overlays on top of your base maps:<br>
+            <strong>SYS: TOPO OVERLAY:</strong> Displays topographic contour lines to inspect local elevations.<br>
+            <strong>SYS: ROADS & LABELS:</strong> Overlays road lines and town labels. Highly useful when viewing raw Satellite base maps.<br>
+            <strong>SYS: MTB & OFF-ROAD:</strong> Displays mountain biking trails, dirt tracks, and multi-use routes (like the Newfoundland T'Railway) for off-road navigation.<br>
+            <strong>SYS: NAUTICAL OVERLAY & HIKING TRAILS:</strong> Overlays marine buoys (OpenSeaMap) and official hiking routes.<br>
+            <strong>SYS: WEATHER RADAR:</strong> Overlays live precipitation radar imagery (sourced in real-time from RainViewer).<br>
+            <strong>SYS: TARGETING RETICLE:</strong> Toggles the HUD crosshair overlay centered on the primary viewport.<br>
+            <strong>SYS: MAP SCALE VISIBILITY:</strong> Toggles the map distance scale ruler in the bottom left.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Default Buoys Visibility</h3>
+            <p>Toggle 'SYS: DEFAULT BUOYS' to show or hide the three default preloaded buoys in Deer Lake, letting you isolate only the custom tactical buoys you deploy during operations.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Visual Modes & Map Themes</h3>
+            <p>Select different basemaps from the <strong>VISUAL MODE</strong> dropdown menu. Available options include system preference, dark, light, sea (maritime), ESRI satellite, high-resolution satellite, street map, topographic map, and night vision (which applies a green monochrome phosphor filter to the entire application).</p>
+          </div>
+          <div class="help-topic">
+            <h3>Live Cadet Tracking & Uplink</h3>
+            <p>Monitor cadet positions in real-time under the <strong>LIVE CADET TRACKING</strong> dashboard panel. Remote personnel can access the Cadet Uplink at <a href="./transmit.html" class="glow-link">/transmit.html</a> to register their call sign, select their vehicle/party type, specify party size, and select a custom tactical icon (radar blip, power boat, zodiac, sailboat, ship, truck, or hiker) and color to broadcast their live GPS location. Active SOS states trigger glowing red emergency warnings and audio alarms in the Command Center.</p>
+          </div>
+          <div class="help-topic">
+            <h3>Minimaps & Expandable Sidebar</h3>
+            <p>The right menu features secondary minimaps to isolate layers (Buoys, EMS, Radar, Forestry). Click the <strong>[ EXPAND &lt;&lt; ]</strong> button at the top of the menu to widen the sidebar to 750px. This snaps the minimaps into a 2x2 grid, increases their heights, and arranges all toggles in a neat horizontal bar across the top. Click <strong>[ COLLAPSE &gt;&gt; ]</strong> to return to narrow view. Use <strong>[-]</strong> to roll them up, <strong>[⛶]</strong> to maximize a minimap within the sidebar (spanning both columns and hiding other panels), and <strong>[↗]</strong> to pop a minimap out to a full-screen holographic overlay. <strong>Click any minimap</strong> to instantly fly the main map view to that minimap's center.</p>
           </div>
           <div class="help-topic">
             <h3>Intel Feed</h3>
-            <p>The bottom panel is the live system log. It records all system actions, errors, and marker deployments for audit tracking.</p>
+            <p>The bottom panel is the live system log. It records all system actions, errors, GPS locks, cadet transmissions, and marker deployments for audit tracking.</p>
           </div>
         </div>
       </div>
