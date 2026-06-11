@@ -1373,15 +1373,18 @@ setTimeout(() => {
 
 // --- Welcome Modal Logic ---
 const welcomeModal = document.getElementById('welcome-modal');
-if (!sessionStorage.getItem('welcome_dismissed')) {
+const btnWelcomeEnter = document.getElementById('btn-welcome-enter');
+if (welcomeModal && !sessionStorage.getItem('welcome_dismissed')) {
   welcomeModal.style.display = 'flex';
 }
 
-document.getElementById('btn-welcome-enter').addEventListener('click', () => {
-  welcomeModal.style.display = 'none';
-  sessionStorage.setItem('welcome_dismissed', 'true');
-  logToFeed("SYS: COMMAND TERMINAL ONLINE", true);
-});
+if (btnWelcomeEnter && welcomeModal) {
+  btnWelcomeEnter.addEventListener('click', () => {
+    welcomeModal.style.display = 'none';
+    sessionStorage.setItem('welcome_dismissed', 'true');
+    logToFeed("SYS: COMMAND TERMINAL ONLINE", true);
+  });
+}
 
 // --- Settings Configuration Terminal Logic ---
 const settingsModal = document.getElementById('settings-modal');
