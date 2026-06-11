@@ -1725,6 +1725,8 @@ const tabDashRegister = document.getElementById('tab-dash-register');
 const dashAuthMessage = document.getElementById('dash-auth-message');
 const dashAuthEmail = document.getElementById('dash-auth-email');
 const dashAuthPassword = document.getElementById('dash-auth-password');
+const groupDashConfirm = document.getElementById('group-dash-confirm');
+const dashAuthConfirm = document.getElementById('dash-auth-confirm');
 const btnDashAuthSubmit = document.getElementById('btn-dash-auth-submit');
 const btnDashLogout = document.getElementById('btn-dash-logout');
 
@@ -1746,6 +1748,7 @@ if (tabDashLogin && tabDashRegister) {
     tabDashRegister.style.borderBottom = 'none';
     btnDashAuthSubmit.textContent = '[ AUTHENTICATE COMMANDER ]';
     dashAuthMessage.textContent = '';
+    if (groupDashConfirm) groupDashConfirm.style.display = 'none';
   });
 
   tabDashRegister.addEventListener('click', () => {
@@ -1758,6 +1761,7 @@ if (tabDashLogin && tabDashRegister) {
     tabDashLogin.style.borderBottom = 'none';
     btnDashAuthSubmit.textContent = '[ CREATE OPERATOR KEY ]';
     dashAuthMessage.textContent = '';
+    if (groupDashConfirm) groupDashConfirm.style.display = 'flex';
   });
 }
 
@@ -1885,6 +1889,15 @@ if (btnDashAuthSubmit) {
     if (!email || !password) {
       dashAuthMessage.textContent = 'Email and password required.';
       return;
+    }
+    
+    if (authMode === 'register') {
+      const confirmPassword = dashAuthConfirm ? dashAuthConfirm.value.trim() : '';
+      if (password !== confirmPassword) {
+        dashAuthMessage.style.color = 'var(--danger-color)';
+        dashAuthMessage.textContent = 'Passwords do not match.';
+        return;
+      }
     }
     
     dashAuthMessage.style.color = 'var(--accent-color)';
