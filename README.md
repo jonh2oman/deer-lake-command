@@ -1,8 +1,8 @@
 # Deer Lake Tactical Command Center & Cadet Uplink GIS
 
-Version: **1.6.0**
+Version: **1.7.0**
 
-A secure, collaborative GIS tracking system designed for central dispatchers and field responders. The system features dispatcher authentication and unauthenticated responder transmission using custom, dispatcher-specific tracking links.
+A secure, collaborative GIS tracking system designed for central dispatchers and field responders. The system features dispatcher authentication, unauthenticated responder transmission using custom dispatcher-specific tracking links, and a dedicated auto-focus SOS alerts minimap.
 
 ---
 
@@ -18,8 +18,9 @@ A secure, collaborative GIS tracking system designed for central dispatchers and
   * **Military Infrastructure Options:** Features 24 custom military-focused tactical assets including *HQ/Command Post, Modular Tent/TOC, Bivouac Site, J4 Warehouse/Depot, Admin Building, Mess Hall, Medical Station, Comms Post, Security Checkpoint, Ammo Depot, Helipad/LZ, Motor Pool, Observation Post, Power Generator, Water Point, Fuel Farm, Barracks, Retail Store/PX, Guard Tower, Armory, Runway/Airstrip, Latrines/Showers, Gym/Fitness, and Decon Station*.
   * **Advanced Marine Buoy Options:** Features 16 detailed marine symbols and buoys including *Anchor, Warning Marker, Standard Buoy, Target Crosshair, Port-Hand Buoy, Starboard-Hand Buoy, Fairway Buoy, Bifurcation Buoy, Isolated Danger Buoy, Cardinal Buoy, Hazard Buoy, Mooring Buoy, Information Buoy, Control Buoy, Keep-Out Buoy, and Cautionary Buoy*.
   * **Visible Text Labels:** Direct textual descriptions inside the deployment grid rather than simple hover tooltips, styled in a scrollable, two-column flex layout.
-* **Holographic Views Sidebar (Minimaps):** Four secondary maps that track specific areas (Buoys, Emergency Services, Pasadena Forestry, Doppler Radar). Free of all control switches for a decluttered viewport.
-  * **Expandable Layout:** Expand the views panel from 350px to 750px to view minimaps in a 2x2 grid.
+* **Holographic Views Sidebar (Minimaps):** Five secondary maps that track specific layers and areas (Active SOS Alerts, Tactical Buoys, Emergency Services, Pasadena Forestry, Doppler Radar). Free of all control switches for a decluttered viewport.
+  * **Active SOS Alerts minimap:** Automatically focuses and close-up zooms (`setView([lat, lng], 16)`) onto any active distress alert in the system in real-time.
+  * **Expandable Layout:** Expand the views panel from 350px to 750px to view minimaps in a 2-column grid. The SOS alerts panel spans both columns at the top for wide-angle monitoring.
   * **Panel Rollup/Minimize:** Collapse or expand sections.
   * **Minimap Maximization:** Focus a single minimap to span both columns for detailed investigation.
   * **Full-Screen Hologram:** Pop a minimap out to a full-screen overlay.
@@ -28,7 +29,7 @@ A secure, collaborative GIS tracking system designed for central dispatchers and
 * **Fixed Coordinates Panel:** Static instrumentation panel tracking the map center's exact coordinates.
 
 ### 2. Cadet Sensor Uplink (`transmit.html`)
-* **Supabase Authentication:** Secure sign-up and sign-in tabs for responder credential verification.
+* **Public Unauthenticated Transmission:** Responders access the page via a shared dispatcher-specific URL and start tracking immediately without needing a database login account.
 * **Custom Tactical Icon Picker:** Grid of 10 inline SVG tactical icons:
   * *Radar Blip, Power Boat, Zodiac, Sailboat, Large Ship, Truck, Hiker, Anchor, Medical, Warning.*
 * **Custom Tactical Color Picker:** Pick high-visibility colors:
