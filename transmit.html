@@ -395,36 +395,17 @@
     <div class="vignette"></div>
 
     <div class="uplink-container">
-      <!-- 1. AUTH CARD (Tabbed Sign In / Sign Up) -->
-      <div id="auth-card">
+      <!-- 1. ERROR CARD (Missing / Invalid Dispatcher Link) -->
+      <div id="error-card" style="display: none;">
         <div class="uplink-header">
-          <h1>RESPONDER LOCK-ON</h1>
-          <p>CADET SENSOR UPLINK PORTAL</p>
+          <h1 style="color: var(--danger-color); text-shadow: 0 0 8px var(--danger-glow);">UPLINK ERROR</h1>
+          <p>SECURE CHANNEL REJECTED</p>
         </div>
-        <div class="auth-tabs">
-          <button id="tab-login" class="auth-tab active">SIGN IN</button>
-          <button id="tab-register" class="auth-tab">REGISTER</button>
+        <div class="auth-message" style="margin-bottom: 20px; font-size: 13px; line-height: 1.5; color: var(--danger-color);">
+          This device must connect using an official dispatcher-generated link.<br/><br/>
+          Please contact your command center dispatcher to receive a valid tracking URL.
         </div>
-        
-        <div id="auth-message" class="auth-message"></div>
-
-        <div class="form-group" id="group-name" style="display: none;">
-          <label for="reg-name">CALL SIGN (E.G. SAFETY BOAT 1)</label>
-          <input type="text" id="reg-name" placeholder="CALL SIGN" autocomplete="off" />
-        </div>
-
-        <div class="form-group">
-          <label for="auth-email">EMAIL ADDRESS</label>
-          <input type="email" id="auth-email" placeholder="EMAIL" autocomplete="on" />
-        </div>
-
-        <div class="form-group">
-          <label for="auth-password">PASSWORD</label>
-          <input type="password" id="auth-password" placeholder="PASSWORD" autocomplete="on" />
-        </div>
-
-        <button id="btn-auth-submit" class="btn-broadcast">AUTHENTICATE SYSTEM</button>
-        <a href="./index.html" class="back-link">&lt;&lt; BACK TO MAIN SCREEN</a>
+        <div style="text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 11px; letter-spacing: 1px;">SECURE SENSOR PORTAL // VERSION 1.5.0</div>
       </div>
 
       <!-- 2. TRANSMITTER CARD (Simplified Mobile Tracking controls) -->
@@ -539,16 +520,16 @@
         <button id="btn-broadcast-toggle" class="btn-broadcast">START LIVE GPS TRANSMISSION</button>
         <button id="btn-sos-toggle" class="btn-sos">TRIGGER SOS</button>
         
-        <button id="btn-logout" class="btn-logout">LOG OUT RESPONDER SESSION</button>
+        <button id="btn-reset" class="btn-logout">DISCONNECT & RESET SESSION</button>
 
         <div class="transmission-log-panel">
           <h3>UPLINK ACTIVITY LOG</h3>
           <ul id="log-list" class="log-list">
-            <li>Secure session validated. Ready for broadcast lock...</li>
+            <li>Uplink channel secured. Ready for broadcast lock...</li>
           </ul>
         </div>
 
-        <a href="./index.html" class="back-link">&lt;&lt; RETURN TO CENTRAL MAP</a>
+        <div style="text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 11px; letter-spacing: 1px;">SECURE SENSOR PORTAL // VERSION 1.5.0</div>
       </div>
     </div>
 

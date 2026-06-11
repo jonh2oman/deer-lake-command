@@ -1440,3 +1440,17 @@ input:checked + .slider:before {
   text-overflow: ellipsis;
 }
 
+/* Authentication Tab Interactions */
+.auth-tab:hover {
+  color: #fff !important;
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+.auth-tab:focus {
+  outline: none;
+}
+input:focus {
+  border-color: #fff !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
+}
+
+

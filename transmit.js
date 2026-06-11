@@ -7,8 +7,8 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // --- State Variables ---
-let currentUser = null;
-let deviceId = null; // Set to user UUID after authentication
+let deviceId = null; 
+let dispatcherId = null;
 let isBroadcasting = false;
 let isSos = false;
 let watchId = null;
@@ -24,19 +24,13 @@ let gpsMode = 'gps'; // 'gps' or 'sim'
 let simMap = null;
 let simMarker = null;
 
+// --- URL Parsing ---
+const urlParams = new URLSearchParams(window.location.search);
+dispatcherId = urlParams.get('dispatcher');
+
 // --- DOM Elements ---
-const authCard = document.getElementById('auth-card');
+const errorCard = document.getElementById('error-card');
 const transmitterCard = document.getElementById('transmitter-card');
-const authMessage = document.getElementById('auth-message');
-
-const tabLogin = document.getElementById('tab-login');
-const tabRegister = document.getElementById('tab-register');
-const groupName = document.getElementById('group-name');
-const btnAuthSubmit = document.getElementById('btn-auth-submit');
-
-const regNameInput = document.getElementById('reg-name');
-const authEmailInput = document.getElementById('auth-email');
-const authPasswordInput = document.getElementById('auth-password');
 
 const cadetNameInput = document.getElementById('cadet-name');
 const partyTypeSelect = document.getElementById('party-type');
@@ -47,7 +41,7 @@ const telemetryLngEl = document.getElementById('telemetry-lng');
 const telemetryAccEl = document.getElementById('telemetry-acc');
 const btnBroadcast = document.getElementById('btn-broadcast-toggle');
 const btnSos = document.getElementById('btn-sos-toggle');
-const btnLogout = document.getElementById('btn-logout');
+const btnReset = document.getElementById('btn-reset');
 const logList = document.getElementById('log-list');
 
 const btnModeGps = document.getElementById('btn-mode-gps');
@@ -68,6 +62,29 @@ function addLog(msg, type = '') {
   logList.scrollTop = logList.scrollHeight;
 }
 
+// --- Initialize Responder Session ---
+if (!dispatcherId) {
+  if (errorCard) errorCard.style.display = 'block';
+  if (transmitterCard) transmitterCard.style.display = 'none';
+} else {
+  if (errorCard) errorCard.style.display = 'none';
+  if (transmitterCard) transmitterCard.style.display = 'block';
+
+  // Load cadet name
+  cadetNameInput.value = localStorage.getItem('cadet_name') || '';
+
+  // Load or generate device ID
+  let storedId = localStorage.getItem('responder_device_id');
+  if (!storedId) {
+    storedId = crypto.randomUUID();
+    localStorage.setItem('responder_device_id', storedId);
+  }
+  deviceId = storedId;
+
+  addLog(`Secure uplink session ready. ID: ${deviceId.substring(0, 8)}...`);
+  addLog(`Connected to Dispatcher Channel: ${dispatcherId.substring(0, 8)}...`);
+}
+
 // --- Global Error / Rejection Log Hooks ---
 window.addEventListener('error', (e) => {
   addLog(`SYS ERROR: ${e.message}`, 'fail');
@@ -84,7 +101,6 @@ iconOptions.forEach(opt => {
     opt.classList.add('selected');
     selectedIcon = opt.getAttribute('data-icon');
     addLog(`ICON OPTION: Selected ${selectedIcon.toUpperCase()}`);
-    // If currently broadcasting, send immediate update
     if (isBroadcasting) transmitLocation();
   });
 });
@@ -96,7 +112,6 @@ colorDots.forEach(dot => {
     dot.classList.add('selected');
     selectedColor = dot.getAttribute('data-color');
     addLog(`COLOR OPTION: Selected ${selectedColor.toUpperCase()}`);
-    // If currently broadcasting, send immediate update
     if (isBroadcasting) transmitLocation();
   });
 });
@@ -207,7 +222,7 @@ function updateSimCoords(lat, lng) {
   }
 }
 
-// Save settings on input changes when broadcasting
+// Save settings on input changes
 cadetNameInput.addEventListener('change', () => {
   localStorage.setItem('cadet_name', cadetNameInput.value.trim());
   if (isBroadcasting) transmitLocation();
@@ -219,130 +234,9 @@ partySizeInput.addEventListener('change', () => {
   if (isBroadcasting) transmitLocation();
 });
 
-// --- Auth Tab Switching ---
-let authMode = 'login'; // 'login' or 'register'
-
-tabLogin.addEventListener('click', () => {
-  authMode = 'login';
-  tabLogin.classList.add('active');
-  tabRegister.classList.remove('active');
-  groupName.style.display = 'none';
-  btnAuthSubmit.textContent = 'AUTHENTICATE SYSTEM';
-  authMessage.textContent = '';
-});
-
-tabRegister.addEventListener('click', () => {
-  authMode = 'register';
-  tabRegister.classList.add('active');
-  tabLogin.classList.remove('active');
-  groupName.style.display = 'flex';
-  btnAuthSubmit.textContent = 'REGISTER NEW RESPONDER';
-  authMessage.textContent = '';
-});
-
-// --- Supabase Authentication ---
-btnAuthSubmit.addEventListener('click', async () => {
-  if (!supabase) {
-    authMessage.textContent = 'ERROR: Database offline.';
-    return;
-  }
-
-  const email = authEmailInput.value.trim();
-  const password = authPasswordInput.value.trim();
-  const callSign = regNameInput.value.trim();
-
-  if (!email || !password) {
-    authMessage.textContent = 'Please fill in email and password.';
-    return;
-  }
-
-  authMessage.textContent = 'Processing security check...';
-  authMessage.style.color = 'var(--accent-color)';
-
-  try {
-    if (authMode === 'register') {
-      if (!callSign) {
-        authMessage.style.color = 'var(--danger-color)';
-        authMessage.textContent = 'Call sign is required for registration.';
-        return;
-      }
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          data: {
-            call_sign: callSign
-          }
-        }
-      });
-      if (error) throw error;
-      
-      authMessage.style.color = 'var(--success-color)';
-      authMessage.textContent = 'Registration successful! Signed in.';
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-      if (error) throw error;
-      
-      authMessage.style.color = 'var(--success-color)';
-      authMessage.textContent = 'Access granted. Welcome.';
-    }
-  } catch (err) {
-    authMessage.style.color = 'var(--danger-color)';
-    authMessage.textContent = `AUTH FAIL: ${err.message}`;
-  }
-});
-
-// Auth listener
-if (supabase) {
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session && session.user) {
-      currentUser = session.user;
-      deviceId = session.user.id;
-      
-      // Load user details
-      const userCallSign = session.user.user_metadata.call_sign || 'Unit-' + session.user.email.split('@')[0];
-      cadetNameInput.value = localStorage.getItem('cadet_name') || userCallSign;
-      
-      // Show transmitter panel
-      authCard.style.display = 'none';
-      transmitterCard.style.display = 'block';
-      connectionStatusEl.textContent = 'STANDBY';
-      connectionStatusEl.style.color = 'var(--accent-color)';
-      
-      addLog(`Secure Session Started: ${session.user.email}`);
-    } else {
-      currentUser = null;
-      deviceId = null;
-      
-      // Stop broadcast if any
-      if (isBroadcasting) {
-        stopTransmission();
-      }
-      
-      // Show login panel
-      authCard.style.display = 'block';
-      transmitterCard.style.display = 'none';
-    }
-  });
-}
-
-// Log Out Action
-btnLogout.addEventListener('click', async () => {
-  if (isBroadcasting) {
-    await stopTransmission();
-  }
-  if (supabase) {
-    await supabase.auth.signOut();
-  }
-});
-
-
 // --- Supabase Telemetry Broadcast Logic ---
 async function transmitLocation() {
-  if (!supabase || !deviceId || !currentCoords) return;
+  if (!supabase || !deviceId || !dispatcherId || !currentCoords) return;
 
   const cadetName = cadetNameInput.value.trim() || 'RESPONDER-UNIT';
   const partyType = partyTypeSelect.value;
@@ -351,6 +245,7 @@ async function transmitLocation() {
   
   const payload = {
     id: deviceId,
+    dispatcher_id: dispatcherId,
     name: cadetName,
     latitude: currentCoords.latitude,
     longitude: currentCoords.longitude,
@@ -408,7 +303,6 @@ function startGpsTracking() {
       };
       currentAccuracy = position.coords.accuracy;
 
-      // Update Telemetry UI
       telemetryLatEl.textContent = currentCoords.latitude.toFixed(5);
       telemetryLngEl.textContent = currentCoords.longitude.toFixed(5);
       telemetryAccEl.textContent = `+/- ${currentAccuracy.toFixed(1)}m`;
@@ -422,7 +316,6 @@ function startGpsTracking() {
     { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
   );
 
-  // Throttled transmission upload: every 4 seconds
   uploadInterval = setInterval(transmitLocation, 4000);
   return true;
 }
@@ -460,7 +353,6 @@ async function stopTransmission() {
   stopGpsTracking();
   addLog("Transmission terminated.");
 
-  // Delete cadet position from database so blip goes offline
   if (supabase && deviceId) {
     try {
       await supabase.from('cadet_locations').delete().eq('id', deviceId);
@@ -489,11 +381,9 @@ btnSos.addEventListener('click', async () => {
     btnSos.classList.add('active');
     addLog("SOS EMERGENCY TRIGGERED! TRANSMITTING TO BASE...", "fail");
     
-    // If not already broadcasting, start immediately
     if (!isBroadcasting) {
       startTransmission();
     } else {
-      // Force immediate update upload
       transmitLocation();
     }
   } else {
@@ -505,3 +395,28 @@ btnSos.addEventListener('click', async () => {
     }
   }
 });
+
+// Reset Button Logic
+if (btnReset) {
+  btnReset.addEventListener('click', async () => {
+    if (isBroadcasting) {
+      await stopTransmission();
+    }
+    if (supabase && deviceId) {
+      try {
+        addLog("Deleting active responder blip...");
+        await supabase.from('cadet_locations').delete().eq('id', deviceId);
+      } catch(e) {
+        console.error(e);
+      }
+    }
+    localStorage.removeItem('responder_device_id');
+    localStorage.removeItem('cadet_name');
+    cadetNameInput.value = '';
+    
+    // Regenerate new device ID
+    localStorage.setItem('responder_device_id', crypto.randomUUID());
+    deviceId = localStorage.getItem('responder_device_id');
+    addLog("Session reset. New device ID registered.");
+  });
+}

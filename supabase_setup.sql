@@ -1,5 +1,5 @@
 -- ========================================================
--- SUPABASE DATABASE SETUP FOR DEER LAKE COLLABORATION
+-- SUPABASE DATABASE SETUP FOR DEER LAKE COLLABORATION (V1.5.0)
 -- Run this script in your Supabase SQL Editor.
 -- ========================================================
 
@@ -7,7 +7,8 @@
 DROP TABLE IF EXISTS public.cadet_locations CASCADE;
 
 CREATE TABLE public.cadet_locations (
-    id TEXT PRIMARY KEY,                       -- Unique ID (corresponds to user's auth.users UUID)
+    id TEXT PRIMARY KEY,                       -- Unique session/device ID generated client-side
+    dispatcher_id TEXT NOT NULL,               -- The auth user ID (UUID) of the dispatcher tracking this cadet
     name TEXT NOT NULL,                        -- Call sign or name (e.g., "Safety Boat 1")
     latitude DOUBLE PRECISION NOT NULL,       -- Current GPS Latitude
     longitude DOUBLE PRECISION NOT NULL,      -- Current GPS Longitude
@@ -41,25 +42,32 @@ DROP POLICY IF EXISTS "Allow public read" ON public.cadet_locations;
 DROP POLICY IF EXISTS "Allow authenticated insert" ON public.cadet_locations;
 DROP POLICY IF EXISTS "Allow authenticated update" ON public.cadet_locations;
 DROP POLICY IF EXISTS "Allow authenticated delete" ON public.cadet_locations;
+DROP POLICY IF EXISTS "Allow select for matching dispatcher" ON public.cadet_locations;
+DROP POLICY IF EXISTS "Allow public insert" ON public.cadet_locations;
+DROP POLICY IF EXISTS "Allow public update" ON public.cadet_locations;
+DROP POLICY IF EXISTS "Allow public delete" ON public.cadet_locations;
 
--- Anyone can read active responder locations
-CREATE POLICY "Allow public read" 
+-- Only the authenticated dispatcher who owns the cadet can SELECT/READ them
+CREATE POLICY "Allow select for matching dispatcher" 
     ON public.cadet_locations FOR SELECT 
-    USING (true);
+    TO authenticated 
+    USING (auth.uid()::text = dispatcher_id);
 
--- Only authenticated users can write their own location data
-CREATE POLICY "Allow authenticated insert" 
+-- Anyone can INSERT locations (allowing anonymous cadet connections)
+CREATE POLICY "Allow public insert" 
     ON public.cadet_locations FOR INSERT 
-    WITH CHECK (auth.role() = 'authenticated' AND auth.uid()::text = id);
+    WITH CHECK (true);
 
-CREATE POLICY "Allow authenticated update" 
+-- Anyone can UPDATE their own location (identified by the unique row ID)
+CREATE POLICY "Allow public update" 
     ON public.cadet_locations FOR UPDATE 
-    USING (auth.role() = 'authenticated' AND auth.uid()::text = id)
-    WITH CHECK (auth.role() = 'authenticated' AND auth.uid()::text = id);
+    USING (true)
+    WITH CHECK (true);
 
-CREATE POLICY "Allow authenticated delete" 
+-- Anyone can DELETE their location row when stopping transmission
+CREATE POLICY "Allow public delete" 
     ON public.cadet_locations FOR DELETE 
-    USING (auth.role() = 'authenticated' AND auth.uid()::text = id);
+    USING (true);
 
 -- 4. Enable Supabase Realtime for this table
 -- This allows clients to stream insert/update/delete events in real-time.

@@ -1664,9 +1664,12 @@ function handleCadetLocationUpdate(payload) {
 }
 
 async function loadInitialCadets() {
-  if (!supabase) return;
+  if (!supabase || !currentUser) return;
   try {
-    const { data, error } = await supabase.from('cadet_locations').select('*');
+    const { data, error } = await supabase
+      .from('cadet_locations')
+      .select('*')
+      .eq('dispatcher_id', currentUser.id);
     if (error) {
       console.error("Error loading initial cadets:", error.message);
     } else if (data) {
@@ -1680,16 +1683,26 @@ async function loadInitialCadets() {
 }
 
 function subscribeToCadets() {
-  if (!supabase) {
+  if (!supabase || !currentUser) {
     logToFeed("SYS: COLLABORATIVE DATABASE OFFLINE (NO CREDENTIALS)");
     return;
   }
   
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  
   logToFeed("SYS: ESTABLISHING COLLABORATION CHANNELS...");
   
-  supabase
+  realtimeChannel = supabase
     .channel('public:cadet_locations')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'cadet_locations' }, (payload) => {
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'cadet_locations',
+      filter: `dispatcher_id=eq.${currentUser.id}`
+    }, (payload) => {
       handleCadetLocationUpdate(payload);
     })
     .subscribe((status) => {
@@ -1702,8 +1715,205 @@ function subscribeToCadets() {
     });
 }
 
-// Start Supabase subscription
-subscribeToCadets();
+// --- Dispatcher Authentication & Link Copying Logic ---
+let currentUser = null;
+let realtimeChannel = null;
+
+const dashAuthModal = document.getElementById('dashboard-auth-modal');
+const tabDashLogin = document.getElementById('tab-dash-login');
+const tabDashRegister = document.getElementById('tab-dash-register');
+const dashAuthMessage = document.getElementById('dash-auth-message');
+const dashAuthEmail = document.getElementById('dash-auth-email');
+const dashAuthPassword = document.getElementById('dash-auth-password');
+const btnDashAuthSubmit = document.getElementById('btn-dash-auth-submit');
+const btnDashLogout = document.getElementById('btn-dash-logout');
+
+const hudTransmitLink = document.getElementById('hud-transmit-link');
+const settingsTransmitLink = document.getElementById('settings-transmit-link');
+const btnCopyHudLink = document.getElementById('btn-copy-hud-link');
+const btnCopySettingsLink = document.getElementById('btn-copy-settings-link');
+
+let authMode = 'login'; // 'login' or 'register'
+
+if (tabDashLogin && tabDashRegister) {
+  tabDashLogin.addEventListener('click', () => {
+    authMode = 'login';
+    tabDashLogin.classList.add('active');
+    tabDashRegister.classList.remove('active');
+    tabDashLogin.style.color = 'var(--accent-color)';
+    tabDashLogin.style.borderBottom = '2px solid var(--accent-color)';
+    tabDashRegister.style.color = 'var(--text-secondary)';
+    tabDashRegister.style.borderBottom = 'none';
+    btnDashAuthSubmit.textContent = '[ AUTHENTICATE COMMANDER ]';
+    dashAuthMessage.textContent = '';
+  });
+
+  tabDashRegister.addEventListener('click', () => {
+    authMode = 'register';
+    tabDashRegister.classList.add('active');
+    tabDashLogin.classList.remove('active');
+    tabDashRegister.style.color = 'var(--accent-color)';
+    tabDashRegister.style.borderBottom = '2px solid var(--accent-color)';
+    tabDashLogin.style.color = 'var(--text-secondary)';
+    tabDashLogin.style.borderBottom = 'none';
+    btnDashAuthSubmit.textContent = '[ CREATE OPERATOR KEY ]';
+    dashAuthMessage.textContent = '';
+  });
+}
+
+// Check current session on load
+if (supabase) {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session && session.user) {
+      handleAuthSuccess(session.user);
+    } else {
+      showAuthScreen();
+    }
+  });
+
+  // Listen for auth events
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      handleAuthSuccess(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      showAuthScreen();
+    }
+  });
+} else {
+  if (dashAuthMessage) {
+    dashAuthMessage.textContent = 'DATABASE OFFLINE (NO CONNECTION)';
+  }
+}
+
+function handleAuthSuccess(user) {
+  currentUser = user;
+  if (dashAuthModal) dashAuthModal.style.display = 'none';
+  
+  // Show app layout
+  const appContainer = document.getElementById('app');
+  if (appContainer) appContainer.style.display = 'grid';
+  
+  // Recalculate leaflet map dimensions
+  setTimeout(invalidateAllMaps, 200);
+
+  // Generate & Display links
+  const domain = window.location.origin + window.location.pathname.replace('index.html', '');
+  const transmitUrl = `${domain}transmit.html?dispatcher=${user.id}`;
+  
+  if (hudTransmitLink) hudTransmitLink.value = transmitUrl;
+  if (settingsTransmitLink) settingsTransmitLink.value = transmitUrl;
+
+  logToFeed("SYS: COMMAND TERMINAL ACCESS AUTHORIZED");
+  logToFeed(`SYS: OPERATOR ACTIVE - ${user.email}`);
+
+  // Subscribe to cadets
+  subscribeToCadets();
+}
+
+function showAuthScreen() {
+  currentUser = null;
+  if (dashAuthModal) dashAuthModal.style.display = 'flex';
+  
+  const appContainer = document.getElementById('app');
+  if (appContainer) appContainer.style.display = 'none';
+  
+  // Clear realtime channel
+  if (realtimeChannel && supabase) {
+    supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  
+  // Clear cadet markers
+  cadetMarkers.forEach((marker) => {
+    primaryMap.removeLayer(marker);
+  });
+  cadetMarkers.clear();
+  
+  const cadetsList = document.getElementById('cadets-list');
+  if (cadetsList) cadetsList.innerHTML = 'NO ACTIVE TRANSMITTERS';
+}
+
+function invalidateAllMaps() {
+  if (primaryMap) primaryMap.invalidateSize();
+  if (secondaryMap1) secondaryMap1.invalidateSize();
+  if (secondaryMap2) secondaryMap2.invalidateSize();
+  if (secondaryMap3) secondaryMap3.invalidateSize();
+  if (secondaryMap4) secondaryMap4.invalidateSize();
+}
+
+// Copy Links Event Listeners
+function setupCopyBtn(btn, input, feedMsg) {
+  if (btn && input) {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(input.value)
+        .then(() => {
+          logToFeed(`SYS: ${feedMsg}`);
+          const originalText = btn.textContent;
+          btn.textContent = '[ COPIED! ]';
+          setTimeout(() => {
+            btn.textContent = originalText;
+          }, 2000);
+        })
+        .catch(err => {
+          logToFeed("SYS: FAILED TO COPY LINK", true);
+        });
+    });
+  }
+}
+
+setupCopyBtn(btnCopyHudLink, hudTransmitLink, "TRANSMIT LINK COPIED TO CLIPBOARD");
+setupCopyBtn(btnCopySettingsLink, settingsTransmitLink, "TRANSMIT LINK COPIED TO CLIPBOARD");
+
+// Logout Button listener
+if (btnDashLogout) {
+  btnDashLogout.addEventListener('click', async () => {
+    if (supabase) {
+      logToFeed("SYS: DISCONNECTING CENTRAL OPERATIONS...");
+      await supabase.auth.signOut();
+    }
+  });
+}
+
+// Auth Submit Listener
+if (btnDashAuthSubmit) {
+  btnDashAuthSubmit.addEventListener('click', async () => {
+    if (!supabase) return;
+    
+    const email = dashAuthEmail.value.trim();
+    const password = dashAuthPassword.value.trim();
+    
+    if (!email || !password) {
+      dashAuthMessage.textContent = 'Email and password required.';
+      return;
+    }
+    
+    dashAuthMessage.style.color = 'var(--accent-color)';
+    dashAuthMessage.textContent = 'Authenticating operator credentials...';
+    
+    try {
+      if (authMode === 'register') {
+        const { data, error } = await supabase.auth.signUp({
+          email: email,
+          password: password
+        });
+        if (error) throw error;
+        dashAuthMessage.style.color = 'var(--success-color)';
+        dashAuthMessage.textContent = 'Account created. Initializing key...';
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+        if (error) throw error;
+        dashAuthMessage.style.color = 'var(--success-color)';
+        dashAuthMessage.textContent = 'Session verified. Welcome.';
+      }
+    } catch(err) {
+      dashAuthMessage.style.color = 'var(--danger-color)';
+      dashAuthMessage.textContent = `ACCESS DENIED: ${err.message}`;
+    }
+  });
+}
 
 // --- Global Error / Rejection Log Hooks ---
 window.addEventListener('error', (e) => {
