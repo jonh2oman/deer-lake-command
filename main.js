@@ -1638,6 +1638,7 @@ function handleCadetLocationUpdate(payload) {
       if (status === 'sos' && oldStatus !== 'sos') {
         logToFeed(`SOS TRANSMISSION RECEIVED: ${name} IS IN DISTRESS!`, true);
         playSfx('sos');
+        triggerSosAlert(newRecord);
       } else {
         logToFeed(`SYS: LOCATION UPDATE: ${name} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
       }
@@ -1660,6 +1661,7 @@ function handleCadetLocationUpdate(payload) {
       if (status === 'sos') {
         logToFeed(`SOS TRANSMISSION RECEIVED: ${name} IS IN DISTRESS!`, true);
         playSfx('sos');
+        triggerSosAlert(newRecord);
       }
     }
   }
@@ -1927,6 +1929,73 @@ if (btnDashAuthSubmit) {
     } catch(err) {
       dashAuthMessage.style.color = 'var(--danger-color)';
       dashAuthMessage.textContent = `ACCESS DENIED: ${err.message}`;
+    }
+  });
+}
+
+// --- Emergency SOS Alert Modal Logic ---
+const sosAlertModal = document.getElementById('sos-alert-modal');
+const btnCloseSosAlert = document.getElementById('btn-close-sos-alert');
+const btnSosAck = document.getElementById('btn-sos-ack');
+const btnSosZoom = document.getElementById('btn-sos-zoom');
+
+let activeSosRecord = null;
+
+function triggerSosAlert(record) {
+  activeSosRecord = record;
+  
+  const unitNameEl = document.getElementById('sos-unit-name');
+  const unitTypeEl = document.getElementById('sos-unit-type');
+  const partySizeEl = document.getElementById('sos-party-size');
+  const coordsEl = document.getElementById('sos-coords');
+  const timeEl = document.getElementById('sos-time');
+  
+  if (unitNameEl) unitNameEl.textContent = record.name || 'UNKNOWN UNIT';
+  if (unitTypeEl) unitTypeEl.textContent = record.party_type || 'PARTY';
+  if (partySizeEl) partySizeEl.textContent = `${record.party_size || 1} PERSON(S)`;
+  
+  if (coordsEl) {
+    const accuracyStr = record.accuracy ? ` (+/- ${record.accuracy.toFixed(1)}m)` : '';
+    coordsEl.textContent = `LAT: ${record.latitude.toFixed(5)}, LON: ${record.longitude.toFixed(5)}${accuracyStr}`;
+  }
+  
+  if (timeEl) {
+    const now = new Date();
+    const zuluTimeStr = now.toISOString().split('T')[1].substring(0, 8) + 'Z';
+    const localTimeStr = now.toTimeString().split(' ')[0] + ' LOC';
+    timeEl.textContent = `${zuluTimeStr} Zulu | ${localTimeStr} Local`;
+  }
+  
+  if (sosAlertModal) {
+    sosAlertModal.style.display = 'flex';
+  }
+}
+
+if (btnCloseSosAlert && sosAlertModal) {
+  btnCloseSosAlert.addEventListener('click', () => {
+    sosAlertModal.style.display = 'none';
+  });
+}
+
+if (btnSosAck && sosAlertModal) {
+  btnSosAck.addEventListener('click', () => {
+    sosAlertModal.style.display = 'none';
+    logToFeed(`SYS: SOS ACKNOWLEDGED FOR [${activeSosRecord ? activeSosRecord.name : 'UNIT'}]`);
+  });
+}
+
+if (btnSosZoom && sosAlertModal) {
+  btnSosZoom.addEventListener('click', () => {
+    sosAlertModal.style.display = 'none';
+    if (activeSosRecord && primaryMap) {
+      const latlng = [activeSosRecord.latitude, activeSosRecord.longitude];
+      primaryMap.setView(latlng, 15);
+      
+      const marker = cadetMarkers.get(activeSosRecord.id);
+      if (marker) {
+        marker.openPopup();
+      }
+      logToFeed(`SYS: ZOOMED TO SOS UNIT [${activeSosRecord.name}]`);
     }
   });
 }
