@@ -291,8 +291,14 @@ const secondaryMap4 = L.map('secondary-map-4', {
   zoomAnimation: false
 }).setView([49.0149167, -57.5865278], 15); // Centered on Pasadena Forestry Center
 
+// Active SOS Alerts Map is focused on active distress signals
+const secondaryMap5 = L.map('secondary-map-5', {
+  zoomControl: true,
+  zoomAnimation: false
+}).setView([49.0342, -57.5955], 14); // Default to Deer Lake
+
 // Feature: Click any minimap to sync the primary map to its exact view
-[secondaryMap1, secondaryMap2, secondaryMap3, secondaryMap4].forEach(miniMap => {
+[secondaryMap1, secondaryMap2, secondaryMap3, secondaryMap4, secondaryMap5].forEach(miniMap => {
   miniMap.on('click', () => {
     primaryMap.flyTo(miniMap.getCenter(), miniMap.getZoom(), {
       duration: 0.6,
@@ -320,6 +326,7 @@ function setMapTiles(themeKey) {
   currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap2));
   currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap3));
   currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap4));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap5));
 }
 
 // --- Theme Switcher Logic ---
@@ -695,6 +702,7 @@ window.toggleSidebarExpand = function() {
     secondaryMap2.invalidateSize();
     secondaryMap3.invalidateSize();
     secondaryMap4.invalidateSize();
+    secondaryMap5.invalidateSize();
   }, 350); // match CSS transition duration
 };
 
@@ -751,6 +759,7 @@ window.toggleMaximize = function(panelId, mapVarName) {
     if (mapVarName === 'secondaryMap2') secondaryMap2.invalidateSize();
     if (mapVarName === 'secondaryMap3') secondaryMap3.invalidateSize();
     if (mapVarName === 'secondaryMap4') secondaryMap4.invalidateSize();
+    if (mapVarName === 'secondaryMap5') secondaryMap5.invalidateSize();
   }, 300);
 };
 
@@ -775,6 +784,7 @@ window.toggleExpand = function(panelId, mapVarName) {
     if (mapVarName === 'secondaryMap2') secondaryMap2.invalidateSize();
     if (mapVarName === 'secondaryMap3') secondaryMap3.invalidateSize();
     if (mapVarName === 'secondaryMap4') secondaryMap4.invalidateSize();
+    if (mapVarName === 'secondaryMap5') secondaryMap5.invalidateSize();
   }, 300); // match CSS transition duration
 };
 
@@ -1194,6 +1204,9 @@ document.getElementById('btn-gps-deploy').addEventListener('click', () => {
 const buoysLayerPrimary = L.layerGroup().addTo(primaryMap);
 const buoysLayerSecondary = L.layerGroup().addTo(secondaryMap1);
 
+const sosLayerSecondary = L.layerGroup().addTo(secondaryMap5);
+const sosMarkersSecondary = new Map();
+
 async function renderBuoys() {
   logToFeed('[TRACE] renderBuoys started');
   buoysLayerPrimary.clearLayers();
@@ -1369,6 +1382,7 @@ setTimeout(() => {
   secondaryMap2.invalidateSize();
   secondaryMap3.invalidateSize();
   secondaryMap4.invalidateSize();
+  secondaryMap5.invalidateSize();
 }, 500);
 
 // --- Welcome Modal Logic ---
@@ -1593,6 +1607,44 @@ function updateCadetsHudList() {
   listEl.innerHTML = html;
 }
 
+function updateSosMinimap(newRecord, latlng, id, name, status) {
+  if (status === 'sos') {
+    if (sosMarkersSecondary.has(id)) {
+      const marker5 = sosMarkersSecondary.get(id);
+      marker5.setLatLng(latlng);
+      marker5.setIcon(getCadetIcon(newRecord));
+      marker5.cadetData = newRecord;
+      marker5.getPopup().setContent(`
+        <strong>ACTIVE SOS ALERT</strong><br/>
+        CALLSIGN: <strong>${name}</strong><br/>
+        LAT: ${latlng[0].toFixed(5)}<br/>
+        LON: ${latlng[1].toFixed(5)}<br/>
+        PARTY SIZE: ${newRecord.party_size || 1}
+      `);
+    } else {
+      const marker5 = L.marker(latlng, { icon: getCadetIcon(newRecord) }).addTo(sosLayerSecondary);
+      marker5.cadetData = newRecord;
+      marker5.bindPopup(`
+        <strong>ACTIVE SOS ALERT</strong><br/>
+        CALLSIGN: <strong>${name}</strong><br/>
+        LAT: ${latlng[0].toFixed(5)}<br/>
+        LON: ${latlng[1].toFixed(5)}<br/>
+        PARTY SIZE: ${newRecord.party_size || 1}
+      `);
+      sosMarkersSecondary.set(id, marker5);
+    }
+    // Auto zoom and center on the distress location
+    secondaryMap5.setView(latlng, 16);
+  } else {
+    // If not SOS, remove from secondary SOS map
+    if (sosMarkersSecondary.has(id)) {
+      const marker5 = sosMarkersSecondary.get(id);
+      sosLayerSecondary.removeLayer(marker5);
+      sosMarkersSecondary.delete(id);
+    }
+  }
+}
+
 function handleCadetLocationUpdate(payload) {
   const { eventType, new: newRecord, old: oldRecord } = payload;
   
@@ -1603,6 +1655,11 @@ function handleCadetLocationUpdate(payload) {
       primaryMap.removeLayer(marker);
       cadetMarkers.delete(id);
       logToFeed(`SYS: RESPONDER DISCONNECTED [${oldRecord.name || 'UNIT'}]`);
+    }
+    if (sosMarkersSecondary.has(id)) {
+      const marker5 = sosMarkersSecondary.get(id);
+      sosLayerSecondary.removeLayer(marker5);
+      sosMarkersSecondary.delete(id);
     }
   } else {
     // INSERT or UPDATE
@@ -1664,6 +1721,9 @@ function handleCadetLocationUpdate(payload) {
         triggerSosAlert(newRecord);
       }
     }
+    
+    // Process SOS tracking update
+    updateSosMinimap(newRecord, latlng, id, name, status);
   }
   updateCadetsHudList();
 }
@@ -1837,6 +1897,14 @@ function showAuthScreen() {
     primaryMap.removeLayer(marker);
   });
   cadetMarkers.clear();
+
+  // Clear SOS markers
+  if (sosMarkersSecondary) {
+    sosMarkersSecondary.forEach((marker) => {
+      secondaryMap5.removeLayer(marker);
+    });
+    sosMarkersSecondary.clear();
+  }
   
   const cadetsList = document.getElementById('cadets-list');
   if (cadetsList) cadetsList.innerHTML = 'NO ACTIVE TRANSMITTERS';
@@ -1848,6 +1916,7 @@ function invalidateAllMaps() {
   if (secondaryMap2) secondaryMap2.invalidateSize();
   if (secondaryMap3) secondaryMap3.invalidateSize();
   if (secondaryMap4) secondaryMap4.invalidateSize();
+  if (secondaryMap5) secondaryMap5.invalidateSize();
 }
 
 // Copy Links Event Listeners

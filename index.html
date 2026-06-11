@@ -121,6 +121,17 @@
         </div>
         
         <div class="minimap-container">
+          <div class="minimap-panel" id="panel-sos">
+            <div class="panel-header">
+              <div class="hud-label" style="color: var(--danger-color); font-weight: bold; text-shadow: 0 0 5px rgba(255, 85, 85, 0.5);">ACTIVE SOS ALERTS</div>
+              <div>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-sos')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-sos', 'secondaryMap5')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-sos', 'secondaryMap5')">[↗]</button>
+              </div>
+            </div>
+            <div id="secondary-map-5" class="minimap"></div>
+          </div>
           <div class="minimap-panel" id="panel-buoys">
             <div class="panel-header">
               <div class="hud-label">LAYER: TACTICAL BUOYS</div>

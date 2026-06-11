@@ -1470,4 +1470,19 @@ input:focus {
   }
 }
 
+/* Active SOS Alerts Minimap Styling */
+#panel-sos .minimap {
+  border: 1px solid var(--danger-color);
+  box-shadow: 0 0 10px var(--danger-glow);
+}
+
+.sidebar.expanded-sidebar #panel-sos {
+  grid-column: span 2;
+}
+
+.sidebar.expanded-sidebar #panel-sos .minimap {
+  height: 240px;
+}
+
+
 
