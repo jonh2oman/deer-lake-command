@@ -47,11 +47,10 @@ DROP POLICY IF EXISTS "Allow public insert" ON public.cadet_locations;
 DROP POLICY IF EXISTS "Allow public update" ON public.cadet_locations;
 DROP POLICY IF EXISTS "Allow public delete" ON public.cadet_locations;
 
--- Only the authenticated dispatcher who owns the cadet can SELECT/READ them
-CREATE POLICY "Allow select for matching dispatcher" 
+-- Anyone can SELECT/READ cadet locations (necessary for upserts from anonymous field clients to succeed)
+CREATE POLICY "Allow public read" 
     ON public.cadet_locations FOR SELECT 
-    TO authenticated 
-    USING (auth.uid()::text = dispatcher_id);
+    USING (true);
 
 -- Anyone can INSERT locations (allowing anonymous cadet connections)
 CREATE POLICY "Allow public insert" 
