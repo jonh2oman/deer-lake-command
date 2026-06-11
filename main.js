@@ -1798,7 +1798,7 @@ function handleAuthSuccess(user) {
   
   // Show app layout
   const appContainer = document.getElementById('app');
-  if (appContainer) appContainer.style.display = 'grid';
+  if (appContainer) appContainer.style.display = 'flex';
   
   // Recalculate leaflet map dimensions
   setTimeout(invalidateAllMaps, 200);
