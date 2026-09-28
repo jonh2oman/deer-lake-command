@@ -704,6 +704,78 @@
       </div>
     </div>
 
+    <!-- Emergency Medical Evacuation Route Modal -->
+    <div id="medical-route-modal" class="modal-overlay" style="display: none; z-index: 10012;">
+      <div class="hud-panel" style="width: 550px; max-width: 95vw; padding: 20px !important; max-height: 92vh; overflow-y: auto;">
+        <div class="hud-label" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <span style="color: #ff3344; display: flex; align-items: center; gap: 8px;">
+            <span class="pulse-dot" style="background: #ff3344; box-shadow: 0 0 8px #ff3344;"></span>
+            <span>EMERGENCY MEDICAL EVACUATION ROUTE</span>
+          </span>
+          <button id="btn-close-med-modal" class="btn-secondary" style="padding: 2px 6px; font-size: 10px;">[X]</button>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px; font-family: var(--hud-font);">
+          
+          <!-- Unit & Target Summary -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); padding: 8px 10px;">
+              <span style="font-size: 9px; color: var(--accent-color); letter-spacing: 1px; display: block;">ORIGIN (FIELD UNIT):</span>
+              <strong id="med-route-unit-name" style="font-size: 13px; color: #fff; display: block; margin-top: 2px;">UNIT ALPHA</strong>
+              <span id="med-route-unit-coords" style="font-size: 10px; color: var(--text-secondary); display: block; margin-top: 2px;">49.1725, -57.4320</span>
+            </div>
+            <div style="background: rgba(255,51,68,0.08); border: 1px solid rgba(255,51,68,0.3); padding: 8px 10px;">
+              <span style="font-size: 9px; color: #ff5566; letter-spacing: 1px; display: block;">CLOSEST MEDICAL FACILITY:</span>
+              <strong id="med-route-hosp-name" style="font-size: 12px; color: #fff; display: block; margin-top: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">WESTERN MEMORIAL</strong>
+              <span id="med-route-hosp-tier" style="font-size: 9px; color: #ffaa00; display: block; margin-top: 2px;">Trauma Centre</span>
+            </div>
+          </div>
+
+          <!-- Facility Details & Live Stats Banner -->
+          <div style="background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.12); padding: 10px 12px; border-radius: 3px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">🏥</span>
+                <div>
+                  <div id="med-route-hosp-address" style="font-size: 11px; color: #ddd;">1 Brookfield Ave, Corner Brook, NL</div>
+                  <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">
+                    TEL: <a id="med-route-hosp-phone" href="#" style="color: #39ff14; text-decoration: none; font-weight: bold;">(709) 637-5000</a>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div id="med-route-distance" style="font-size: 16px; font-weight: bold; color: #00d2ff;">0.0 km</div>
+                <div id="med-route-eta" style="font-size: 10px; color: #39ff14; font-weight: bold;">~0 MINS ETA</div>
+              </div>
+            </div>
+            <div id="med-route-direct-vector" style="font-size: 9px; color: var(--text-secondary);">Direct Air Vector: --</div>
+          </div>
+
+          <!-- Main Command Actions -->
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="btn-med-dispatch-to-unit" class="btn-primary" style="flex: 2; padding: 10px; font-size: 11px; font-weight: bold; letter-spacing: 1px; background: rgba(255, 51, 68, 0.25); border-color: #ff3344; color: #fff; cursor: pointer;" title="Send turn-by-turn directions and emergency hospital alert straight to unit's screen">[ 🚀 DISPATCH ROUTE TO UNIT ]</button>
+            <button type="button" id="btn-med-focus-map" class="btn-secondary" style="flex: 1; padding: 10px; font-size: 10px; cursor: pointer;" title="Zoom primary tactical map to fit route">[ 🗺️ FOCUS MAP ]</button>
+            <a id="btn-med-google-maps" href="#" target="_blank" class="btn-nav-launch btn-nav-google" style="padding: 10px; font-size: 10px;" title="Open in Google Maps Navigation">🧭 GMAPS</a>
+            <a id="btn-med-apple-maps" href="#" target="_blank" class="btn-nav-launch btn-nav-apple" style="padding: 10px; font-size: 10px;" title="Open in Apple Maps Navigation">🍏 APPLE</a>
+          </div>
+
+          <div id="med-dispatch-feedback" style="font-size: 10px; text-align: center; min-height: 14px;"></div>
+
+          <!-- Step-by-Step Directions Container -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; font-weight: bold;">TURN-BY-TURN DRIVING INSTRUCTIONS:</span>
+              <span id="med-route-steps-count" style="font-size: 9px; color: var(--text-secondary);">0 STEPS</span>
+            </div>
+            <div id="med-route-steps-list" style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
     <!-- Tactical View Configuration Modal (Limit 4 Views + SOS) -->
     <div id="tactical-view-modal" class="modal-overlay" style="display: none; z-index: 10005;">
       <div class="hud-panel" style="width: 520px; max-width: 95vw; padding: 20px !important; max-height: 92vh; overflow-y: auto;">

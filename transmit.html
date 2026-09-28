@@ -585,6 +585,11 @@
 
         <button id="btn-broadcast-toggle" class="btn-broadcast">START LIVE GPS TRANSMISSION</button>
         <button id="btn-sos-toggle" class="btn-sos">TRIGGER SOS</button>
+
+        <!-- Emergency Hospital Route Button for Field Units -->
+        <button type="button" id="btn-unit-hospital-route" class="btn-primary" style="width: 100%; margin-top: 8px; padding: 12px; background: rgba(255, 51, 68, 0.2); border: 2px solid #ff3344; color: #fff; font-family: var(--hud-font); font-size: 13px; font-weight: bold; letter-spacing: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>🏥 ROUTE TO CLOSEST HOSPITAL</span>
+        </button>
         
         <button id="btn-reset" class="btn-logout">DISCONNECT & RESET SESSION</button>
 
@@ -600,8 +605,8 @@
     </div>
 
     <!-- Incoming Tactical Command Alert Overlay Modal -->
-    <div id="incoming-alert-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 100000; align-items: center; justify-content: center; padding: 16px;">
-      <div class="uplink-container" style="max-width: 440px; border-color: #ffaa00; box-shadow: 0 0 35px rgba(255,170,0,0.5); animation: pulseAlert 1.5s infinite alternate;">
+    <div id="incoming-alert-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 100000; align-items: center; justify-content: center; padding: 16px; overflow-y: auto;">
+      <div class="uplink-container" style="max-width: 460px; max-height: 90vh; overflow-y: auto; border-color: #ffaa00; box-shadow: 0 0 35px rgba(255,170,0,0.5); animation: pulseAlert 1.5s infinite alternate;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ffaa00; padding-bottom: 8px;">
           <span id="alert-priority-badge" style="background: rgba(255,170,0,0.25); border: 1px solid #ffaa00; color: #ffaa00; font-size: 10px; padding: 2px 8px; font-weight: bold; border-radius: 2px;">
             ⚡ COMMAND DIRECTIVE
@@ -613,6 +618,37 @@
           <div style="font-size: 11px; color: var(--text-secondary); letter-spacing: 1px;">FROM: <strong id="alert-sender-tag" style="color: #fff;">CENTRAL COMMAND</strong></div>
           <div id="alert-message-display" style="margin-top: 8px; font-size: 15px; font-weight: bold; color: #fff; line-height: 1.4; background: rgba(0,0,0,0.45); padding: 10px; border-left: 3px solid #ffaa00; min-height: 48px;">
             <!-- Alert Text -->
+          </div>
+        </div>
+
+        <!-- Emergency Medical Evac Route Inbound Box (if route dispatched) -->
+        <div id="alert-medical-route-box" style="display: none; margin-top: 12px; background: rgba(255,51,68,0.12); border: 1px solid #ff3344; padding: 10px; border-radius: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 6px;">
+            <div>
+              <span style="font-size: 9px; color: #ffaa00; letter-spacing: 1px;">DESTINATION HOSPITAL:</span>
+              <strong id="alert-med-hosp-name" style="font-size: 13px; color: #fff; display: block;">WESTERN MEMORIAL</strong>
+              <div id="alert-med-hosp-address" style="font-size: 10px; color: #ddd; margin-top: 2px;"></div>
+            </div>
+            <div style="text-align: right;">
+              <div id="alert-med-distance" style="font-size: 15px; font-weight: bold; color: #00d2ff;">0.0 km</div>
+              <div id="alert-med-eta" style="font-size: 10px; font-weight: bold; color: #39ff14;">~0 MINS</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <a id="btn-alert-launch-nav" href="#" target="_blank" class="btn-nav-launch btn-nav-google" style="flex: 1; padding: 10px; font-size: 11px; text-align: center;">
+              🧭 LAUNCH GOOGLE MAPS NAVIGATION
+            </a>
+            <a id="btn-alert-launch-apple" href="#" target="_blank" class="btn-nav-launch btn-nav-apple" style="flex: 0.8; padding: 10px; font-size: 11px; text-align: center;">
+              🍏 APPLE MAPS
+            </a>
+          </div>
+
+          <div style="margin-top: 8px;">
+            <div style="font-size: 9px; color: var(--accent-color); font-weight: bold; margin-bottom: 4px;">TURN-BY-TURN INSTRUCTIONS:</div>
+            <div id="alert-med-steps-list" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
+              <!-- Steps populated by JS -->
+            </div>
           </div>
         </div>
 
@@ -653,6 +689,70 @@
           <button type="button" id="btn-alert-acknowledge-simple" class="btn-primary" style="width: 100%; padding: 10px; font-size: 12px; font-weight: bold; letter-spacing: 2px; cursor: pointer;">
             [ 🫡 10-4 ACKNOWLEDGE ]
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Field Unit Hospital & Emergency Evac Route Modal -->
+    <div id="unit-hospital-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 100001; align-items: center; justify-content: center; padding: 16px; overflow-y: auto;">
+      <div class="uplink-container" style="max-width: 480px; max-height: 90vh; overflow-y: auto; border-color: #ff3344; box-shadow: 0 0 35px rgba(255,51,68,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ff3344; padding-bottom: 8px;">
+          <span style="color: #ff5566; font-size: 11px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+            <span class="pulse-dot" style="background: #ff3344;"></span>
+            <span>EMERGENCY HOSPITAL ROUTE</span>
+          </span>
+          <button id="btn-close-unit-hosp-modal" class="btn-secondary" style="padding: 2px 6px; font-size: 11px; cursor: pointer;">[X]</button>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+          
+          <!-- Facility Summary Card -->
+          <div style="background: rgba(255,51,68,0.12); border: 1px solid rgba(255,51,68,0.4); padding: 12px; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <span style="font-size: 10px; color: #ffaa00; text-transform: uppercase; letter-spacing: 1px;">CLOSEST MEDICAL FACILITY:</span>
+                <div id="unit-hosp-name" style="font-size: 15px; font-weight: bold; color: #fff; margin-top: 2px;">WESTERN MEMORIAL</div>
+                <div id="unit-hosp-tier" style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">Trauma Centre</div>
+              </div>
+              <div style="text-align: right;">
+                <div id="unit-hosp-distance" style="font-size: 18px; font-weight: bold; color: #00d2ff;">0.0 km</div>
+                <div id="unit-hosp-eta" style="font-size: 11px; font-weight: bold; color: #39ff14;">~0 MINS</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px;">
+              <div id="unit-hosp-address" style="color: #ddd;">Address</div>
+              <div style="margin-top: 4px;">
+                EMERGENCY PHONE: <a id="unit-hosp-phone" href="#" style="color: #39ff14; font-weight: bold; text-decoration: none;">(709) 637-5000</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Navigation Deep Links -->
+          <div style="display: flex; gap: 8px;">
+            <a id="unit-hosp-btn-gmaps" href="#" target="_blank" class="btn-nav-launch btn-nav-google" style="flex: 1; padding: 12px 8px; font-size: 11px; text-align: center;">
+              🧭 LAUNCH GOOGLE MAPS NAVIGATION
+            </a>
+            <a id="unit-hosp-btn-apple" href="#" target="_blank" class="btn-nav-launch btn-nav-apple" style="flex: 1; padding: 12px 8px; font-size: 11px; text-align: center;">
+              🍏 APPLE MAPS
+            </a>
+          </div>
+
+          <!-- Notify Central Command Option -->
+          <button type="button" id="btn-unit-notify-command-med" class="btn-secondary" style="padding: 8px; font-size: 10px; color: #ffaa00; border-color: rgba(255,170,0,0.4); cursor: pointer;" title="Send an emergency status update to Central Command indicating medical evacuation in progress">
+            [ 🚨 ALERT CENTRAL COMMAND: EN ROUTE TO HOSPITAL ]
+          </button>
+
+          <!-- Turn-By-Turn Steps -->
+          <div style="margin-top: 4px;">
+            <div style="font-size: 10px; color: var(--accent-color); font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">
+              TURN-BY-TURN DRIVING INSTRUCTIONS:
+            </div>
+            <div id="unit-hosp-steps-list" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

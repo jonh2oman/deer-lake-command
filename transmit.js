@@ -1,6 +1,7 @@
 import { db, firebaseReady } from './src/firebase.js'
 import { doc, setDoc, deleteDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import L from 'leaflet'
+import { findClosestHospital, fetchHospitalRoute } from './medicalRouting.js'
 
 // --- State Variables ---
 let deviceId = null; 
@@ -781,6 +782,48 @@ function handleIncomingDispatch(dispatch) {
     alertMessageDisplay.style.borderLeftColor = priority === 'FLASH' ? '#ff3344' : priority === 'PRIORITY' ? '#ffaa00' : '#39ff14';
   }
 
+  // Handle medical evacuation route attachment
+  const alertMedicalRouteBox = document.getElementById('alert-medical-route-box');
+  const alertMedHospName = document.getElementById('alert-med-hosp-name');
+  const alertMedHospAddress = document.getElementById('alert-med-hosp-address');
+  const alertMedDistance = document.getElementById('alert-med-distance');
+  const alertMedEta = document.getElementById('alert-med-eta');
+  const btnAlertLaunchNav = document.getElementById('btn-alert-launch-nav');
+  const btnAlertLaunchApple = document.getElementById('btn-alert-launch-apple');
+  const alertMedStepsList = document.getElementById('alert-med-steps-list');
+
+  if (dispatch.is_medical_route && alertMedicalRouteBox) {
+    alertMedicalRouteBox.style.display = 'block';
+    if (alertMedHospName) alertMedHospName.textContent = dispatch.hospital_name || 'HOSPITAL';
+    if (alertMedHospAddress) alertMedHospAddress.textContent = dispatch.hospital_address || '';
+    if (alertMedDistance) alertMedDistance.textContent = dispatch.route_distance_km ? `${dispatch.route_distance_km} km` : '';
+    if (alertMedEta) alertMedEta.textContent = dispatch.route_duration_min ? `~${dispatch.route_duration_min} MINS` : '';
+    if (btnAlertLaunchNav && dispatch.nav_google_url) btnAlertLaunchNav.href = dispatch.nav_google_url;
+    if (btnAlertLaunchApple && dispatch.nav_apple_url) btnAlertLaunchApple.href = dispatch.nav_apple_url;
+
+    if (alertMedStepsList) {
+      const steps = dispatch.route_steps || [];
+      if (steps.length > 0) {
+        alertMedStepsList.innerHTML = steps.map((s, idx) => `
+          <div class="med-route-step-row" style="padding: 5px 8px;">
+            <div class="med-route-step-num" style="min-width: 18px; height: 18px; font-size: 9px;">${idx + 1}</div>
+            <div class="med-route-step-icon" style="font-size: 11px;">${s.icon || '➡️'}</div>
+            <div class="med-route-step-body">
+              <div class="med-route-step-instruction" style="font-size: 10px;">${s.instruction}</div>
+              <div class="med-route-step-meta" style="font-size: 8px;">
+                <span>${s.distanceText || ''}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        alertMedStepsList.innerHTML = '<div style="font-size: 10px; color: var(--text-secondary); font-style: italic;">Turn-by-turn guidance available via GPS launch.</div>';
+      }
+    }
+  } else if (alertMedicalRouteBox) {
+    alertMedicalRouteBox.style.display = 'none';
+  }
+
   // Voice player setup if voice recording is attached
   if (dispatch.audio_base64 && alertVoicePlayerBox && alertIncomingAudio) {
     alertVoicePlayerBox.style.display = 'block';
@@ -895,4 +938,126 @@ if (btnAlertAckSimple) {
     sendAlertReply('10-4 ACKNOWLEDGED');
   });
 }
+
+// ============================================================================
+// FIELD UNIT EMERGENCY HOSPITAL SELF-ROUTING
+// ============================================================================
+
+const btnUnitHospitalRoute = document.getElementById('btn-unit-hospital-route');
+const unitHospitalModal = document.getElementById('unit-hospital-modal');
+const btnCloseUnitHospModal = document.getElementById('btn-close-unit-hosp-modal');
+const unitHospName = document.getElementById('unit-hosp-name');
+const unitHospTier = document.getElementById('unit-hosp-tier');
+const unitHospDistance = document.getElementById('unit-hosp-distance');
+const unitHospEta = document.getElementById('unit-hosp-eta');
+const unitHospAddress = document.getElementById('unit-hosp-address');
+const unitHospPhone = document.getElementById('unit-hosp-phone');
+const unitHospBtnGmaps = document.getElementById('unit-hosp-btn-gmaps');
+const unitHospBtnApple = document.getElementById('unit-hosp-btn-apple');
+const btnUnitNotifyCommandMed = document.getElementById('btn-unit-notify-command-med');
+const unitHospStepsList = document.getElementById('unit-hosp-steps-list');
+
+async function openUnitHospitalRoute() {
+  let lat = null;
+  let lng = null;
+
+  if (currentCoords && currentCoords.latitude && currentCoords.longitude) {
+    lat = currentCoords.latitude;
+    lng = currentCoords.longitude;
+  } else if (typeof simCoords !== 'undefined' && simCoords && simCoords.lat && simCoords.lng) {
+    lat = simCoords.lat;
+    lng = simCoords.lng;
+  } else {
+    // Default fallback to Deer Lake coordinates
+    lat = 49.1725;
+    lng = -57.4320;
+  }
+
+  if (btnUnitHospitalRoute) {
+    btnUnitHospitalRoute.innerHTML = '<span>⏳ CALCULATING SHORTEST ROUTE TO HOSPITAL...</span>';
+    btnUnitHospitalRoute.disabled = true;
+  }
+
+  try {
+    const hospital = findClosestHospital(lat, lng);
+    if (!hospital) {
+      alert("No medical facilities located in regional database.");
+      return;
+    }
+
+    const route = await fetchHospitalRoute(lat, lng, hospital);
+
+    if (unitHospName) unitHospName.textContent = hospital.name.toUpperCase();
+    if (unitHospTier) unitHospTier.textContent = hospital.tier || 'Emergency Facility';
+    if (unitHospDistance) unitHospDistance.textContent = `${route.distanceKm} km`;
+    if (unitHospEta) unitHospEta.textContent = `~${route.durationMin} MINS`;
+    if (unitHospAddress) unitHospAddress.textContent = hospital.address || '';
+    if (unitHospPhone) {
+      unitHospPhone.textContent = hospital.phone || '';
+      unitHospPhone.href = `tel:${(hospital.phone || '').replace(/[^0-9+]/g, '')}`;
+    }
+    if (unitHospBtnGmaps) unitHospBtnGmaps.href = route.googleMapsUrl;
+    if (unitHospBtnApple) unitHospBtnApple.href = route.appleMapsUrl;
+
+    if (unitHospStepsList) {
+      unitHospStepsList.innerHTML = (route.steps || []).map((s, idx) => `
+        <div class="med-route-step-row">
+          <div class="med-route-step-num">${idx + 1}</div>
+          <div class="med-route-step-icon">${s.icon || '➡️'}</div>
+          <div class="med-route-step-body">
+            <div class="med-route-step-instruction">${s.instruction}</div>
+            <div class="med-route-step-meta">
+              <span>${s.distanceText || ''}</span>
+              ${s.durationText ? `<span>• ${s.durationText}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    if (unitHospitalModal) {
+      unitHospitalModal.style.display = 'flex';
+    }
+    playTacticalTone('roger');
+    addLog(`ROUTING: Closest hospital is ${hospital.name} (${route.distanceKm}km)`, 'success');
+
+  } catch (err) {
+    console.error("Failed to calculate hospital route", err);
+    alert(`Could not plot route: ${err.message}`);
+  } finally {
+    if (btnUnitHospitalRoute) {
+      btnUnitHospitalRoute.innerHTML = '<span>🏥 ROUTE TO CLOSEST HOSPITAL</span>';
+      btnUnitHospitalRoute.disabled = false;
+    }
+  }
+}
+
+if (btnUnitHospitalRoute) {
+  btnUnitHospitalRoute.addEventListener('click', openUnitHospitalRoute);
+}
+
+if (btnCloseUnitHospModal && unitHospitalModal) {
+  btnCloseUnitHospModal.addEventListener('click', () => {
+    unitHospitalModal.style.display = 'none';
+  });
+  unitHospitalModal.addEventListener('click', (e) => {
+    if (e.target === unitHospitalModal) unitHospitalModal.style.display = 'none';
+  });
+}
+
+if (btnUnitNotifyCommandMed) {
+  btnUnitNotifyCommandMed.addEventListener('click', () => {
+    currentOpStatus = 'EVAC / MEDICAL';
+    const opBtns = document.querySelectorAll('.op-status-btn');
+    opBtns.forEach(b => b.classList.remove('active'));
+    
+    // Immediate broadcast update
+    if (isBroadcasting) {
+      uploadTelemetry({ immediate: true });
+    }
+    addLog('ALERT SENT: En route to medical facility!', 'fail');
+    alert('Central Command has been alerted that you are in transit to the nearest hospital.');
+  });
+}
+
 

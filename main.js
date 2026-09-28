@@ -3,6 +3,7 @@ import './style.css'
 import L from 'leaflet'
 import { CANADIAN_FORCES_BASES } from './canadianForcesBases.js'
 import { CADETS_AND_RANGERS } from './canadianCadetsAndRangers.js'
+import { findClosestHospital, fetchHospitalRoute } from './medicalRouting.js'
 import { db, auth, firebaseReady } from './src/firebase.js'
 import {
   collection,
@@ -236,6 +237,7 @@ const cadetsLayer = L.layerGroup().addTo(primaryMap);
 const cadetMarkers = new Map();
 const activeFieldUnits = new Map(); // id -> transmitter data
 const cadetTrailsLayer = L.layerGroup().addTo(primaryMap);
+const medicalRouteLayer = L.layerGroup().addTo(primaryMap);
 const cadetTrails = new Map();
 const cadetHistories = new Map();
 let cadetTrailsEnabled = localStorage.getItem('cmd-cadet-trails') !== 'false';
@@ -3784,6 +3786,7 @@ function formatCadetPopup(id, data, isLkp = false, elapsedSec = 0) {
     <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; display: flex; flex-direction: column; gap: 4px;">
       <button class="btn-primary" style="width: 100%; font-size: 10px; padding: 4px;" onclick="window.startRangefinderFromUnit('${id}')">[ 🎯 RANGE & BEARING VECTOR ]</button>
       <button class="btn-primary" style="width: 100%; font-size: 10px; padding: 4px; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #93c5fd;" onclick="window.openDispatchCommsModal('${id}')">[ 📡 DISPATCH COMMS / PTT ]</button>
+      <button class="btn-primary" style="width: 100%; font-size: 10px; padding: 4px; background: rgba(255, 51, 68, 0.2); border-color: #ff3344; color: #ff5566;" onclick="window.plotMedicalRouteForUnit('${id}')">[ 🏥 ROUTE TO CLOSEST HOSPITAL ]</button>
     </div>
   `;
 }
@@ -3858,6 +3861,7 @@ function updateCadetsHudList() {
           ${opBadge}
           <button class="wind-mini-btn" title="Measure Range Vector from ${name}" onclick="window.startRangefinderFromUnit('${id}')">[🎯]</button>
           <button class="wind-mini-btn" title="Dispatch Field Comms / PTT to ${name}" onclick="window.openDispatchCommsModal('${id}')" style="color: #ffaa00; border-color: rgba(255,170,0,0.4);">[📡]</button>
+          <button class="wind-mini-btn" title="Emergency Route to Hospital from ${name}" onclick="window.plotMedicalRouteForUnit('${id}')" style="color: #ff5566; border-color: rgba(255,51,68,0.4);">[🏥]</button>
           <span class="hud-status-badge ${statusClass}" style="font-size: 9px; padding: 1px 4px; font-weight: bold;">${data.status.toUpperCase()}</span>
         </div>
       </div>
@@ -6118,6 +6122,243 @@ window.locateCadetOnMap = (lat, lng) => {
     logToFeed(`SYS: FOCUSED PRIMARY MAP ON RESPONDER COORDINATES [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
   }
 };
+
+// ============================================================================
+// EMERGENCY MEDICAL EVACUATION ROUTE & TURN-BY-TURN DISPATCH CONTROLLER
+// ============================================================================
+
+const medicalRouteModal = document.getElementById('medical-route-modal');
+const btnCloseMedModal = document.getElementById('btn-close-med-modal');
+const medRouteUnitName = document.getElementById('med-route-unit-name');
+const medRouteUnitCoords = document.getElementById('med-route-unit-coords');
+const medRouteHospName = document.getElementById('med-route-hosp-name');
+const medRouteHospTier = document.getElementById('med-route-hosp-tier');
+const medRouteHospAddress = document.getElementById('med-route-hosp-address');
+const medRouteHospPhone = document.getElementById('med-route-hosp-phone');
+const medRouteDistance = document.getElementById('med-route-distance');
+const medRouteEta = document.getElementById('med-route-eta');
+const medRouteDirectVector = document.getElementById('med-route-direct-vector');
+const btnMedDispatchToUnit = document.getElementById('btn-med-dispatch-to-unit');
+const btnMedFocusMap = document.getElementById('btn-med-focus-map');
+const btnMedGoogleMaps = document.getElementById('btn-med-google-maps');
+const btnMedAppleMaps = document.getElementById('btn-med-apple-maps');
+const medDispatchFeedback = document.getElementById('med-dispatch-feedback');
+const medRouteStepsCount = document.getElementById('med-route-steps-count');
+const medRouteStepsList = document.getElementById('med-route-steps-list');
+
+let currentMedicalRoutePlan = null;
+let currentMedicalPolyline = null;
+
+async function plotMedicalRouteForUnit(unitId) {
+  let unitData = activeFieldUnits.get(unitId);
+  if (!unitData && cadetMarkers.has(unitId)) {
+    unitData = cadetMarkers.get(unitId).cadetData;
+  }
+
+  if (!unitData || unitData.latitude === undefined || unitData.longitude === undefined) {
+    logToFeed(`SYS: UNABLE TO PLOT ROUTE - UNIT ${unitId} HAS NO VALID GPS COORDINATES`, true);
+    return;
+  }
+
+  const unitLat = Number(unitData.latitude);
+  const unitLng = Number(unitData.longitude);
+  const unitName = unitData.name || 'Field Unit';
+
+  logToFeed(`SYS: CALCULATING SHORTEST ROUTE TO MEDICAL CARE FOR [${unitName.toUpperCase()}]...`);
+
+  // Load hospitals (supports custom stations added by user in EMS layer)
+  const currentEmsStations = typeof loadEmsStations === 'function' ? loadEmsStations() : null;
+  const closestHospital = findClosestHospital(unitLat, unitLng, currentEmsStations);
+
+  if (!closestHospital) {
+    logToFeed("SYS: NO HOSPITALS REGISTERED IN CURRENT REGIONAL DIRECTORY", true);
+    return;
+  }
+
+  // Fetch shortest driving route and turn-by-turn directions
+  const route = await fetchHospitalRoute(unitLat, unitLng, closestHospital);
+
+  currentMedicalRoutePlan = {
+    unitId,
+    unitName,
+    unitLat,
+    unitLng,
+    hospital: closestHospital,
+    route
+  };
+
+  // Draw tactical polyline on primary map
+  medicalRouteLayer.clearLayers();
+
+  currentMedicalPolyline = L.polyline(route.coordinates, {
+    color: '#00d2ff',
+    weight: 5,
+    opacity: 0.85,
+    dashArray: route.isDirectLine ? '6, 8' : null,
+    className: 'medical-route-polyline'
+  }).addTo(medicalRouteLayer);
+
+  // Origin Marker
+  const startIcon = L.divIcon({
+    className: 'custom-pin',
+    html: '<div style="background:#00d2ff; width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px #00d2ff;"></div>',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  });
+  L.marker([unitLat, unitLng], { icon: startIcon }).addTo(medicalRouteLayer);
+
+  // Destination Hospital Marker
+  const hospIcon = L.divIcon({
+    className: 'custom-pin',
+    html: '<div style="background:#ff3344; width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 10px #ff3344; display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:bold;">+</div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+  L.marker([closestHospital.lat, closestHospital.lng], { icon: hospIcon }).addTo(medicalRouteLayer);
+
+  // Adjust map viewport to frame route
+  if (primaryMap) {
+    primaryMap.fitBounds(currentMedicalPolyline.getBounds(), { padding: [80, 80], maxZoom: 15 });
+  }
+
+  // Populate Modal
+  if (medRouteUnitName) medRouteUnitName.textContent = unitName.toUpperCase();
+  if (medRouteUnitCoords) medRouteUnitCoords.textContent = `${unitLat.toFixed(5)}, ${unitLng.toFixed(5)}`;
+  if (medRouteHospName) medRouteHospName.textContent = closestHospital.name.toUpperCase();
+  if (medRouteHospTier) medRouteHospTier.textContent = closestHospital.tier || 'Emergency Facility';
+  if (medRouteHospAddress) medRouteHospAddress.textContent = closestHospital.address || 'Address on record';
+  if (medRouteHospPhone) {
+    medRouteHospPhone.textContent = closestHospital.phone || '(709) 911';
+    medRouteHospPhone.href = `tel:${(closestHospital.phone || '911').replace(/[^0-9+]/g, '')}`;
+  }
+  if (medRouteDistance) medRouteDistance.textContent = `${route.distanceKm} km`;
+  if (medRouteEta) medRouteEta.textContent = `~${route.durationMin} MINS ETA`;
+  if (medRouteDirectVector) {
+    medRouteDirectVector.textContent = `Direct Air Vector: ${closestHospital.directDistanceKm.toFixed(1)} km @ ${Math.round(closestHospital.directBearing)}° ${closestHospital.directCardinal}`;
+  }
+
+  if (btnMedGoogleMaps) btnMedGoogleMaps.href = route.googleMapsUrl;
+  if (btnMedAppleMaps) btnMedAppleMaps.href = route.appleMapsUrl;
+  if (medDispatchFeedback) medDispatchFeedback.innerHTML = '';
+
+  // Render step-by-step turn instructions
+  if (medRouteStepsCount) medRouteStepsCount.textContent = `${route.steps.length} STEPS`;
+  if (medRouteStepsList) {
+    medRouteStepsList.innerHTML = (route.steps || []).map((s, idx) => `
+      <div class="med-route-step-row">
+        <div class="med-route-step-num">${idx + 1}</div>
+        <div class="med-route-step-icon">${s.icon || '➡️'}</div>
+        <div class="med-route-step-body">
+          <div class="med-route-step-instruction">${escapeHtml(s.instruction)}</div>
+          <div class="med-route-step-meta">
+            <span>${s.distanceText || ''}</span>
+            ${s.durationText ? `<span>• ${s.durationText}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  if (medicalRouteModal) {
+    medicalRouteModal.style.display = 'flex';
+  }
+
+  playCommsChirp('roger');
+  logToFeed(`SYS: SHORTEST MEDICAL ROUTE PLOTTED: [${closestHospital.name}] (${route.distanceKm}km, ~${route.durationMin}m)`);
+}
+
+async function dispatchMedicalRouteToUnit() {
+  if (!currentMedicalRoutePlan || !currentUser || !firebaseReady) {
+    if (medDispatchFeedback) medDispatchFeedback.innerHTML = '<span style="color:#ff5566;">COMMAND DATABASE NOT READY OR NO ACTIVE ROUTE</span>';
+    return;
+  }
+
+  const { unitId, unitName, hospital, route } = currentMedicalRoutePlan;
+
+  if (btnMedDispatchToUnit) {
+    btnMedDispatchToUnit.disabled = true;
+    btnMedDispatchToUnit.textContent = '[ TRANSMITTING EVAC DIRECTIVE... ]';
+  }
+
+  try {
+    const payload = {
+      dispatcher_id: currentUser.uid,
+      dispatcher_email: currentUser.email || 'Central Command',
+      target_device_id: unitId,
+      target_name: unitName,
+      priority: 'FLASH',
+      mode: 'text',
+      is_medical_route: true,
+      hospital_name: hospital.name,
+      hospital_address: hospital.address,
+      hospital_phone: hospital.phone,
+      hospital_lat: hospital.lat,
+      hospital_lng: hospital.lng,
+      route_distance_km: route.distanceKm,
+      route_duration_min: route.durationMin,
+      route_steps: route.steps,
+      nav_google_url: route.googleMapsUrl,
+      nav_apple_url: route.appleMapsUrl,
+      message_text: `🚨 EMERGENCY MEDICAL DIRECTIVE: Navigate immediately to ${hospital.name}. Distance: ${route.distanceKm} km (~${route.durationMin} mins). Turn-by-turn guidance and 1-touch GPS navigation dispatched.`,
+      tts_enabled: true,
+      require_reply: true,
+      reply_options: ['10-4 ALL CLEAR', 'NEED ASSISTANCE', 'EMERGENCY SOS'],
+      client_timestamp: Date.now(),
+      created_at: serverTimestamp(),
+      acks: {}
+    };
+
+    await addDoc(collection(db, 'command_dispatches'), payload);
+
+    playCommsChirp('roger');
+    logToFeed(`SYS: ⚡ EMERGENCY MEDICAL EVAC DIRECTIVE PUSHED TO [${unitName.toUpperCase()}]`);
+
+    if (medDispatchFeedback) {
+      medDispatchFeedback.innerHTML = `<span style="color:#39ff14;">✓ EVAC ROUTE & TURN-BY-TURN DIRECTIONS DISPATCHED TO ${escapeHtml(unitName)} [${new Date().toLocaleTimeString()}]</span>`;
+    }
+
+  } catch (err) {
+    console.error("Failed to push medical route dispatch", err);
+    if (medDispatchFeedback) {
+      medDispatchFeedback.innerHTML = `<span style="color:#ff5566;">FAILED TO DISPATCH: ${err.message}</span>`;
+    }
+  } finally {
+    if (btnMedDispatchToUnit) {
+      btnMedDispatchToUnit.disabled = false;
+      btnMedDispatchToUnit.textContent = '[ 🚀 DISPATCH ROUTE TO UNIT ]';
+    }
+  }
+}
+
+function closeMedicalRouteModal() {
+  if (medicalRouteModal) {
+    medicalRouteModal.style.display = 'none';
+  }
+}
+
+// Bind Medical Route Event Listeners
+if (btnCloseMedModal) btnCloseMedModal.addEventListener('click', closeMedicalRouteModal);
+if (btnMedDispatchToUnit) btnMedDispatchToUnit.addEventListener('click', dispatchMedicalRouteToUnit);
+
+if (btnMedFocusMap) {
+  btnMedFocusMap.addEventListener('click', () => {
+    if (primaryMap && currentMedicalPolyline) {
+      primaryMap.fitBounds(currentMedicalPolyline.getBounds(), { padding: [80, 80], maxZoom: 15 });
+    }
+  });
+}
+
+if (medicalRouteModal) {
+  medicalRouteModal.addEventListener('click', (e) => {
+    if (e.target === medicalRouteModal) closeMedicalRouteModal();
+  });
+}
+
+// Global exposure
+window.plotMedicalRouteForUnit = plotMedicalRouteForUnit;
+window.dispatchMedicalRouteToUnit = dispatchMedicalRouteToUnit;
+window.closeMedicalRouteModal = closeMedicalRouteModal;
+
 
 
 
