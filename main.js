@@ -1435,7 +1435,27 @@ const EMS_PRELOAD_STATIONS = [
   { id: 'police-10', type: 'police', name: 'RNC Headquarters (Fort Townshend)', lat: 47.5615, lng: -52.7140, address: '1 Fort Townshend, St. John\'s, NL', phone: '(709) 729-8000' }
 ];
 
-let allEmsStations = [...EMS_PRELOAD_STATIONS];
+function loadEmsStations() {
+  const saved = localStorage.getItem('cmd-ems-custom-stations');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse saved EMS stations', e);
+    }
+  }
+  return [...EMS_PRELOAD_STATIONS];
+}
+
+function saveEmsStations() {
+  localStorage.setItem('cmd-ems-custom-stations', JSON.stringify(allEmsStations));
+}
+
+let allEmsStations = loadEmsStations();
+const emsPrimaryMarkers = new Map(); // station.id -> L.marker
 
 function createEmsPopupContent(station) {
   let badgeColor = '#ffffff';
@@ -1456,7 +1476,7 @@ function createEmsPopupContent(station) {
   const addrHtml = station.address ? `<div style="margin-top: 2px; color: var(--text-secondary); font-size: 10px;">${escapeHtml(station.address)}</div>` : '';
 
   return `
-    <div style="font-family: var(--hud-font); min-width: 190px; padding: 4px;">
+    <div style="font-family: var(--hud-font); min-width: 200px; padding: 4px;">
       <div style="display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; color: ${badgeColor}; background: ${badgeBg}; border: 1px solid ${badgeColor}; border-radius: 2px; margin-bottom: 5px;">
         ${typeLabel}
       </div>
@@ -1465,11 +1485,13 @@ function createEmsPopupContent(station) {
       </div>
       ${addrHtml}
       ${phoneHtml}
-      <div style="margin-top: 4px; font-size: 10px; color: var(--text-secondary);">
+      <div style="margin-top: 4px; font-size: 10px; color: var(--text-secondary); font-family: monospace;">
         COORDS: ${station.lat.toFixed(5)}, ${station.lng.toFixed(5)}
       </div>
       <div style="margin-top: 8px; display: flex; gap: 4px;">
         <button onclick="window.primaryMap.flyTo([${station.lat}, ${station.lng}], 16)" style="flex: 1; background: rgba(0,255,204,0.15); border: 1px solid var(--accent-color); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px; cursor: pointer;">[ FOCUS ]</button>
+        <button onclick="window.startRelocatingEmsStation('${station.id}')" style="flex: 1.2; background: rgba(255,170,0,0.15); border: 1px solid #ffaa00; color: #ffaa00; font-family: var(--hud-font); font-size: 9px; padding: 4px; cursor: pointer;" title="Drag marker or click map to move">[ 📍 RELOCATE ]</button>
+        <button onclick="window.openEmsEditorModal('${station.id}')" style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px; cursor: pointer;" title="Edit details, coordinates, or delete">[ ✏️ EDIT ]</button>
       </div>
     </div>
   `;
@@ -1483,6 +1505,8 @@ function renderEmsLayers() {
   hospitalLayerSecondary.clearLayers();
   fireLayerSecondary.clearLayers();
   policeLayerSecondary.clearLayers();
+
+  emsPrimaryMarkers.clear();
 
   allEmsStations.forEach(st => {
     let icon = hospitalIcon;
@@ -1502,14 +1526,15 @@ function renderEmsLayers() {
     const popupHtml = createEmsPopupContent(st);
 
     const m1 = L.marker([st.lat, st.lng], { icon: icon }).bindPopup(popupHtml);
+    m1.stationData = st;
     targetPrimary.addLayer(m1);
+    emsPrimaryMarkers.set(st.id, m1);
 
     const m2 = L.marker([st.lat, st.lng], { icon: icon }).bindPopup(popupHtml);
     targetSecondary.addLayer(m2);
   });
 
   updateEmsLayerVisibility();
-  logToFeed(`SYS: EMS TELEMETRY ONLINE (${allEmsStations.length} UNITS INDEXED)`);
 }
 
 function updateEmsLayerVisibility() {
@@ -1564,6 +1589,295 @@ function updateEmsLayerVisibility() {
   localStorage.setItem('cmd-ems-police', emsPoliceEnabled);
 }
 
+// --- Live Interactive Relocation Mode ---
+let activeRelocatingStation = null;
+let pendingRelocateCoords = null;
+let activeRelocatingMarker = null;
+
+function startRelocatingEmsStation(stationId) {
+  const station = allEmsStations.find(s => s.id === stationId);
+  const marker = emsPrimaryMarkers.get(stationId);
+  if (!station || !marker) return;
+
+  primaryMap.closePopup();
+  activeRelocatingStation = station;
+  activeRelocatingMarker = marker;
+  pendingRelocateCoords = { lat: station.lat, lng: station.lng };
+
+  const banner = document.getElementById('ems-relocate-hud-banner');
+  const statusText = document.getElementById('ems-relocate-status-text');
+  if (banner) banner.style.display = 'flex';
+  if (statusText) statusText.textContent = `RELOCATING: ${station.name.toUpperCase()} — DRAG BLIP OR CLICK MAP TO REPOSITION`;
+
+  document.getElementById('primary-map').style.cursor = 'crosshair';
+
+  marker.dragging.enable();
+
+  const onMarkerDrag = (e) => {
+    pendingRelocateCoords = e.target.getLatLng();
+  };
+  marker.on('drag', onMarkerDrag);
+  marker.on('dragend', onMarkerDrag);
+
+  const onMapClickRelocate = (e) => {
+    marker.setLatLng(e.latlng);
+    pendingRelocateCoords = e.latlng;
+  };
+  primaryMap.on('click', onMapClickRelocate);
+
+  const onKeyDownRelocate = (e) => {
+    if (e.key === 'Escape') {
+      cancelRelocatingEmsStation();
+    } else if (e.key === 'Enter') {
+      saveRelocatedEmsStation();
+    }
+  };
+  window.addEventListener('keydown', onKeyDownRelocate);
+
+  activeRelocatingMarker._cleanupRelocate = () => {
+    marker.dragging.disable();
+    marker.off('drag', onMarkerDrag);
+    marker.off('dragend', onMarkerDrag);
+    primaryMap.off('click', onMapClickRelocate);
+    window.removeEventListener('keydown', onKeyDownRelocate);
+    document.getElementById('primary-map').style.cursor = '';
+    if (banner) banner.style.display = 'none';
+  };
+}
+
+function saveRelocatedEmsStation() {
+  if (!activeRelocatingStation || !pendingRelocateCoords) return;
+
+  activeRelocatingStation.lat = parseFloat(pendingRelocateCoords.lat.toFixed(5));
+  activeRelocatingStation.lng = parseFloat(pendingRelocateCoords.lng.toFixed(5));
+  saveEmsStations();
+
+  if (activeRelocatingMarker && activeRelocatingMarker._cleanupRelocate) {
+    activeRelocatingMarker._cleanupRelocate();
+  }
+
+  const stationName = activeRelocatingStation.name;
+  const lat = activeRelocatingStation.lat;
+  const lng = activeRelocatingStation.lng;
+
+  activeRelocatingStation = null;
+  activeRelocatingMarker = null;
+  pendingRelocateCoords = null;
+
+  renderEmsLayers();
+  logToFeed(`SYS: ${stationName.toUpperCase()} REPOSITIONED TO [${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
+}
+
+function cancelRelocatingEmsStation() {
+  if (activeRelocatingMarker && activeRelocatingMarker._cleanupRelocate) {
+    activeRelocatingMarker._cleanupRelocate();
+  }
+  activeRelocatingStation = null;
+  activeRelocatingMarker = null;
+  pendingRelocateCoords = null;
+
+  renderEmsLayers();
+  logToFeed("SYS: EMS RELOCATION CANCELLED");
+}
+
+window.startRelocatingEmsStation = startRelocatingEmsStation;
+
+// --- EMS Station Modal Editor ---
+const emsEditModal = document.getElementById('ems-edit-modal');
+const emsEditModalTitle = document.getElementById('ems-edit-modal-title');
+const emsEditId = document.getElementById('ems-edit-id');
+const emsEditName = document.getElementById('ems-edit-name');
+const emsEditType = document.getElementById('ems-edit-type');
+const emsEditLat = document.getElementById('ems-edit-lat');
+const emsEditLng = document.getElementById('ems-edit-lng');
+const emsEditPhone = document.getElementById('ems-edit-phone');
+const emsEditAddr = document.getElementById('ems-edit-addr');
+const emsEditFeedback = document.getElementById('ems-edit-feedback');
+const btnCloseEmsEdit = document.getElementById('btn-close-ems-edit');
+const btnEmsPickMap = document.getElementById('btn-ems-pick-map');
+const btnEmsUseCenter = document.getElementById('btn-ems-use-center');
+const btnEmsSaveChanges = document.getElementById('btn-ems-save-changes');
+const btnEmsDelete = document.getElementById('btn-ems-delete');
+const btnAddEmsFacility = document.getElementById('btn-add-ems-facility');
+const btnResetEmsDefaults = document.getElementById('btn-reset-ems-defaults');
+
+function openEmsEditorModal(stationId = null) {
+  primaryMap.closePopup();
+  if (emsEditFeedback) emsEditFeedback.innerHTML = '';
+
+  if (stationId) {
+    const station = allEmsStations.find(s => s.id === stationId);
+    if (!station) return;
+    if (emsEditModalTitle) emsEditModalTitle.textContent = `EDIT FACILITY: ${station.name.toUpperCase()}`;
+    if (emsEditId) emsEditId.value = station.id;
+    if (emsEditName) emsEditName.value = station.name;
+    if (emsEditType) emsEditType.value = station.type;
+    if (emsEditLat) emsEditLat.value = station.lat.toFixed(5);
+    if (emsEditLng) emsEditLng.value = station.lng.toFixed(5);
+    if (emsEditPhone) emsEditPhone.value = station.phone || '';
+    if (emsEditAddr) emsEditAddr.value = station.address || '';
+    if (btnEmsDelete) btnEmsDelete.style.display = 'block';
+  } else {
+    const center = primaryMap.getCenter();
+    if (emsEditModalTitle) emsEditModalTitle.textContent = 'ADD NEW EMERGENCY FACILITY';
+    if (emsEditId) emsEditId.value = '';
+    if (emsEditName) emsEditName.value = '';
+    if (emsEditType) emsEditType.value = 'hospital';
+    if (emsEditLat) emsEditLat.value = center.lat.toFixed(5);
+    if (emsEditLng) emsEditLng.value = center.lng.toFixed(5);
+    if (emsEditPhone) emsEditPhone.value = '';
+    if (emsEditAddr) emsEditAddr.value = '';
+    if (btnEmsDelete) btnEmsDelete.style.display = 'none';
+  }
+
+  if (emsEditModal) emsEditModal.style.display = 'flex';
+}
+
+window.openEmsEditorModal = openEmsEditorModal;
+
+function closeEmsEditorModal() {
+  if (emsEditModal) emsEditModal.style.display = 'none';
+}
+
+if (btnCloseEmsEdit) btnCloseEmsEdit.addEventListener('click', closeEmsEditorModal);
+if (emsEditModal) {
+  emsEditModal.addEventListener('click', (e) => {
+    if (e.target === emsEditModal) closeEmsEditorModal();
+  });
+}
+
+if (btnEmsUseCenter) {
+  btnEmsUseCenter.addEventListener('click', () => {
+    const center = primaryMap.getCenter();
+    if (emsEditLat) emsEditLat.value = center.lat.toFixed(5);
+    if (emsEditLng) emsEditLng.value = center.lng.toFixed(5);
+    if (emsEditFeedback) {
+      emsEditFeedback.innerHTML = `<span style="color: #00ffcc;">✓ Map center coordinates captured.</span>`;
+    }
+  });
+}
+
+if (btnEmsPickMap) {
+  btnEmsPickMap.addEventListener('click', () => {
+    closeEmsEditorModal();
+    const banner = document.getElementById('ems-relocate-hud-banner');
+    const statusText = document.getElementById('ems-relocate-status-text');
+    if (banner) banner.style.display = 'flex';
+    if (statusText) statusText.textContent = 'PICK LOCATION: CLICK ANYWHERE ON MAP TO SET FACILITY COORDINATES';
+    document.getElementById('primary-map').style.cursor = 'crosshair';
+
+    const onPickClick = (e) => {
+      if (emsEditLat) emsEditLat.value = e.latlng.lat.toFixed(5);
+      if (emsEditLng) emsEditLng.value = e.latlng.lng.toFixed(5);
+
+      const tempMarker = L.circleMarker(e.latlng, {
+        radius: 12,
+        color: '#00ffcc',
+        fillColor: '#00ffcc',
+        fillOpacity: 0.35,
+        weight: 2
+      }).addTo(primaryMap);
+      setTimeout(() => primaryMap.removeLayer(tempMarker), 3000);
+
+      cleanupPick();
+      if (emsEditModal) emsEditModal.style.display = 'flex';
+      if (emsEditFeedback) emsEditFeedback.innerHTML = `<span style="color: #00ffcc;">✓ Location captured: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}</span>`;
+    };
+
+    const cleanupPick = () => {
+      primaryMap.off('click', onPickClick);
+      document.getElementById('primary-map').style.cursor = '';
+      if (banner) banner.style.display = 'none';
+    };
+
+    primaryMap.once('click', onPickClick);
+  });
+}
+
+if (btnEmsSaveChanges) {
+  btnEmsSaveChanges.addEventListener('click', () => {
+    const id = emsEditId ? emsEditId.value : '';
+    const name = ((emsEditName && emsEditName.value) || '').trim();
+    const type = (emsEditType && emsEditType.value) || 'hospital';
+    const lat = parseFloat(emsEditLat ? emsEditLat.value : NaN);
+    const lng = parseFloat(emsEditLng ? emsEditLng.value : NaN);
+    const phone = ((emsEditPhone && emsEditPhone.value) || '').trim();
+    const addr = ((emsEditAddr && emsEditAddr.value) || '').trim();
+
+    if (!name) {
+      if (emsEditFeedback) emsEditFeedback.innerHTML = `<span style="color: var(--danger-color);">PLEASE ENTER A FACILITY NAME</span>`;
+      return;
+    }
+    if (isNaN(lat) || lat < -90 || lat > 90 || isNaN(lng) || lng < -180 || lng > 180) {
+      if (emsEditFeedback) emsEditFeedback.innerHTML = `<span style="color: var(--danger-color);">INVALID LATITUDE OR LONGITUDE</span>`;
+      return;
+    }
+
+    if (id) {
+      const station = allEmsStations.find(s => s.id === id);
+      if (station) {
+        station.name = name;
+        station.type = type;
+        station.lat = parseFloat(lat.toFixed(5));
+        station.lng = parseFloat(lng.toFixed(5));
+        station.phone = phone;
+        station.address = addr;
+      }
+    } else {
+      const newStation = {
+        id: `custom-ems-${Date.now()}`,
+        type,
+        name,
+        lat: parseFloat(lat.toFixed(5)),
+        lng: parseFloat(lng.toFixed(5)),
+        phone,
+        address: addr
+      };
+      allEmsStations.push(newStation);
+    }
+
+    saveEmsStations();
+    renderEmsLayers();
+    closeEmsEditorModal();
+    logToFeed(`SYS: EMS FACILITY [${name.toUpperCase()}] SAVED TO REGISTRY`);
+  });
+}
+
+if (btnEmsDelete) {
+  btnEmsDelete.addEventListener('click', () => {
+    const id = emsEditId ? emsEditId.value : '';
+    if (!id) return;
+    const idx = allEmsStations.findIndex(s => s.id === id);
+    if (idx !== -1) {
+      const deletedName = allEmsStations[idx].name;
+      allEmsStations.splice(idx, 1);
+      saveEmsStations();
+      renderEmsLayers();
+      closeEmsEditorModal();
+      logToFeed(`SYS: [${deletedName.toUpperCase()}] REMOVED FROM EMS REGISTRY`);
+    }
+  });
+}
+
+if (btnAddEmsFacility) {
+  btnAddEmsFacility.addEventListener('click', () => openEmsEditorModal());
+}
+
+if (btnResetEmsDefaults) {
+  btnResetEmsDefaults.addEventListener('click', () => {
+    localStorage.removeItem('cmd-ems-custom-stations');
+    allEmsStations = [...EMS_PRELOAD_STATIONS];
+    saveEmsStations();
+    renderEmsLayers();
+    logToFeed("SYS: ALL EMS STATIONS RESTORED TO DEFAULT POSITIONS");
+  });
+}
+
+const btnSaveEmsRelocate = document.getElementById('btn-save-ems-relocate');
+const btnCancelEmsRelocate = document.getElementById('btn-cancel-ems-relocate');
+if (btnSaveEmsRelocate) btnSaveEmsRelocate.addEventListener('click', saveRelocatedEmsStation);
+if (btnCancelEmsRelocate) btnCancelEmsRelocate.addEventListener('click', cancelRelocatingEmsStation);
+
 // Global Dynamic Overpass OSM Scanner
 async function scanAreaForEms() {
   const center = primaryMap.getCenter();
@@ -1599,7 +1913,6 @@ async function scanAreaForEms() {
         const phone = (el.tags && (el.tags.phone || el.tags['contact:phone'])) || '';
         const address = (el.tags && [el.tags['addr:street'], el.tags['addr:city']].filter(Boolean).join(', ')) || '';
 
-        // Check for duplicates
         const exists = allEmsStations.some(s => {
           const d = Math.hypot(s.lat - pLat, s.lng - pLng);
           return d < 0.002;
@@ -1619,6 +1932,7 @@ async function scanAreaForEms() {
         }
       });
 
+      saveEmsStations();
       renderEmsLayers();
       logToFeed(`SYS: SATELLITE SCAN COMPLETE (+${addedCount} NEW EMS STATIONS)`);
     } else {

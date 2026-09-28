@@ -114,6 +114,18 @@
           </span>
           <button id="btn-cancel-location-picker" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">[CANCEL ESC]</button>
         </div>
+
+        <!-- EMS Facility Relocate HUD Banner -->
+        <div id="ems-relocate-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 1002; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid #ffaa00; box-shadow: 0 0 20px rgba(255, 170, 0, 0.45); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 14px; border-radius: 4px;">
+          <span style="color: #ffaa00; display: flex; align-items: center; gap: 6px;">
+            <span class="pulse-dot" style="background: #ffaa00;"></span>
+            <span id="ems-relocate-status-text">RELOCATING FACILITY: DRAG PIN OR CLICK MAP TO REPOSITION</span>
+          </span>
+          <div style="display: flex; gap: 6px;">
+            <button id="btn-save-ems-relocate" class="btn-primary" style="padding: 3px 10px; font-size: 10px; background: rgba(255,170,0,0.25); border-color: #ffaa00; color: #fff;">[ 💾 SAVE POSITION ]</button>
+            <button id="btn-cancel-ems-relocate" class="btn-secondary" style="padding: 3px 8px; font-size: 10px;">[ CANCEL (ESC) ]</button>
+          </div>
+        </div>
         
         <!-- Targeting Crosshair -->
         <div class="crosshair">
@@ -232,6 +244,9 @@
               <button id="ems-quick-fire" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ff8800; background: rgba(255,136,0,0.15); color: #ff8800;" title="Toggle Fire Station Blips (Orange)">[ 🟠 FIRE ]</button>
               <button id="ems-quick-police" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #1e6bff; background: rgba(30,107,255,0.15); color: #1e6bff;" title="Toggle Police Station Blips (Royal Blue)">[ 🔵 POLICE ]</button>
             </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 6px; background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border-color);">
+              <button id="btn-add-ems-facility" class="btn-secondary" style="width: 100%; font-size: 9px; padding: 3px; border: none; background: transparent; color: var(--accent-color); font-family: var(--hud-font); cursor: pointer;" title="Add a custom hospital, fire hall, or police station to the map">[ ➕ ADD EMS FACILITY ]</button>
+            </div>
             <div id="secondary-map-2" class="minimap"></div>
           </div>
           <div class="minimap-panel" id="panel-forestry">
@@ -336,8 +351,73 @@
       </div>
     </div>
     
-    <!-- Load GeoJSON Variables -->
-    <script src="./data/Buoys_2.js"></script>
+    <!-- EMS Facility Editor & Relocation Modal -->
+    <div id="ems-edit-modal" class="modal-overlay" style="display: none;">
+      <div class="hud-panel" style="width: 440px; max-width: 95vw; padding: 18px !important; max-height: 90vh; overflow-y: auto;">
+        <div class="hud-label" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <span id="ems-edit-modal-title">EDIT EMERGENCY FACILITY</span>
+          <button id="btn-close-ems-edit" class="btn-secondary" style="padding: 2px 6px; font-size: 10px;">[X]</button>
+        </div>
+        <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 12px; font-family: var(--hud-font);">
+          <input type="hidden" id="ems-edit-id">
+
+          <!-- Name -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">FACILITY DESIGNATION / NAME:</label>
+            <input type="text" id="ems-edit-name" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" placeholder="e.g. Deer Lake Clinic">
+          </div>
+
+          <!-- Type -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">SERVICE CATEGORY & COLOR:</label>
+            <select id="ems-edit-type" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              <option value="hospital">⚪ HOSPITAL / MEDICAL (WHITE BLIP)</option>
+              <option value="fire">🟠 FIRE & RESCUE (ORANGE BLIP)</option>
+              <option value="police">🔵 POLICE / LAW ENFORCEMENT (ROYAL BLUE BLIP)</option>
+            </select>
+          </div>
+
+          <!-- Coordinates -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">EXACT COORDINATES:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <span style="font-size: 9px; color: var(--text-secondary); display: block;">LATITUDE</span>
+                <input type="number" step="0.000001" id="ems-edit-lat" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              </div>
+              <div>
+                <span style="font-size: 9px; color: var(--text-secondary); display: block;">LONGITUDE</span>
+                <input type="number" step="0.000001" id="ems-edit-lng" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              </div>
+            </div>
+            <!-- Quick coordinate capture buttons -->
+            <div style="display: flex; gap: 6px; margin-top: 6px;">
+              <button type="button" id="btn-ems-pick-map" class="btn-secondary" style="flex: 1; font-size: 9px; padding: 5px;" title="Click anywhere on the map to place this facility">[ 🎯 PICK ON MAP ]</button>
+              <button type="button" id="btn-ems-use-center" class="btn-secondary" style="flex: 1; font-size: 9px; padding: 5px;" title="Use current map center coords">[ 📍 USE MAP CENTER ]</button>
+            </div>
+          </div>
+
+          <!-- Phone & Address -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">CONTACT PHONE / FREQUENCY:</label>
+            <input type="text" id="ems-edit-phone" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" placeholder="e.g. (709) 635-2173 or 911">
+          </div>
+
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">STREET ADDRESS / NOTES:</label>
+            <input type="text" id="ems-edit-addr" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" placeholder="e.g. 18 George Aaron Dr, Deer Lake">
+          </div>
+
+          <div id="ems-edit-feedback" style="font-size: 10px; text-align: center; min-height: 14px;"></div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button type="button" id="btn-ems-save-changes" class="btn-primary" style="flex: 2; font-size: 11px; padding: 8px; letter-spacing: 1px;">[ 💾 SAVE FACILITY ]</button>
+            <button type="button" id="btn-ems-delete" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 8px; color: var(--danger-color); border-color: rgba(255,85,85,0.4);" title="Remove this station">[ 🗑️ DELETE ]</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Deployment Terminal Modal -->
     <div id="deployment-modal" class="modal-overlay" style="display: none;">
@@ -845,7 +925,10 @@
               <!-- EMS Independent Subsets -->
               <div class="radar-control" style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 10px; color: var(--accent-color); font-weight: bold; letter-spacing: 1px;">EMERGENCY SERVICES (EMS) SUBSETS:</span>
-                <button type="button" id="btn-scan-osm-ems" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Scan OpenStreetMap for local hospitals, fire, and police stations around current view">[ 📡 SCAN AREA (OSM) ]</button>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" id="btn-scan-osm-ems" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Scan OpenStreetMap for local hospitals, fire, and police stations around current view">[ 📡 SCAN AREA (OSM) ]</button>
+                  <button type="button" id="btn-reset-ems-defaults" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Reset all EMS station positions back to original defaults">[ 🔄 RESET POSITIONS ]</button>
+                </div>
               </div>
 
               <div class="radar-control">
