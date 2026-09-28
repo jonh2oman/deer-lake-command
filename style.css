@@ -2619,6 +2619,60 @@ input:focus {
   pointer-events: none;
 }
 
+/* =========================================================================
+   TACTICAL DISPATCH & COMMS SYSTEM STYLES
+   ========================================================================= */
+
+@keyframes pulseAlert {
+  0% { box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); border-color: rgba(255, 170, 0, 0.6); }
+  100% { box-shadow: 0 0 35px rgba(255, 170, 0, 0.9); border-color: #ffaa00; }
+}
+
+@keyframes pulsePttRecording {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 51, 68, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 30px rgba(255, 51, 68, 0.9); background: rgba(255, 51, 68, 0.5); }
+  100% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 51, 68, 0.4); }
+}
+
+.ptt-btn-recording {
+  animation: pulsePttRecording 1s infinite !important;
+  border-color: #ff3344 !important;
+  color: #fff !important;
+}
+
+.dispatch-priority-btn {
+  transition: all 0.2s;
+}
+.dispatch-priority-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.dispatch-priority-btn.active[data-priority="ROUTINE"] {
+  border-color: #39ff14 !important;
+  background: rgba(57, 255, 20, 0.18) !important;
+  color: #39ff14 !important;
+}
+.dispatch-priority-btn.active[data-priority="PRIORITY"] {
+  border-color: #ffaa00 !important;
+  background: rgba(255, 170, 0, 0.18) !important;
+  color: #ffaa00 !important;
+}
+.dispatch-priority-btn.active[data-priority="FLASH"] {
+  border-color: #ff3344 !important;
+  background: rgba(255, 51, 68, 0.25) !important;
+  color: #ff5566 !important;
+  box-shadow: 0 0 12px rgba(255, 51, 68, 0.4);
+}
+
+.dispatch-tab {
+  transition: all 0.2s;
+}
+.dispatch-tab.active {
+  background: rgba(0, 210, 255, 0.15) !important;
+  border-color: var(--accent-color) !important;
+  color: #fff !important;
+}
+
+
 
 
 

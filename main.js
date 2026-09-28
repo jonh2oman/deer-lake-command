@@ -4,7 +4,18 @@ import L from 'leaflet'
 import { CANADIAN_FORCES_BASES } from './canadianForcesBases.js'
 import { CADETS_AND_RANGERS } from './canadianCadetsAndRangers.js'
 import { db, auth, firebaseReady } from './src/firebase.js'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp
+} from 'firebase/firestore'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -223,6 +234,7 @@ const graticuleLayer = new CanvasGraticule({ zIndex: 850 });
 // --- Cadet GPS Tracking Layer ---
 const cadetsLayer = L.layerGroup().addTo(primaryMap);
 const cadetMarkers = new Map();
+const activeFieldUnits = new Map(); // id -> transmitter data
 const cadetTrailsLayer = L.layerGroup().addTo(primaryMap);
 const cadetTrails = new Map();
 const cadetHistories = new Map();
@@ -3769,8 +3781,9 @@ function formatCadetPopup(id, data, isLkp = false, elapsedSec = 0) {
     LON: ${Number(data.longitude).toFixed(5)}<br/>
     ACCURACY: ${data.accuracy ? data.accuracy.toFixed(1) + 'm' : 'N/A'}<br/>
     PARTY: ${escapeHtml(data.party_type || 'Party')} (x${data.party_size || 1})
-    <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
+    <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; display: flex; flex-direction: column; gap: 4px;">
       <button class="btn-primary" style="width: 100%; font-size: 10px; padding: 4px;" onclick="window.startRangefinderFromUnit('${id}')">[ 🎯 RANGE & BEARING VECTOR ]</button>
+      <button class="btn-primary" style="width: 100%; font-size: 10px; padding: 4px; background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; color: #93c5fd;" onclick="window.openDispatchCommsModal('${id}')">[ 📡 DISPATCH COMMS / PTT ]</button>
     </div>
   `;
 }
@@ -3844,6 +3857,7 @@ function updateCadetsHudList() {
         <div style="display: flex; gap: 4px; align-items: center;">
           ${opBadge}
           <button class="wind-mini-btn" title="Measure Range Vector from ${name}" onclick="window.startRangefinderFromUnit('${id}')">[🎯]</button>
+          <button class="wind-mini-btn" title="Dispatch Field Comms / PTT to ${name}" onclick="window.openDispatchCommsModal('${id}')" style="color: #ffaa00; border-color: rgba(255,170,0,0.4);">[📡]</button>
           <span class="hud-status-badge ${statusClass}" style="font-size: 9px; padding: 1px 4px; font-weight: bold;">${data.status.toUpperCase()}</span>
         </div>
       </div>
@@ -3918,9 +3932,13 @@ function handleCadetLocationUpdate(payload) {
     cadetHistories.delete(id);
     cadetLastSeen.delete(id);
     cadetLkpState.delete(id);
+    activeFieldUnits.delete(id);
+    if (typeof updateCommsTargetDropdown === 'function') updateCommsTargetDropdown();
   } else {
     // INSERT or UPDATE
     const id = newRecord.id;
+    activeFieldUnits.set(id, newRecord);
+    if (typeof updateCommsTargetDropdown === 'function') updateCommsTargetDropdown();
     const name = escapeHtml(newRecord.name);
     const lat = newRecord.latitude;
     const lng = newRecord.longitude;
@@ -4118,6 +4136,11 @@ function handleAuthSuccess(user) {
 
   // Subscribe to cadets
   subscribeToCadets();
+
+  // Subscribe to central command dispatches
+  if (typeof subscribeToDispatches === 'function') {
+    subscribeToDispatches();
+  }
 }
 
 function showAuthScreen() {
@@ -4131,6 +4154,17 @@ function showAuthScreen() {
   if (unsubscribeCadets) {
     unsubscribeCadets();
     unsubscribeCadets = null;
+  }
+
+  // Clear dispatches listener
+  if (typeof unsubscribeDispatches !== 'undefined' && unsubscribeDispatches) {
+    unsubscribeDispatches();
+    unsubscribeDispatches = null;
+  }
+
+  activeFieldUnits.clear();
+  if (typeof updateCommsTargetDropdown === 'function') {
+    updateCommsTargetDropdown();
   }
   
   // Clear cadet markers
@@ -4575,6 +4609,12 @@ window.addEventListener('keydown', (e) => {
     if (typeof toggleRangefinder === 'function') toggleRangefinder();
   } else if (e.code === 'Escape') {
     if (typeof cancelRangefinder === 'function' && rangefinderActive) cancelRangefinder();
+    const commsModal = document.getElementById('dispatch-comms-modal');
+    if (commsModal && commsModal.style.display !== 'none') {
+      if (typeof closeDispatchCommsModal === 'function') closeDispatchCommsModal();
+    }
+  } else if (e.code === 'KeyP') {
+    if (typeof openDispatchCommsModal === 'function') openDispatchCommsModal();
   } else if (e.code === 'KeyT') {
     const editToggle = document.getElementById('edit-toggle');
     if (editToggle) {
@@ -5450,5 +5490,634 @@ document.querySelectorAll('.btn-open-tac-config').forEach(b => {
 
 // Initialize and render all tactical views on boot
 applyAllTacticalViews();
+
+// ============================================================================
+// CENTRAL COMMAND FIELD COMMS & PTT DISPATCH SYSTEM
+// ============================================================================
+
+// DOM Elements
+const dispatchCommsModal = document.getElementById('dispatch-comms-modal');
+const btnCloseDispatchModal = document.getElementById('btn-close-dispatch-modal');
+const btnCancelDispatch = document.getElementById('btn-cancel-dispatch');
+const quickBtnComms = document.getElementById('quick-btn-comms');
+const btnOpenDispatchComms = document.getElementById('btn-open-dispatch-comms');
+const dispatchTargetSelect = document.getElementById('dispatch-target-select');
+const commsActiveUnitsCount = document.getElementById('comms-active-units-count');
+
+const tabDispatchText = document.getElementById('tab-dispatch-text');
+const tabDispatchPtt = document.getElementById('tab-dispatch-ptt');
+const dispatchSecText = document.getElementById('dispatch-sec-text');
+const dispatchSecPtt = document.getElementById('dispatch-sec-ptt');
+const dispatchMessageText = document.getElementById('dispatch-message-text');
+const dispatchTtsToggle = document.getElementById('dispatch-tts-toggle');
+
+const btnPttRecord = document.getElementById('btn-ptt-record');
+const pttStatusText = document.getElementById('ptt-status-text');
+const pttTimerDisplay = document.getElementById('ptt-timer-display');
+const pttPreviewContainer = document.getElementById('ptt-preview-container');
+const pttAudioPlayer = document.getElementById('ptt-audio-player');
+const pttDurationTag = document.getElementById('ptt-duration-tag');
+const btnPttDiscard = document.getElementById('btn-ptt-discard');
+
+const dispatchRequireReply = document.getElementById('dispatch-require-reply');
+const replyOptionsContainer = document.getElementById('reply-options-container');
+const btnSendDispatch = document.getElementById('btn-send-dispatch');
+const dispatchFeedback = document.getElementById('dispatch-feedback');
+const dispatchesTrackerList = document.getElementById('dispatches-tracker-list');
+const btnClearDispatchesLog = document.getElementById('btn-clear-dispatches-log');
+
+// State
+let currentDispatchPriority = 'ROUTINE';
+let currentCommsMode = 'text'; // 'text' | 'ptt'
+let mediaRecorder = null;
+let pttAudioStream = null;
+let pttAudioChunks = [];
+let pttAudioBase64 = null;
+let pttAudioDuration = 0;
+let pttStartTime = 0;
+let pttTimerInterval = null;
+let isPttRecording = false;
+let unsubscribeDispatches = null;
+let cachedDispatches = [];
+
+// Audio Beep Generator for Central Command
+function playCommsChirp(type = 'roger') {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (type === 'roger') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.19);
+    } else if (type === 'rec_start') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.09);
+    } else if (type === 'rec_stop') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.09);
+    }
+  } catch (err) {
+    // AudioContext blocked
+  }
+}
+
+// 1. Update Target Recipient Dropdown dynamically
+function updateCommsTargetDropdown() {
+  if (!dispatchTargetSelect) return;
+  const currentVal = dispatchTargetSelect.value;
+  
+  let optionsHtml = '<option value="ALL">🌐 ALL FIELD UNITS (BROADCAST ALL)</option>';
+  activeFieldUnits.forEach((data, id) => {
+    const name = escapeHtml(data.name || id);
+    const status = (data.status || 'ACTIVE').toUpperCase();
+    optionsHtml += `<option value="${id}">📍 ${name} [${status}]</option>`;
+  });
+  
+  dispatchTargetSelect.innerHTML = optionsHtml;
+  if (currentVal && Array.from(dispatchTargetSelect.options).some(o => o.value === currentVal)) {
+    dispatchTargetSelect.value = currentVal;
+  }
+  
+  if (commsActiveUnitsCount) {
+    commsActiveUnitsCount.textContent = `${activeFieldUnits.size} UNITS ONLINE`;
+  }
+}
+
+// 2. Open / Close Modal
+function openDispatchCommsModal(targetDeviceId = null) {
+  if (!dispatchCommsModal) return;
+  
+  updateCommsTargetDropdown();
+  if (targetDeviceId && dispatchTargetSelect) {
+    dispatchTargetSelect.value = targetDeviceId;
+  }
+  
+  if (dispatchFeedback) dispatchFeedback.textContent = '';
+  dispatchCommsModal.style.display = 'flex';
+  
+  if (currentCommsMode === 'text' && dispatchMessageText) {
+    setTimeout(() => dispatchMessageText.focus(), 100);
+  }
+}
+
+function closeDispatchCommsModal() {
+  if (isPttRecording) {
+    stopPttRecording(false);
+  }
+  if (dispatchCommsModal) {
+    dispatchCommsModal.style.display = 'none';
+  }
+}
+
+// 3. Priority Selection
+document.querySelectorAll('.dispatch-priority-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.dispatch-priority-btn').forEach(b => {
+      b.classList.remove('active');
+      b.style.border = '1px solid rgba(255,255,255,0.2)';
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text-secondary)';
+    });
+    
+    btn.classList.add('active');
+    currentDispatchPriority = btn.getAttribute('data-priority') || 'ROUTINE';
+    
+    if (currentDispatchPriority === 'ROUTINE') {
+      btn.style.border = '1px solid #39ff14';
+      btn.style.background = 'rgba(57,255,20,0.15)';
+      btn.style.color = '#39ff14';
+    } else if (currentDispatchPriority === 'PRIORITY') {
+      btn.style.border = '1px solid #ffaa00';
+      btn.style.background = 'rgba(255,170,0,0.15)';
+      btn.style.color = '#ffaa00';
+    } else if (currentDispatchPriority === 'FLASH') {
+      btn.style.border = '1px solid #ff3344';
+      btn.style.background = 'rgba(255,51,68,0.2)';
+      btn.style.color = '#ff3344';
+    }
+  });
+});
+
+// 4. Tab Mode Switching (Text vs PTT)
+if (tabDispatchText && tabDispatchPtt) {
+  tabDispatchText.addEventListener('click', () => {
+    currentCommsMode = 'text';
+    tabDispatchText.classList.add('active');
+    tabDispatchPtt.classList.remove('active');
+    tabDispatchText.style.background = 'rgba(0,210,255,0.15)';
+    tabDispatchText.style.border = '1px solid var(--accent-color)';
+    tabDispatchText.style.color = '#fff';
+    tabDispatchPtt.style.background = 'transparent';
+    tabDispatchPtt.style.border = '1px solid rgba(255,255,255,0.2)';
+    tabDispatchPtt.style.color = 'var(--text-secondary)';
+    
+    if (dispatchSecText) dispatchSecText.style.display = 'block';
+    if (dispatchSecPtt) dispatchSecPtt.style.display = 'none';
+  });
+
+  tabDispatchPtt.addEventListener('click', () => {
+    currentCommsMode = 'ptt';
+    tabDispatchPtt.classList.add('active');
+    tabDispatchText.classList.remove('active');
+    tabDispatchPtt.style.background = 'rgba(255,170,0,0.15)';
+    tabDispatchPtt.style.border = '1px solid #ffaa00';
+    tabDispatchPtt.style.color = '#fff';
+    tabDispatchText.style.background = 'transparent';
+    tabDispatchText.style.border = '1px solid rgba(255,255,255,0.2)';
+    tabDispatchText.style.color = 'var(--text-secondary)';
+    
+    if (dispatchSecText) dispatchSecText.style.display = 'none';
+    if (dispatchSecPtt) dispatchSecPtt.style.display = 'flex';
+  });
+}
+
+// 5. PTT Audio Recording Engine
+async function startPttRecording() {
+  if (isPttRecording) return;
+  if (dispatchFeedback) dispatchFeedback.textContent = '';
+
+  try {
+    pttAudioStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+
+    // Check supported MIME type
+    const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    let chosenMime = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+    mediaRecorder = chosenMime ? new MediaRecorder(pttAudioStream, { mimeType: chosenMime, audioBitsPerSecond: 24000 }) : new MediaRecorder(pttAudioStream);
+    pttAudioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        pttAudioChunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      if (pttAudioStream) {
+        pttAudioStream.getTracks().forEach(t => t.stop());
+        pttAudioStream = null;
+      }
+      
+      if (pttAudioChunks.length === 0) return;
+      
+      const blob = new Blob(pttAudioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      pttAudioDuration = ((Date.now() - pttStartTime) / 1000).toFixed(1);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        pttAudioBase64 = reader.result;
+        if (pttAudioPlayer) {
+          pttAudioPlayer.src = pttAudioBase64;
+        }
+        if (pttDurationTag) {
+          pttDurationTag.textContent = `${pttAudioDuration}s RECORDED (READY TO SEND)`;
+        }
+        if (pttPreviewContainer) {
+          pttPreviewContainer.style.display = 'block';
+        }
+        if (pttStatusText) {
+          pttStatusText.textContent = `VOICE MEMO CAPTURED (${pttAudioDuration}s)`;
+          pttStatusText.style.color = '#39ff14';
+        }
+      };
+      reader.readAsDataURL(blob);
+    };
+
+    mediaRecorder.start(100);
+    isPttRecording = true;
+    pttStartTime = Date.now();
+    playCommsChirp('rec_start');
+
+    if (btnPttRecord) {
+      btnPttRecord.classList.add('ptt-btn-recording');
+      btnPttRecord.style.background = 'rgba(255, 51, 68, 0.8)';
+      btnPttRecord.style.borderColor = '#ff1122';
+    }
+    if (pttStatusText) {
+      pttStatusText.textContent = '🔴 RECORDING RADIO TRANSMISSION... (RELEASE OR CLICK TO FINISH)';
+      pttStatusText.style.color = '#ff3344';
+    }
+
+    if (pttTimerInterval) clearInterval(pttTimerInterval);
+    pttTimerInterval = setInterval(() => {
+      const elapsedSec = ((Date.now() - pttStartTime) / 1000).toFixed(1);
+      if (pttTimerDisplay) {
+        pttTimerDisplay.textContent = `REC 00:${elapsedSec < 10 ? '0' : ''}${elapsedSec} / 01:00 MAX`;
+      }
+      // Auto stop at 60s
+      if (elapsedSec >= 60) {
+        stopPttRecording(true);
+      }
+    }, 100);
+
+  } catch (err) {
+    logToFeed(`PTT MIC ERROR: ${err.message}`, true);
+    if (dispatchFeedback) {
+      dispatchFeedback.innerHTML = `<span style="color:#ff5566;">MICROPHONE ACCESS DENIED OR UNAVAILABLE: ${err.message}</span>`;
+    }
+  }
+}
+
+function stopPttRecording(save = true) {
+  if (!isPttRecording) return;
+  isPttRecording = false;
+
+  if (pttTimerInterval) {
+    clearInterval(pttTimerInterval);
+    pttTimerInterval = null;
+  }
+
+  if (btnPttRecord) {
+    btnPttRecord.classList.remove('ptt-btn-recording');
+    btnPttRecord.style.background = 'rgba(255, 51, 68, 0.2)';
+    btnPttRecord.style.borderColor = '#ff3344';
+  }
+
+  playCommsChirp('rec_stop');
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    if (!save) {
+      pttAudioChunks = [];
+    }
+    mediaRecorder.stop();
+  }
+}
+
+// Click and hold or click toggle support for PTT
+if (btnPttRecord) {
+  // Click toggle
+  btnPttRecord.addEventListener('click', () => {
+    if (!isPttRecording) {
+      startPttRecording();
+    } else {
+      stopPttRecording(true);
+    }
+  });
+
+  // Hold-to-talk support on mouse & touch
+  let holdTimeout = null;
+  btnPttRecord.addEventListener('mousedown', () => {
+    holdTimeout = setTimeout(() => {
+      if (!isPttRecording) startPttRecording();
+    }, 250);
+  });
+  window.addEventListener('mouseup', () => {
+    if (holdTimeout) clearTimeout(holdTimeout);
+    if (isPttRecording) stopPttRecording(true);
+  });
+
+  btnPttRecord.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (!isPttRecording) startPttRecording();
+  });
+  btnPttRecord.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (isPttRecording) stopPttRecording(true);
+  });
+}
+
+if (btnPttDiscard) {
+  btnPttDiscard.addEventListener('click', () => {
+    pttAudioBase64 = null;
+    pttAudioDuration = 0;
+    pttAudioChunks = [];
+    if (pttAudioPlayer) pttAudioPlayer.src = '';
+    if (pttPreviewContainer) pttPreviewContainer.style.display = 'none';
+    if (pttTimerDisplay) pttTimerDisplay.textContent = '';
+    if (pttStatusText) {
+      pttStatusText.textContent = 'CLICK OR HOLD TO TRANSMIT RADIO VOICE';
+      pttStatusText.style.color = '#ffaa00';
+    }
+  });
+}
+
+// 6. Mandatory Reply Checkbox toggle
+if (dispatchRequireReply && replyOptionsContainer) {
+  dispatchRequireReply.addEventListener('change', () => {
+    replyOptionsContainer.style.opacity = dispatchRequireReply.checked ? '1' : '0.4';
+  });
+}
+
+// 7. Transmit Command Dispatch
+async function sendCommandDispatch() {
+  if (!firebaseReady || !currentUser) {
+    if (dispatchFeedback) dispatchFeedback.innerHTML = '<span style="color:#ff5566;">COMMAND DATABASE OFFLINE (OPERATOR NOT AUTHENTICATED)</span>';
+    return;
+  }
+
+  const targetId = dispatchTargetSelect ? dispatchTargetSelect.value : 'ALL';
+  let targetName = 'ALL FIELD UNITS';
+  if (targetId !== 'ALL' && activeFieldUnits.has(targetId)) {
+    targetName = activeFieldUnits.get(targetId).name || 'Field Unit';
+  }
+
+  const messageText = dispatchMessageText ? dispatchMessageText.value.trim() : '';
+  const requireReply = dispatchRequireReply ? dispatchRequireReply.checked : true;
+  const ttsEnabled = dispatchTtsToggle ? dispatchTtsToggle.checked : true;
+
+  // Validation
+  if (currentCommsMode === 'text') {
+    if (!messageText) {
+      if (dispatchFeedback) dispatchFeedback.innerHTML = '<span style="color:#ffbb00;">PLEASE ENTER AN ORDER / DIRECTIVE MESSAGE TO TRANSMIT</span>';
+      if (dispatchMessageText) dispatchMessageText.focus();
+      return;
+    }
+  } else if (currentCommsMode === 'ptt') {
+    if (!pttAudioBase64) {
+      if (dispatchFeedback) dispatchFeedback.innerHTML = '<span style="color:#ffbb00;">NO VOICE MEMO RECORDED. RECORD AUDIO OR SWITCH TO TEXT MODE.</span>';
+      return;
+    }
+  }
+
+  if (btnSendDispatch) {
+    btnSendDispatch.disabled = true;
+    btnSendDispatch.textContent = '[ TRANSMITTING BROADCAST... ]';
+  }
+
+  try {
+    const payload = {
+      dispatcher_id: currentUser.uid,
+      dispatcher_email: currentUser.email || 'Central Command',
+      target_device_id: targetId,
+      target_name: targetName,
+      priority: currentDispatchPriority,
+      mode: currentCommsMode,
+      message_text: messageText || (currentCommsMode === 'ptt' ? `[VOICE TRANSMISSION ${pttAudioDuration}s]` : ''),
+      tts_enabled: ttsEnabled,
+      audio_base64: pttAudioBase64 || null,
+      audio_duration: pttAudioDuration ? Number(pttAudioDuration) : null,
+      require_reply: requireReply,
+      reply_options: ['ALL_CLEAR', 'ASSISTANCE', 'EMERGENCY'],
+      client_timestamp: Date.now(),
+      created_at: serverTimestamp(),
+      acks: {} // populated in real-time as field units check in
+    };
+
+    await addDoc(collection(db, 'command_dispatches'), payload);
+
+    playCommsChirp('roger');
+    logToFeed(`SYS: COMMS DISPATCH TRANSMITTED TO [${targetName.toUpperCase()}] // PRIORITY: ${currentDispatchPriority}`);
+
+    if (dispatchFeedback) {
+      dispatchFeedback.innerHTML = `<span style="color:#39ff14;">✓ DISPATCH DELIVERED TO FIELD RELAY [${new Date().toLocaleTimeString()}]</span>`;
+    }
+
+    // Reset inputs
+    if (dispatchMessageText) dispatchMessageText.value = '';
+    if (btnPttDiscard) btnPttDiscard.click();
+
+  } catch (err) {
+    logToFeed(`SYS: DISPATCH TRANSMISSION FAILED - ${err.message}`, true);
+    if (dispatchFeedback) {
+      dispatchFeedback.innerHTML = `<span style="color:#ff5566;">FAILED TO TRANSMIT: ${err.message}</span>`;
+    }
+  } finally {
+    if (btnSendDispatch) {
+      btnSendDispatch.disabled = false;
+      btnSendDispatch.textContent = '[ 🚀 TRANSMIT DISPATCH ]';
+    }
+  }
+}
+
+// 8. Real-time Dispatches & Mandatory Check-In Tracker
+function subscribeToDispatches() {
+  if (!firebaseReady || !currentUser) return;
+
+  if (unsubscribeDispatches) {
+    unsubscribeDispatches();
+    unsubscribeDispatches = null;
+  }
+
+  const dispatchesQuery = query(
+    collection(db, 'command_dispatches'),
+    where('dispatcher_id', '==', currentUser.uid)
+  );
+
+  unsubscribeDispatches = onSnapshot(dispatchesQuery, (snapshot) => {
+    cachedDispatches = [];
+    snapshot.forEach(docSnap => {
+      cachedDispatches.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    // Sort descending by client timestamp
+    cachedDispatches.sort((a, b) => (b.client_timestamp || 0) - (a.client_timestamp || 0));
+
+    renderDispatchesTracker();
+  }, (err) => {
+    logToFeed(`SYS: COMMS TRACKER ERROR - ${err.message}`, true);
+  });
+}
+
+function renderDispatchesTracker() {
+  if (!dispatchesTrackerList) return;
+
+  if (cachedDispatches.length === 0) {
+    dispatchesTrackerList.innerHTML = '<div style="color: var(--text-secondary); font-style: italic;">No dispatches transmitted in this session yet.</div>';
+    return;
+  }
+
+  let html = '';
+  // Show last 15 dispatches
+  const recent = cachedDispatches.slice(0, 15);
+
+  recent.forEach(disp => {
+    const timeStr = disp.client_timestamp ? new Date(disp.client_timestamp).toLocaleTimeString() : 'RECENT';
+    const target = escapeHtml(disp.target_name || (disp.target_device_id === 'ALL' ? 'ALL FIELD UNITS' : disp.target_device_id));
+    const pri = disp.priority || 'ROUTINE';
+    let priColor = '#39ff14';
+    if (pri === 'PRIORITY') priColor = '#ffaa00';
+    if (pri === 'FLASH') priColor = '#ff3344';
+
+    const acks = disp.acks || {};
+    const ackKeys = Object.keys(acks);
+    const ackCount = ackKeys.length;
+    const requireReply = disp.require_reply !== false;
+
+    // Check-in status badge
+    let checkInSummaryHtml = '';
+    if (requireReply) {
+      let progressText = `${ackCount} REPLIED`;
+      if (disp.target_device_id === 'ALL') {
+        const totalUnits = Math.max(activeFieldUnits.size, ackCount, 1);
+        const pct = Math.round((ackCount / totalUnits) * 100);
+        progressText = `${ackCount} / ${totalUnits} CHECKED IN (${pct}%)`;
+      } else {
+        progressText = ackCount > 0 ? '🟢 CHECKED IN' : '⏳ AWAITING REPLY';
+      }
+      checkInSummaryHtml = `
+        <span style="font-size: 9px; padding: 2px 6px; border-radius: 2px; font-weight: bold; background: ${ackCount > 0 ? 'rgba(57,255,20,0.15)' : 'rgba(255,170,0,0.15)'}; color: ${ackCount > 0 ? '#39ff14' : '#ffaa00'}; border: 1px solid currentColor;">
+          ${progressText}
+        </span>
+      `;
+    }
+
+    // List responders
+    let respondersHtml = '';
+    if (ackCount > 0) {
+      respondersHtml = '<div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 4px;">';
+      ackKeys.forEach(devId => {
+        const ack = acks[devId];
+        const unitName = escapeHtml(ack.unit_name || devId);
+        const replyType = ack.reply || 'ALL_CLEAR';
+        const note = ack.note ? ` - "${escapeHtml(ack.note)}"` : '';
+        const ackTime = ack.timestamp ? new Date(ack.timestamp).toLocaleTimeString() : '';
+
+        let badge = '<span style="color:#39ff14;">🟢 10-4 ALL CLEAR</span>';
+        if (replyType === 'ASSISTANCE') {
+          badge = '<span style="color:#ffaa00;">🟡 NEED ASSISTANCE</span>';
+        } else if (replyType === 'EMERGENCY') {
+          badge = '<span style="color:#ff3344; font-weight: bold;">🔴 EMERGENCY SOS</span>';
+        }
+
+        let locateBtn = '';
+        if (ack.coords && ack.coords.lat && ack.coords.lng) {
+          locateBtn = `<button type="button" class="btn-secondary" style="font-size: 8px; padding: 1px 4px; margin-left: 6px;" onclick="window.locateCadetOnMap(${ack.coords.lat}, ${ack.coords.lng})" title="Center primary map on responder">[ 📍 LOCATE ]</button>`;
+        }
+
+        respondersHtml += `
+          <div style="font-size: 9px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 3px 6px; border-radius: 2px;">
+            <div>
+              <strong>${unitName}</strong>: ${badge}${note}
+            </div>
+            <div style="color: var(--text-secondary); display: flex; align-items: center;">
+              <span>${ackTime}</span>
+              ${locateBtn}
+            </div>
+          </div>
+        `;
+      });
+      respondersHtml += '</div>';
+    } else if (requireReply) {
+      respondersHtml = '<div style="margin-top: 4px; font-size: 9px; color: var(--text-secondary); font-style: italic;">⏳ Mandatory check-in pending field unit acknowledgment...</div>';
+    }
+
+    // Audio memo tag if voice
+    const voiceTag = disp.audio_base64 ? `
+      <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+        <span style="color: #ffaa00; font-size: 10px;">🎙️ VOICE MEMO (${disp.audio_duration || 0}s):</span>
+        <audio controls src="${disp.audio_base64}" style="height: 24px; filter: invert(0.9); flex: 1;"></audio>
+      </div>
+    ` : '';
+
+    html += `
+      <div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid ${priColor}; padding: 8px; border-radius: 3px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="color: ${priColor}; font-weight: bold; font-size: 9px; border: 1px solid ${priColor}; padding: 1px 4px;">${pri}</span>
+            <strong style="color: #fff; font-size: 11px;">${target}</strong>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            ${checkInSummaryHtml}
+            <span style="color: var(--text-secondary); font-size: 9px;">${timeStr}</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 4px; color: #ddd; font-size: 11px; line-height: 1.3;">
+          ${escapeHtml(disp.message_text || '')}
+        </div>
+
+        ${voiceTag}
+        ${respondersHtml}
+      </div>
+    `;
+  });
+
+  dispatchesTrackerList.innerHTML = html;
+}
+
+// 9. Attach Button Event Listeners
+if (btnCloseDispatchModal) btnCloseDispatchModal.addEventListener('click', closeDispatchCommsModal);
+if (btnCancelDispatch) btnCancelDispatch.addEventListener('click', closeDispatchCommsModal);
+if (quickBtnComms) quickBtnComms.addEventListener('click', () => openDispatchCommsModal());
+if (btnOpenDispatchComms) btnOpenDispatchComms.addEventListener('click', () => openDispatchCommsModal());
+if (btnSendDispatch) btnSendDispatch.addEventListener('click', sendCommandDispatch);
+
+if (btnClearDispatchesLog) {
+  btnClearDispatchesLog.addEventListener('click', () => {
+    if (dispatchesTrackerList) {
+      dispatchesTrackerList.innerHTML = '<div style="color: var(--text-secondary); font-style: italic;">Local view cleared. Awaiting next dispatch...</div>';
+    }
+  });
+}
+
+// Modal Backdrop Click to close
+if (dispatchCommsModal) {
+  dispatchCommsModal.addEventListener('click', (e) => {
+    if (e.target === dispatchCommsModal) closeDispatchCommsModal();
+  });
+}
+
+// Expose globals for onclick handlers in popups and list
+window.openDispatchCommsModal = openDispatchCommsModal;
+window.closeDispatchCommsModal = closeDispatchCommsModal;
+window.locateCadetOnMap = (lat, lng) => {
+  if (primaryMap && lat && lng) {
+    primaryMap.flyTo([lat, lng], 16, { duration: 0.8 });
+    logToFeed(`SYS: FOCUSED PRIMARY MAP ON RESPONDER COORDINATES [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+  }
+};
+
 
 

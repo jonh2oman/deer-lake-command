@@ -1,5 +1,5 @@
 import { db, firebaseReady } from './src/firebase.js'
-import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, deleteDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import L from 'leaflet'
 
 // --- State Variables ---
@@ -128,6 +128,7 @@ if (!dispatcherId) {
 
   addLog(`Secure uplink session ready. ID: ${deviceId.substring(0, 8)}...`);
   addLog(`Connected to Dispatcher Channel: ${dispatcherId.substring(0, 8)}...`);
+  setupDispatchesListener();
 }
 
 // --- Global Error / Rejection Log Hooks ---
@@ -617,3 +618,281 @@ if (btnReset) {
     addLog("Session reset. New device ID registered.");
   });
 }
+
+// =========================================================================
+// TACTICAL COMMS RECEIVER & MANDATORY CHECK-IN SYSTEM
+// =========================================================================
+
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+// Unlock audio on initial user touch or interaction
+window.addEventListener('click', () => getAudioContext(), { once: true });
+window.addEventListener('touchstart', () => getAudioContext(), { once: true });
+
+function playTacticalTone(type = 'roger') {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'flash') {
+      // Emergency siren warble
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(1300, ctx.currentTime + 0.18);
+      osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.36);
+      osc.frequency.linearRampToValueAtTime(1300, ctx.currentTime + 0.54);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.65);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.66);
+    } else if (type === 'priority') {
+      // Two-tone attention signal
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(750, ctx.currentTime);
+      osc.frequency.setValueAtTime(1050, ctx.currentTime + 0.14);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.38);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } else {
+      // Standard tactical radio chirp / roger beep
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, ctx.currentTime);
+      osc.frequency.setValueAtTime(950, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.24);
+    }
+  } catch (err) {
+    console.warn("Tactical tone error", err);
+  }
+}
+
+function speakDispatchMessage(text, priority) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const prefix = priority === 'FLASH' ? "Emergency flash from Central Command: " : "Directive from Central Command: ";
+    const utterance = new SpeechSynthesisUtterance(prefix + text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  } catch(e) {
+    console.warn("TTS playback error", e);
+  }
+}
+
+const incomingAlertModal = document.getElementById('incoming-alert-modal');
+const alertPriorityBadge = document.getElementById('alert-priority-badge');
+const alertTimeTag = document.getElementById('alert-time-tag');
+const alertSenderTag = document.getElementById('alert-sender-tag');
+const alertMessageDisplay = document.getElementById('alert-message-display');
+const alertVoicePlayerBox = document.getElementById('alert-voice-player-box');
+const alertVoiceDuration = document.getElementById('alert-voice-duration');
+const alertIncomingAudio = document.getElementById('alert-incoming-audio');
+const alertMandatoryReplyBox = document.getElementById('alert-mandatory-reply-box');
+const alertDismissBox = document.getElementById('alert-dismiss-box');
+const alertReplyCustomNote = document.getElementById('alert-reply-custom-note');
+const btnAlertAckSimple = document.getElementById('btn-alert-acknowledge-simple');
+const alertReplyBtns = document.querySelectorAll('.btn-alert-reply');
+
+let currentActiveDispatchId = null;
+let handledDispatchIds = new Set();
+
+function setupDispatchesListener() {
+  if (!firebaseReady || !dispatcherId) return;
+
+  const dispatchesQuery = query(
+    collection(db, 'command_dispatches'),
+    where('dispatcher_id', '==', dispatcherId)
+  );
+
+  onSnapshot(dispatchesQuery, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === 'added' || change.type === 'modified') {
+        const dispatch = { id: change.doc.id, ...change.doc.data() };
+        handleIncomingDispatch(dispatch);
+      }
+    });
+  }, (err) => {
+    console.warn("Dispatches listener error", err);
+  });
+}
+
+function handleIncomingDispatch(dispatch) {
+  if (!deviceId) return;
+
+  // Verify targeting: either broadcast 'ALL' or specific deviceId
+  const isTargeted = dispatch.target_device_id === 'ALL' || dispatch.target_device_id === deviceId;
+  if (!isTargeted) return;
+
+  // Check if already acknowledged by this device
+  const hasAcked = dispatch.acks && dispatch.acks[deviceId];
+  if (hasAcked) {
+    if (currentActiveDispatchId === dispatch.id) {
+      closeIncomingAlertModal();
+    }
+    return;
+  }
+
+  // Prevent duplicate alert pops for already processed dispatches in memory
+  if (handledDispatchIds.has(dispatch.id)) return;
+  handledDispatchIds.add(dispatch.id);
+
+  currentActiveDispatchId = dispatch.id;
+
+  // Priority branding
+  const priority = dispatch.priority || 'ROUTINE';
+  if (alertPriorityBadge) {
+    alertPriorityBadge.textContent = priority === 'FLASH' ? '🔴 FLASH EMERGENCY' : priority === 'PRIORITY' ? '🟠 PRIORITY DIRECTIVE' : '⚪ ROUTINE DIRECTIVE';
+    alertPriorityBadge.style.color = priority === 'FLASH' ? '#ff5566' : priority === 'PRIORITY' ? '#ffaa00' : '#39ff14';
+    alertPriorityBadge.style.borderColor = priority === 'FLASH' ? '#ff3344' : priority === 'PRIORITY' ? '#ffaa00' : '#39ff14';
+    alertPriorityBadge.style.background = priority === 'FLASH' ? 'rgba(255,51,68,0.25)' : priority === 'PRIORITY' ? 'rgba(255,170,0,0.25)' : 'rgba(57,255,20,0.2)';
+  }
+
+  if (alertTimeTag) {
+    const d = dispatch.client_timestamp ? new Date(dispatch.client_timestamp) : new Date();
+    alertTimeTag.textContent = d.toTimeString().split(' ')[0] + ' LOC';
+  }
+
+  if (alertSenderTag) {
+    alertSenderTag.textContent = dispatch.sender_name || 'CENTRAL COMMAND';
+  }
+
+  if (alertMessageDisplay) {
+    alertMessageDisplay.textContent = dispatch.message_text || (dispatch.audio_base64 ? '[RADIO VOICE TRANSMISSION INCOMING]' : '[STANDBY FOR DIRECTIVE]');
+    alertMessageDisplay.style.borderLeftColor = priority === 'FLASH' ? '#ff3344' : priority === 'PRIORITY' ? '#ffaa00' : '#39ff14';
+  }
+
+  // Voice player setup if voice recording is attached
+  if (dispatch.audio_base64 && alertVoicePlayerBox && alertIncomingAudio) {
+    alertVoicePlayerBox.style.display = 'block';
+    alertIncomingAudio.src = dispatch.audio_base64;
+    if (alertVoiceDuration) {
+      alertVoiceDuration.textContent = dispatch.audio_duration ? `${dispatch.audio_duration.toFixed(1)}s` : '';
+    }
+    // Attempt auto play
+    alertIncomingAudio.play().catch(e => console.log("Audio autoplay requires user click", e));
+  } else if (alertVoicePlayerBox) {
+    alertVoicePlayerBox.style.display = 'none';
+  }
+
+  // Check mandatory reply requirement
+  const requireReply = dispatch.require_reply !== false;
+  if (alertMandatoryReplyBox) {
+    alertMandatoryReplyBox.style.display = requireReply ? 'block' : 'none';
+  }
+  if (alertDismissBox) {
+    alertDismissBox.style.display = requireReply ? 'none' : 'block';
+  }
+  if (alertReplyCustomNote) {
+    alertReplyCustomNote.value = '';
+  }
+
+  // Vibrate
+  if (navigator.vibrate) {
+    if (priority === 'FLASH') {
+      navigator.vibrate([400, 150, 400, 150, 600]);
+    } else {
+      navigator.vibrate([300, 150, 300]);
+    }
+  }
+
+  // Tactical alert sound tone
+  playTacticalTone(priority.toLowerCase());
+
+  // Text-To-Speech Readout (if enabled and message present)
+  if (dispatch.tts_enabled && dispatch.message_text && !dispatch.audio_base64) {
+    speakDispatchMessage(dispatch.message_text, priority);
+  }
+
+  if (incomingAlertModal) {
+    incomingAlertModal.style.display = 'flex';
+  }
+
+  addLog(`COMMS INCOMING: [${priority}] from Command!`, priority === 'FLASH' ? 'fail' : 'success');
+}
+
+function closeIncomingAlertModal() {
+  if (incomingAlertModal) {
+    incomingAlertModal.style.display = 'none';
+  }
+  if (alertIncomingAudio) {
+    alertIncomingAudio.pause();
+  }
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  currentActiveDispatchId = null;
+}
+
+async function sendAlertReply(replyStatus, customNote = '') {
+  if (!currentActiveDispatchId || !firebaseReady || !deviceId) {
+    closeIncomingAlertModal();
+    return;
+  }
+
+  const cadetName = (cadetNameInput && cadetNameInput.value.trim()) || 'UNIT';
+  const ackPayload = {
+    unit_name: cadetName,
+    reply: replyStatus,
+    note: customNote,
+    timestamp: Date.now(),
+    coords: currentCoords ? [currentCoords.latitude, currentCoords.longitude] : null
+  };
+
+  try {
+    const dispatchRef = doc(db, 'command_dispatches', currentActiveDispatchId);
+    await updateDoc(dispatchRef, {
+      [`acks.${deviceId}`]: ackPayload
+    });
+
+    addLog(`CHECK-IN ACKNOWLEDGED: [${replyStatus}]`, 'success');
+    playTacticalTone('roger');
+
+    // If unit reported emergency, trigger SOS mode locally as well
+    if (replyStatus === 'EMERGENCY SOS' && !isSos && btnSos) {
+      btnSos.click();
+    }
+  } catch (err) {
+    console.error("Failed to send alert acknowledgment", err);
+    addLog(`ACK ERROR: ${err.message}`, 'fail');
+  }
+
+  closeIncomingAlertModal();
+}
+
+// Bind reply buttons
+if (alertReplyBtns && alertReplyBtns.length > 0) {
+  alertReplyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const replyStatus = btn.getAttribute('data-reply') || '10-4 ALL CLEAR';
+      const customNote = (alertReplyCustomNote && alertReplyCustomNote.value.trim()) || '';
+      sendAlertReply(replyStatus, customNote);
+    });
+  });
+}
+
+if (btnAlertAckSimple) {
+  btnAlertAckSimple.addEventListener('click', () => {
+    sendAlertReply('10-4 ACKNOWLEDGED');
+  });
+}
+
