@@ -2,6 +2,7 @@ import 'leaflet/dist/leaflet.css'
 import './style.css'
 import L from 'leaflet'
 import { CANADIAN_FORCES_BASES } from './canadianForcesBases.js'
+import { CADETS_AND_RANGERS } from './canadianCadetsAndRangers.js'
 import { db, auth, firebaseReady } from './src/firebase.js'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import {
@@ -345,6 +346,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       fire: false,
       police: false,
       cfb: true,
+      cjcr: true,
       base: true,
       radar: false
     }
@@ -365,6 +367,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       fire: true,
       police: true,
       cfb: true,
+      cjcr: true,
       base: true,
       radar: false
     }
@@ -385,6 +388,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       fire: false,
       police: false,
       cfb: true,
+      cjcr: true,
       base: true,
       radar: true
     }
@@ -405,6 +409,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       fire: false,
       police: false,
       cfb: true,
+      cjcr: true,
       base: true,
       radar: false
     }
@@ -1265,6 +1270,18 @@ const cfbIconIntl = L.divIcon({
   iconAnchor: [11, 11]
 });
 
+// Canadian Cadets & Canadian Rangers (CJCR) Radar Blip Icons
+const cjcrIconDefault = L.divIcon({ className: 'radar-blip blip-cjcr', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconSea = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-sea', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconArmy = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-army', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconAir = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-air', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconRanger = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-ranger', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconJcr = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-jcr', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconNautical = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-nautical', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconFlying = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-flying', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconCtc = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-ctc', iconSize: [20, 20], iconAnchor: [10, 10] });
+const cjcrIconRcsu = L.divIcon({ className: 'radar-blip blip-cjcr blip-cjcr-rcsu', iconSize: [20, 20], iconAnchor: [10, 10] });
+
 // --- Edit Mode Logic ---
 let isEditMode = false;
 const editToggle = document.getElementById('edit-toggle');
@@ -1589,6 +1606,18 @@ const tacticalCfbLayers = {
 };
 let cfbLayerEnabled = localStorage.getItem('cmd-cfb-layer') !== 'false';
 let currentCfbBranchFilter = 'all';
+
+// Canadian Cadets & Canadian Rangers (CJCR) Layer Groups
+const cjcrLayerPrimary = L.layerGroup();
+const cjcrLayerSecondary = L.layerGroup();
+const tacticalCjcrLayers = {
+  1: L.layerGroup().addTo(secondaryMap1),
+  2: cjcrLayerSecondary.addTo(secondaryMap2),
+  3: L.layerGroup().addTo(secondaryMap3),
+  4: L.layerGroup().addTo(secondaryMap4)
+};
+let cjcrLayerEnabled = localStorage.getItem('cmd-cjcr-layer') !== 'false';
+let currentCjcrTypeFilter = 'all';
 
 // Preloaded Comprehensive Regional Facilities Database
 const EMS_PRELOAD_STATIONS = [
@@ -2176,6 +2205,7 @@ function waitForDataAndRender() {
     }).catch(e => logToFeed(`[DIAG] BUOY ERR: ${e.message}`));
     renderEmsLayers();
     renderCfbLayers();
+    renderCjcrLayers();
   } else if (retryCount < 20) {
     retryCount++;
     setTimeout(waitForDataAndRender, 100);
@@ -2184,6 +2214,7 @@ function waitForDataAndRender() {
     renderBuoys();
     renderEmsLayers();
     renderCfbLayers();
+    renderCjcrLayers();
   }
 }
 
@@ -2476,10 +2507,254 @@ function setupCfbEventListeners() {
   });
 }
 
+// =========================================================================
+// CANADIAN CADETS & CANADIAN RANGERS (CJCR) LAYER LOGIC
+// =========================================================================
+
+function getCjcrIcon(item) {
+  if (item.type === 'sea_cadet') return cjcrIconSea;
+  if (item.type === 'army_cadet') return cjcrIconArmy;
+  if (item.type === 'air_cadet') return cjcrIconAir;
+  if (item.type === 'ranger_patrol') return cjcrIconRanger;
+  if (item.type === 'jcr_patrol') return cjcrIconJcr;
+  if (item.type === 'nautical_site') return cjcrIconNautical;
+  if (item.type === 'flying_site') return cjcrIconFlying;
+  if (item.type === 'ctc') return cjcrIconCtc;
+  if (item.type === 'rcsu') return cjcrIconRcsu;
+  return cjcrIconDefault;
+}
+
+function createCjcrPopupContent(item) {
+  let badgeColor = '#38bdf8';
+  let badgeBg = 'rgba(56, 189, 248, 0.15)';
+  let iconGlyph = '🎖️';
+
+  if (item.type === 'sea_cadet') {
+    badgeColor = '#0099ff';
+    badgeBg = 'rgba(0, 153, 255, 0.15)';
+    iconGlyph = '⚓';
+  } else if (item.type === 'army_cadet') {
+    badgeColor = '#4ade80';
+    badgeBg = 'rgba(74, 222, 128, 0.15)';
+    iconGlyph = '⚔️';
+  } else if (item.type === 'air_cadet') {
+    badgeColor = '#38bdf8';
+    badgeBg = 'rgba(56, 189, 248, 0.15)';
+    iconGlyph = '✈️';
+  } else if (item.type === 'ranger_patrol') {
+    badgeColor = '#e11d48';
+    badgeBg = 'rgba(225, 29, 72, 0.15)';
+    iconGlyph = '🪓';
+  } else if (item.type === 'jcr_patrol') {
+    badgeColor = '#f97316';
+    badgeBg = 'rgba(249, 115, 22, 0.15)';
+    iconGlyph = '🌲';
+  } else if (item.type === 'nautical_site') {
+    badgeColor = '#06b6d4';
+    badgeBg = 'rgba(6, 182, 212, 0.15)';
+    iconGlyph = '⛵';
+  } else if (item.type === 'flying_site') {
+    badgeColor = '#818cf8';
+    badgeBg = 'rgba(129, 140, 248, 0.15)';
+    iconGlyph = '🛩️';
+  } else if (item.type === 'ctc') {
+    badgeColor = '#c084fc';
+    badgeBg = 'rgba(192, 132, 252, 0.15)';
+    iconGlyph = '🏕️';
+  } else if (item.type === 'rcsu') {
+    badgeColor = '#facc15';
+    badgeBg = 'rgba(250, 204, 21, 0.15)';
+    iconGlyph = '🏛️';
+  }
+
+  const corpsHtml = item.corpsNum && item.corpsNum !== 'HQ' && item.corpsNum !== 'CTC' && item.corpsNum !== 'CNS' && item.corpsNum !== 'CFS' && item.corpsNum !== 'JCR'
+    ? `<span style="font-size: 9px; color: ${badgeColor}; font-weight: bold; margin-left: 6px;">[#${escapeHtml(item.corpsNum)}]</span>`
+    : '';
+
+  const detailsHtml = item.details ? `<div style="margin-top: 4px; font-size: 9px; color: #bbb; line-height: 1.35;">${escapeHtml(item.details)}</div>` : '';
+  const locHtml = `<div style="margin-top: 4px; font-size: 9px; color: var(--text-secondary);">📍 ${escapeHtml(item.location || '')}, ${escapeHtml(item.province || '')} (${escapeHtml(item.region || '')} Region)</div>`;
+
+  return `
+    <div style="font-family: var(--hud-font); min-width: 240px; max-width: 290px; padding: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; color: ${badgeColor}; background: ${badgeBg}; border: 1px solid ${badgeColor}; border-radius: 2px;">
+          ${iconGlyph} ${escapeHtml(item.typeLabel || item.type.toUpperCase())}
+        </span>
+        <span style="font-size: 8px; color: var(--text-secondary); font-family: monospace;">CJCR / DND</span>
+      </div>
+      <div style="font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 2px; letter-spacing: 0.5px;">
+        ${escapeHtml(item.name)}${corpsHtml}
+      </div>
+      ${locHtml}
+      ${detailsHtml}
+      <div style="margin-top: 6px; font-size: 9px; color: var(--text-secondary); font-family: monospace;">
+        COORDS: ${item.lat.toFixed(4)}°, ${item.lng.toFixed(4)}°
+      </div>
+      <div style="margin-top: 8px; display: flex; gap: 4px;">
+        <button onclick="window.primaryMap.flyTo([${item.lat}, ${item.lng}], 13, { duration: 1.2 })" style="flex: 1.2; background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ 🎯 TARGET VIEW ]</button>
+        <button onclick="window.primaryMap.flyTo([${item.lat}, ${item.lng}], 8, { duration: 1.0 })" style="flex: 0.8; background: rgba(0,210,255,0.15); border: 1px solid var(--accent-color); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ SECTOR ]</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCjcrLayers() {
+  cjcrLayerPrimary.clearLayers();
+  cjcrLayerSecondary.clearLayers();
+
+  for (let i = 1; i <= 4; i++) {
+    if (tacticalCjcrLayers[i]) {
+      tacticalCjcrLayers[i].clearLayers();
+    }
+  }
+
+  let visibleCount = 0;
+
+  CADETS_AND_RANGERS.forEach(item => {
+    // Check type filter
+    if (currentCjcrTypeFilter !== 'all' && item.type !== currentCjcrTypeFilter) {
+      return;
+    }
+
+    visibleCount++;
+    const icon = getCjcrIcon(item);
+    const popupHtml = createCjcrPopupContent(item);
+
+    // Primary Map Marker
+    const m1 = L.marker([item.lat, item.lng], { icon: icon, zIndexOffset: 450 }).bindPopup(popupHtml);
+    m1.cjcrData = item;
+    cjcrLayerPrimary.addLayer(m1);
+
+    // Secondary Map 2 Marker
+    const m2 = L.marker([item.lat, item.lng], { icon: icon }).bindPopup(popupHtml);
+    cjcrLayerSecondary.addLayer(m2);
+
+    // Tactical mini-maps 1-4
+    for (let i = 1; i <= 4; i++) {
+      const cfg = tacticalViewsConfig[i - 1];
+      if (cfg && cfg.enabled && cfg.layers && cfg.layers.cjcr !== false && tacticalCjcrLayers[i]) {
+        const miniMarker = L.marker([item.lat, item.lng], { icon: icon }).bindPopup(popupHtml);
+        tacticalCjcrLayers[i].addLayer(miniMarker);
+      }
+    }
+  });
+
+  const countBadge = document.getElementById('cjcr-count-badge');
+  if (countBadge) countBadge.textContent = `${visibleCount} SITES`;
+
+  const settingsCountBadge = document.getElementById('settings-cjcr-count-badge');
+  if (settingsCountBadge) settingsCountBadge.textContent = `${visibleCount} SITES`;
+
+  updateCjcrLayerVisibility();
+}
+
+function updateCjcrLayerVisibility() {
+  if (cjcrLayerEnabled) {
+    if (!primaryMap.hasLayer(cjcrLayerPrimary)) primaryMap.addLayer(cjcrLayerPrimary);
+    if (!secondaryMap2.hasLayer(cjcrLayerSecondary)) secondaryMap2.addLayer(cjcrLayerSecondary);
+  } else {
+    if (primaryMap.hasLayer(cjcrLayerPrimary)) primaryMap.removeLayer(cjcrLayerPrimary);
+    if (!secondaryMap2.hasLayer(cjcrLayerSecondary)) secondaryMap2.removeLayer(cjcrLayerSecondary);
+  }
+
+  // Update Tactical Views
+  for (let i = 1; i <= 4; i++) {
+    const cfg = tacticalViewsConfig[i - 1];
+    const miniMap = i === 1 ? secondaryMap1 : i === 2 ? secondaryMap2 : i === 3 ? secondaryMap3 : secondaryMap4;
+    const lyr = tacticalCjcrLayers[i];
+    if (lyr && miniMap) {
+      if (cjcrLayerEnabled && (!cfg || !cfg.layers || cfg.layers.cjcr !== false)) {
+        if (!miniMap.hasLayer(lyr)) miniMap.addLayer(lyr);
+      } else {
+        if (miniMap.hasLayer(lyr)) miniMap.removeLayer(lyr);
+      }
+    }
+  }
+
+  // Sync Quick HUD Button
+  const quickBtnCjcr = document.getElementById('quick-btn-cjcr');
+  if (quickBtnCjcr) {
+    quickBtnCjcr.classList.toggle('active', cjcrLayerEnabled);
+  }
+
+  // Sync Sidebar Main Toggle Button
+  const cjcrMainToggleBtn = document.getElementById('cjcr-main-toggle-btn');
+  if (cjcrMainToggleBtn) {
+    cjcrMainToggleBtn.textContent = cjcrLayerEnabled ? '[ ON ]' : '[ OFF ]';
+    cjcrMainToggleBtn.classList.toggle('active', cjcrLayerEnabled);
+    cjcrMainToggleBtn.style.color = cjcrLayerEnabled ? '#38bdf8' : '#666';
+    cjcrMainToggleBtn.style.borderColor = cjcrLayerEnabled ? '#38bdf8' : 'rgba(255,255,255,0.2)';
+  }
+
+  // Sync Settings Modal toggle
+  const cjcrSettingsToggle = document.getElementById('cjcr-toggle');
+  if (cjcrSettingsToggle) {
+    cjcrSettingsToggle.checked = cjcrLayerEnabled;
+  }
+
+  // Persist state
+  localStorage.setItem('cmd-cjcr-layer', cjcrLayerEnabled);
+}
+
+function toggleCjcrLayer(targetState) {
+  if (typeof targetState === 'boolean') {
+    cjcrLayerEnabled = targetState;
+  } else {
+    cjcrLayerEnabled = !cjcrLayerEnabled;
+  }
+  updateCjcrLayerVisibility();
+  logToFeed(`CJCR: CADETS, RANGERS & CTCs LAYER ${cjcrLayerEnabled ? 'ONLINE' : 'OFFLINE'}`);
+}
+window.toggleCjcrLayer = toggleCjcrLayer;
+
+function setupCjcrEventListeners() {
+  const quickBtnCjcr = document.getElementById('quick-btn-cjcr');
+  const cjcrMainToggleBtn = document.getElementById('cjcr-main-toggle-btn');
+  const cjcrSettingsToggle = document.getElementById('cjcr-toggle');
+
+  if (quickBtnCjcr) {
+    quickBtnCjcr.addEventListener('click', () => toggleCjcrLayer());
+  }
+
+  if (cjcrMainToggleBtn) {
+    cjcrMainToggleBtn.addEventListener('click', () => toggleCjcrLayer());
+  }
+
+  if (cjcrSettingsToggle) {
+    cjcrSettingsToggle.addEventListener('change', (e) => {
+      toggleCjcrLayer(e.target.checked);
+    });
+  }
+
+  // Type filter chips
+  const filterChips = document.querySelectorAll('.cjcr-chip-btn');
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const type = chip.getAttribute('data-type') || 'all';
+      currentCjcrTypeFilter = type;
+
+      // Update chips UI
+      filterChips.forEach(c => {
+        if (c === chip) {
+          c.classList.add('active');
+          c.classList.remove('inactive');
+        } else {
+          c.classList.remove('active');
+          c.classList.add('inactive');
+        }
+      });
+
+      renderCjcrLayers();
+      logToFeed(`CJCR: FILTER SET TO [${type.toUpperCase()}]`);
+    });
+  });
+}
+
 // Start data polling & attach event listeners
 waitForDataAndRender();
 setupEmsEventListeners();
 setupCfbEventListeners();
+setupCjcrEventListeners();
 
 setTimeout(() => {
   primaryMap.invalidateSize();
@@ -3904,6 +4179,8 @@ window.addEventListener('keydown', (e) => {
     if (quickBtnAudio) quickBtnAudio.click();
   } else if (e.code === 'KeyB') {
     toggleCfbLayer();
+  } else if (e.code === 'KeyC') {
+    toggleCjcrLayer();
   } else if (e.code === 'KeyS') {
     if (activeSosRecord && primaryMap) {
       primaryMap.flyTo([activeSosRecord.latitude, activeSosRecord.longitude], 16, { duration: 0.8 });
@@ -4464,6 +4741,7 @@ function applyAllTacticalViews() {
   if (typeof renderBuoys === 'function') renderBuoys();
   if (typeof renderEmsLayers === 'function') renderEmsLayers();
   if (typeof renderCfbLayers === 'function') renderCfbLayers();
+  if (typeof renderCjcrLayers === 'function') renderCjcrLayers();
   renderAllCadetsOnTacticalViews();
 }
 
@@ -4487,6 +4765,7 @@ const tacLayerHospitals = document.getElementById('tac-layer-hospitals');
 const tacLayerFire = document.getElementById('tac-layer-fire');
 const tacLayerPolice = document.getElementById('tac-layer-police');
 const tacLayerCfb = document.getElementById('tac-layer-cfb');
+const tacLayerCjcr = document.getElementById('tac-layer-cjcr');
 const tacLayerBase = document.getElementById('tac-layer-base');
 const tacLayerRadar = document.getElementById('tac-layer-radar');
 
@@ -4558,6 +4837,7 @@ function openTacticalViewModal(viewId = 1) {
   if (tacLayerFire) tacLayerFire.checked = !!l.fire;
   if (tacLayerPolice) tacLayerPolice.checked = !!l.police;
   if (tacLayerCfb) tacLayerCfb.checked = l.cfb !== false;
+  if (tacLayerCjcr) tacLayerCjcr.checked = l.cjcr !== false;
   if (tacLayerBase) tacLayerBase.checked = l.base !== false;
   if (tacLayerRadar) tacLayerRadar.checked = !!l.radar;
 
@@ -4715,6 +4995,7 @@ if (btnSaveTacView) {
       fire: tacLayerFire ? tacLayerFire.checked : false,
       police: tacLayerPolice ? tacLayerPolice.checked : false,
       cfb: tacLayerCfb ? tacLayerCfb.checked : true,
+      cjcr: tacLayerCjcr ? tacLayerCjcr.checked : true,
       base: tacLayerBase ? tacLayerBase.checked : true,
       radar: tacLayerRadar ? tacLayerRadar.checked : false
     };

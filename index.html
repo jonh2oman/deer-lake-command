@@ -64,6 +64,7 @@
           <div class="tactical-quick-bar hdr-quick-bar">
             <button id="quick-btn-recenter" class="quick-hud-btn" title="Recenter Base (Space)">[ 🎯 CENTER ]</button>
             <button id="quick-btn-cfb" class="quick-hud-btn active" title="Toggle Canadian Forces Bases Layer (B)">[ 🍁 CFB ]</button>
+            <button id="quick-btn-cjcr" class="quick-hud-btn active" title="Toggle Cadets, Rangers & CTCs Layer (C)">[ 🎖️ CADETS/RANGERS ]</button>
             <button id="quick-btn-wind" class="quick-hud-btn active" title="Wind Telemetry HUD Banner (Focus W)">[ 💨 WIND ]</button>
             <button id="quick-btn-rangefinder" class="quick-hud-btn" title="Tactical Range & Bearing Vector (X)">[ 📐 RANGE ]</button>
             <button id="quick-btn-export" class="quick-hud-btn" title="Export Mission Data (GeoJSON)">[ 💾 EXPORT ]</button>
@@ -249,6 +250,29 @@
                   <button id="cfb-filter-rcn" class="cfb-chip-btn active" data-branch="rcn" style="flex: 1; text-align: center; color: #00ffcc; border-color: #00ffcc;" title="Royal Canadian Navy Fleet Bases">[ ⚓ NAVY ]</button>
                   <button id="cfb-filter-arctic" class="cfb-chip-btn active" data-branch="arctic" style="flex: 1; text-align: center; color: #ffffff; border-color: #ffffff;" title="High Arctic & Northern Bases">[ ❄ ARCTIC ]</button>
                   <button id="cfb-filter-intl" class="cfb-chip-btn active" data-branch="international" style="flex: 1; text-align: center; color: #ffbb00; border-color: #ffbb00;" title="Overseas Bases & Support Hubs">[ 🌐 OVERSEAS ]</button>
+                </div>
+              </div>
+
+              <!-- Cadets, Canadian Rangers & CTCs Dedicated Layer Controls -->
+              <div class="cjcr-quick-section" style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 8px; font-weight: bold; color: #38bdf8; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px;">
+                    <span>🎖️ CADETS, RANGERS & CTCs</span>
+                    <span id="cjcr-count-badge" style="font-size: 8px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 4px; border-radius: 2px; border: 1px solid rgba(56, 189, 248, 0.4);">96 SITES</span>
+                  </span>
+                  <button id="cjcr-main-toggle-btn" class="btn-secondary active" style="font-size: 8px; padding: 1px 6px; border-color: #38bdf8; color: #38bdf8; cursor: pointer;" title="Toggle Cadets, Rangers & CTCs Layer">[ ON ]</button>
+                </div>
+                <div class="cjcr-filter-chips" style="display: flex; gap: 3px; flex-wrap: wrap;">
+                  <button id="cjcr-filter-all" class="cjcr-chip-btn active" data-type="all" style="flex: 1 1 28%; text-align: center;">[ ALL (96) ]</button>
+                  <button id="cjcr-filter-air" class="cjcr-chip-btn active" data-type="air_cadet" style="flex: 1 1 20%; text-align: center; color: #38bdf8; border-color: #38bdf8;" title="Royal Canadian Air Cadets">[ ✈ AIR ]</button>
+                  <button id="cjcr-filter-army" class="cjcr-chip-btn active" data-type="army_cadet" style="flex: 1 1 20%; text-align: center; color: #4ade80; border-color: #4ade80;" title="Royal Canadian Army Cadets">[ ⚔ ARMY ]</button>
+                  <button id="cjcr-filter-sea" class="cjcr-chip-btn active" data-type="sea_cadet" style="flex: 1 1 20%; text-align: center; color: #0099ff; border-color: #0099ff;" title="Royal Canadian Sea Cadets">[ ⚓ SEA ]</button>
+                  <button id="cjcr-filter-ranger" class="cjcr-chip-btn active" data-type="ranger_patrol" style="flex: 1 1 28%; text-align: center; color: #e11d48; border-color: #e11d48;" title="Canadian Ranger Patrols (1-5 CRPG)">[ 🪓 RANGER ]</button>
+                  <button id="cjcr-filter-jcr" class="cjcr-chip-btn active" data-type="jcr_patrol" style="flex: 1 1 20%; text-align: center; color: #f97316; border-color: #f97316;" title="Junior Canadian Rangers">[ 🌲 JCR ]</button>
+                  <button id="cjcr-filter-ctc" class="cjcr-chip-btn active" data-type="ctc" style="flex: 1 1 20%; text-align: center; color: #c084fc; border-color: #c084fc;" title="Summer Cadet Training Centres">[ 🏕️ CTC ]</button>
+                  <button id="cjcr-filter-flying" class="cjcr-chip-btn active" data-type="flying_site" style="flex: 1 1 28%; text-align: center; color: #818cf8; border-color: #818cf8;" title="Cadet Flying & Gliding Sites">[ 🛩️ GLIDE ]</button>
+                  <button id="cjcr-filter-nautical" class="cjcr-chip-btn active" data-type="nautical_site" style="flex: 1 1 28%; text-align: center; color: #06b6d4; border-color: #06b6d4;" title="Cadet Nautical Sites">[ ⛵ SAIL ]</button>
+                  <button id="cjcr-filter-rcsu" class="cjcr-chip-btn active" data-type="rcsu" style="flex: 1 1 28%; text-align: center; color: #facc15; border-color: #facc15;" title="Regional Cadet Support Units">[ 🏛️ RCSU ]</button>
                 </div>
               </div>
             </div>
@@ -594,6 +618,10 @@
               <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #ff3344; cursor: pointer; grid-column: span 2;">
                 <input type="checkbox" id="tac-layer-cfb" checked>
                 <span>🍁 CANADIAN FORCES BASES (CFB)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #38bdf8; cursor: pointer; grid-column: span 2;">
+                <input type="checkbox" id="tac-layer-cjcr" checked>
+                <span>🎖️ CADETS, RANGERS & CTCs</span>
               </label>
             </div>
           </div>
@@ -1169,6 +1197,22 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Cadets, Canadian Rangers & CTCs Toggle -->
+              <div class="radar-control" style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; margin-top: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                  <span style="font-size: 10px; color: #38bdf8; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+                    <span>🎖️ CADETS, CANADIAN RANGERS & CTCs</span>
+                    <span id="settings-cjcr-count-badge" style="font-size: 8px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 4px; border-radius: 2px; border: 1px solid rgba(56, 189, 248, 0.4);">96 SITES</span>
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="cjcr-toggle" checked>
+                      <span class="slider" style="background-color: #38bdf8;"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1315,6 +1359,10 @@
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
             <span style="color: #ff3344; font-weight: bold;"><kbd style="background: rgba(255,51,68,0.15); border: 1px solid rgba(255,51,68,0.4); padding: 1px 5px; border-radius: 3px;">B</kbd></span>
             <span style="color: var(--text-primary);">Toggle Canadian Forces Bases Layer (52 Sites)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
+            <span style="color: #38bdf8; font-weight: bold;"><kbd style="background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); padding: 1px 5px; border-radius: 3px;">C</kbd></span>
+            <span style="color: var(--text-primary);">Toggle Cadets, Rangers & CTCs Layer (96 Sites)</span>
           </div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
             <span style="color: var(--accent-color); font-weight: bold;"><kbd style="background: rgba(0,210,255,0.15); border: 1px solid var(--border-color); padding: 1px 5px; border-radius: 3px;">W</kbd></span>
