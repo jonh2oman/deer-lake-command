@@ -299,35 +299,22 @@ const minimapOptions = {
   zoomAnimation: false
 };
 
-// Buoys Map is independent and focused on the lake
-const secondaryMap1 = L.map('secondary-map-1', {
-  zoomControl: true,
-  zoomAnimation: false
-}).setView([49.0342, -57.5955], 14); // Centered on Buoys
+// Tactical Secondary Maps 1..4 (Limit of 4 customizable views)
+const secondaryMap1 = L.map('secondary-map-1', { zoomControl: true, zoomAnimation: false }).setView([49.0342, -57.5955], 14);
+const secondaryMap2 = L.map('secondary-map-2', { zoomControl: true, zoomAnimation: false }).setView([initialStationProfile.lat, initialStationProfile.lng], 13);
+const secondaryMap3 = L.map('secondary-map-3', { zoomControl: true, zoomAnimation: false }).setView([48.5, -56.0], 6);
+const secondaryMap4 = L.map('secondary-map-4', { zoomControl: true, zoomAnimation: false }).setView([initialStationProfile.lat, initialStationProfile.lng], 15);
 
-// EMS Map is independent and focused on station area emergency services
-const secondaryMap2 = L.map('secondary-map-2', {
-  zoomControl: true,
-  zoomAnimation: false
-}).setView([initialStationProfile.lat, initialStationProfile.lng], 13);
+// Active SOS Alerts Map is strictly dedicated to active distress signals (Surrounded in red, unchangeable)
+const secondaryMap5 = L.map('secondary-map-5', { zoomControl: true, zoomAnimation: false }).setView([initialStationProfile.lat, initialStationProfile.lng], 14);
 
-// Radar Map is independent and interactive
-const secondaryMap3 = L.map('secondary-map-3', {
-  zoomControl: true,
-  zoomAnimation: false
-}).setView([48.5, -56.0], 6); // Centered on Newfoundland
-
-// Forestry Map is independent and focused on Pasadena Forestry Center
-const secondaryMap4 = L.map('secondary-map-4', {
-  zoomControl: true,
-  zoomAnimation: false
-}).setView([49.0149167, -57.5865278], 15); // Centered on Pasadena Forestry Center
-
-// Active SOS Alerts Map is focused on active distress signals
-const secondaryMap5 = L.map('secondary-map-5', {
-  zoomControl: true,
-  zoomAnimation: false
-}).setView([initialStationProfile.lat, initialStationProfile.lng], 14);
+const secondaryMaps = {
+  1: secondaryMap1,
+  2: secondaryMap2,
+  3: secondaryMap3,
+  4: secondaryMap4,
+  5: secondaryMap5
+};
 
 // Feature: Click any minimap to sync the primary map to its exact view
 [secondaryMap1, secondaryMap2, secondaryMap3, secondaryMap4, secondaryMap5].forEach(miniMap => {
@@ -339,6 +326,134 @@ const secondaryMap5 = L.map('secondary-map-5', {
   });
 });
 
+// --- Tactical Views Data & Layer Architecture ---
+const DEFAULT_TACTICAL_VIEWS = [
+  {
+    id: 1,
+    name: "TACTICAL VIEW 1: BUOYS",
+    enabled: true,
+    lat: 49.0342,
+    lng: -57.5955,
+    zoom: 14,
+    mapType: 'dark',
+    color: '#00e5ff',
+    layers: {
+      cadets: true,
+      buoys: true,
+      hospitals: false,
+      fire: false,
+      police: false,
+      base: true,
+      radar: false
+    }
+  },
+  {
+    id: 2,
+    name: "TACTICAL VIEW 2: EMERGENCY SVCS",
+    enabled: true,
+    lat: initialStationProfile.lat,
+    lng: initialStationProfile.lng,
+    zoom: 13,
+    mapType: 'dark',
+    color: '#ffaa00',
+    layers: {
+      cadets: true,
+      buoys: false,
+      hospitals: true,
+      fire: true,
+      police: true,
+      base: true,
+      radar: false
+    }
+  },
+  {
+    id: 3,
+    name: "TACTICAL VIEW 3: DOPPLER RADAR",
+    enabled: true,
+    lat: 48.5,
+    lng: -56.0,
+    zoom: 6,
+    mapType: 'dark',
+    color: '#00ff66',
+    layers: {
+      cadets: true,
+      buoys: false,
+      hospitals: false,
+      fire: false,
+      police: false,
+      base: true,
+      radar: true
+    }
+  },
+  {
+    id: 4,
+    name: "TACTICAL VIEW 4: PERIMETER",
+    enabled: true,
+    lat: initialStationProfile.lat,
+    lng: initialStationProfile.lng,
+    zoom: 15,
+    mapType: 'satellite',
+    color: '#3388ff',
+    layers: {
+      cadets: true,
+      buoys: true,
+      hospitals: false,
+      fire: false,
+      police: false,
+      base: true,
+      radar: false
+    }
+  }
+];
+
+function loadTacticalViewsConfig() {
+  try {
+    const raw = localStorage.getItem('cmd-tactical-views-config');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === 4) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load tactical views config:", e);
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_TACTICAL_VIEWS));
+}
+
+function saveTacticalViewsConfig() {
+  localStorage.setItem('cmd-tactical-views-config', JSON.stringify(tacticalViewsConfig));
+}
+
+let tacticalViewsConfig = loadTacticalViewsConfig();
+
+const tacticalTileLayers = { 1: null, 2: null, 3: null, 4: null };
+const tacticalRadarLayers = { 1: null, 2: null, 3: null, 4: null };
+let rainviewerRadarUrl = null;
+
+function applyTacticalViewTile(viewId) {
+  const config = tacticalViewsConfig[viewId - 1];
+  const miniMap = secondaryMaps[viewId];
+  if (!miniMap || !config) return;
+
+  if (tacticalTileLayers[viewId]) {
+    miniMap.removeLayer(tacticalTileLayers[viewId]);
+    tacticalTileLayers[viewId] = null;
+  }
+
+  const themeKey = config.mapType || 'dark';
+  const url = MAP_THEMES[themeKey] || MAP_THEMES.dark;
+
+  let maxNative = 20;
+  if (themeKey === 'sea') maxNative = 13;
+  if (themeKey === 'satellite') maxNative = 15;
+  if (themeKey === 'google-satellite') maxNative = 19;
+  if (themeKey === 'street') maxNative = 19;
+  if (themeKey === 'topo') maxNative = 17;
+
+  tacticalTileLayers[viewId] = L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(miniMap);
+}
+
 let currentTiles = [];
 
 function setMapTiles(themeKey) {
@@ -346,19 +461,20 @@ function setMapTiles(themeKey) {
   
   let maxNative = 20;
   if (themeKey === 'sea') maxNative = 13;
-  if (themeKey === 'satellite') maxNative = 15; // ESRI Max resolution in rural areas is 15; stretching beyond prevents error tiles
-  if (themeKey === 'google-satellite') maxNative = 19; // Google has high-res imagery up to zoom 19 in this region
+  if (themeKey === 'satellite') maxNative = 15;
+  if (themeKey === 'google-satellite') maxNative = 19;
   if (themeKey === 'street') maxNative = 19;
   if (themeKey === 'topo') maxNative = 17;
   
   currentTiles.forEach(t => t.remove());
   currentTiles = [];
   currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(primaryMap));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap1));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap2));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap3));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap4));
-  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap5));
+  currentTiles.push(L.tileLayer(url, { maxZoom: 24, maxNativeZoom: maxNative, zIndex: 1 }).addTo(secondaryMap5)); // SOS view
+
+  // Re-apply individual custom basemap tiles for the 4 tactical views
+  for (let i = 1; i <= 4; i++) {
+    applyTacticalViewTile(i);
+  }
 }
 
 // --- Theme Switcher Logic ---
@@ -579,13 +695,19 @@ async function loadRadarMinimap() {
     const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
     const data = await res.json();
     const latestPath = data.radar.past[data.radar.past.length - 1].path;
-    const radarUrl = `${data.host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`;
+    rainviewerRadarUrl = `${data.host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`;
     
-    L.tileLayer(radarUrl, { 
-      opacity: 0.8, 
-      zIndex: 1000,
-      maxNativeZoom: 12 
-    }).addTo(secondaryMap3);
+    for (let i = 1; i <= 4; i++) {
+      if (tacticalViewsConfig[i - 1] && tacticalViewsConfig[i - 1].enabled && tacticalViewsConfig[i - 1].layers && tacticalViewsConfig[i - 1].layers.radar) {
+        if (!tacticalRadarLayers[i]) {
+          tacticalRadarLayers[i] = L.tileLayer(rainviewerRadarUrl, { 
+            opacity: 0.8, 
+            zIndex: 1000,
+            maxNativeZoom: 12 
+          }).addTo(secondaryMaps[i]);
+        }
+      }
+    }
   } catch (e) {
     console.error("Minimap Radar Error:", e);
   }
@@ -1256,13 +1378,22 @@ document.getElementById('btn-gps-deploy').addEventListener('click', () => {
 const buoysLayerPrimary = L.layerGroup().addTo(primaryMap);
 const buoysLayerSecondary = L.layerGroup().addTo(secondaryMap1);
 
+const tacticalBuoysLayers = {
+  1: buoysLayerSecondary,
+  2: L.layerGroup().addTo(secondaryMap2),
+  3: L.layerGroup().addTo(secondaryMap3),
+  4: L.layerGroup().addTo(secondaryMap4)
+};
+
 const sosLayerSecondary = L.layerGroup().addTo(secondaryMap5);
 const sosMarkersSecondary = new Map();
 
 async function renderBuoys() {
   logToFeed('[TRACE] renderBuoys started');
   buoysLayerPrimary.clearLayers();
-  buoysLayerSecondary.clearLayers();
+  for (let i = 1; i <= 4; i++) {
+    if (tacticalBuoysLayers[i]) tacticalBuoysLayers[i].clearLayers();
+  }
   
   const defaultBuoysToggle = document.getElementById('default-buoys-toggle');
   const showDefault = defaultBuoysToggle ? defaultBuoysToggle.checked : true;
@@ -1355,9 +1486,13 @@ async function renderBuoys() {
       onEachFeature: onFeatureClick
     }).addTo(buoysLayerPrimary);
 
-    const geojsonSecondary = L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
-      pointToLayer: (feature, latlng) => L.marker(latlng, { icon: getCustomIcon(feature) })
-    }).addTo(buoysLayerSecondary);
+    for (let i = 1; i <= 4; i++) {
+      if (tacticalViewsConfig[i - 1] && tacticalViewsConfig[i - 1].enabled && tacticalViewsConfig[i - 1].layers && tacticalViewsConfig[i - 1].layers.buoys && visibleFeatures.length > 0) {
+        L.geoJSON({ type: "FeatureCollection", features: visibleFeatures }, {
+          pointToLayer: (feature, latlng) => L.marker(latlng, { icon: getCustomIcon(feature) })
+        }).addTo(tacticalBuoysLayers[i]);
+      }
+    }
 
     if (visibleFeatures.length > 0) {
       setTimeout(() => {
@@ -1389,6 +1524,13 @@ const policeLayerPrimary = L.layerGroup();
 const hospitalLayerSecondary = L.layerGroup();
 const fireLayerSecondary = L.layerGroup();
 const policeLayerSecondary = L.layerGroup();
+
+const tacticalEmsLayers = {
+  1: { hospital: L.layerGroup().addTo(secondaryMap1), fire: L.layerGroup().addTo(secondaryMap1), police: L.layerGroup().addTo(secondaryMap1) },
+  2: { hospital: hospitalLayerSecondary.addTo(secondaryMap2), fire: fireLayerSecondary.addTo(secondaryMap2), police: policeLayerSecondary.addTo(secondaryMap2) },
+  3: { hospital: L.layerGroup().addTo(secondaryMap3), fire: L.layerGroup().addTo(secondaryMap3), police: L.layerGroup().addTo(secondaryMap3) },
+  4: { hospital: L.layerGroup().addTo(secondaryMap4), fire: L.layerGroup().addTo(secondaryMap4), police: L.layerGroup().addTo(secondaryMap4) }
+};
 
 let emsHospitalsEnabled = localStorage.getItem('cmd-ems-hospitals') !== 'false';
 let emsFireEnabled = localStorage.getItem('cmd-ems-fire') !== 'false';
@@ -1506,6 +1648,14 @@ function renderEmsLayers() {
   fireLayerSecondary.clearLayers();
   policeLayerSecondary.clearLayers();
 
+  for (let i = 1; i <= 4; i++) {
+    if (tacticalEmsLayers[i]) {
+      tacticalEmsLayers[i].hospital.clearLayers();
+      tacticalEmsLayers[i].fire.clearLayers();
+      tacticalEmsLayers[i].police.clearLayers();
+    }
+  }
+
   emsPrimaryMarkers.clear();
 
   allEmsStations.forEach(st => {
@@ -1532,6 +1682,19 @@ function renderEmsLayers() {
 
     const m2 = L.marker([st.lat, st.lng], { icon: icon }).bindPopup(popupHtml);
     targetSecondary.addLayer(m2);
+
+    for (let i = 1; i <= 4; i++) {
+      const cfg = tacticalViewsConfig[i - 1];
+      if (cfg && cfg.enabled && cfg.layers && tacticalEmsLayers[i]) {
+        if (st.type === 'hospital' && cfg.layers.hospitals) {
+          tacticalEmsLayers[i].hospital.addLayer(L.marker([st.lat, st.lng], { icon: hospitalIcon }).bindPopup(popupHtml));
+        } else if (st.type === 'fire' && cfg.layers.fire) {
+          tacticalEmsLayers[i].fire.addLayer(L.marker([st.lat, st.lng], { icon: fireIcon }).bindPopup(popupHtml));
+        } else if (st.type === 'police' && cfg.layers.police) {
+          tacticalEmsLayers[i].police.addLayer(L.marker([st.lat, st.lng], { icon: policeIcon }).bindPopup(popupHtml));
+        }
+      }
+    }
   });
 
   updateEmsLayerVisibility();
@@ -2852,6 +3015,9 @@ function handleCadetLocationUpdate(payload) {
     // Process SOS tracking update
     updateSosMinimap(newRecord, latlng, id, name, status);
   }
+  if (typeof renderAllCadetsOnTacticalViews === 'function') {
+    renderAllCadetsOnTacticalViews();
+  }
   updateCadetsHudList();
 }
 
@@ -3897,5 +4063,414 @@ function exportMissionData() {
 
 if (quickBtnExport) quickBtnExport.addEventListener('click', exportMissionData);
 if (btnExportMission) btnExportMission.addEventListener('click', exportMissionData);
+
+// ============================================================================
+// --- CUSTOMIZABLE TACTICAL VIEWS MODULE (MAX 4 VIEWS + DEDICATED SOS VIEW) ---
+// ============================================================================
+
+const tacticalCadetLayers = {
+  1: L.layerGroup().addTo(secondaryMap1),
+  2: L.layerGroup().addTo(secondaryMap2),
+  3: L.layerGroup().addTo(secondaryMap3),
+  4: L.layerGroup().addTo(secondaryMap4)
+};
+const tacticalCadetMarkers = { 1: new Map(), 2: new Map(), 3: new Map(), 4: new Map() };
+
+const tacticalBaseLayers = {
+  1: L.layerGroup().addTo(secondaryMap1),
+  2: L.layerGroup().addTo(secondaryMap2),
+  3: L.layerGroup().addTo(secondaryMap3),
+  4: L.layerGroup().addTo(secondaryMap4)
+};
+
+function renderAllCadetsOnTacticalViews() {
+  for (let viewId = 1; viewId <= 4; viewId++) {
+    const config = tacticalViewsConfig[viewId - 1];
+    tacticalCadetLayers[viewId].clearLayers();
+    tacticalCadetMarkers[viewId].clear();
+
+    if (config && config.enabled && config.layers && config.layers.cadets) {
+      cadetMarkers.forEach((marker, id) => {
+        const cadet = marker.cadetData;
+        if (!cadet || cadet.latitude === undefined || cadet.longitude === undefined) return;
+        const latlng = [cadet.latitude, cadet.longitude];
+        const m = L.marker(latlng, { icon: getCadetIcon(cadet) }).addTo(tacticalCadetLayers[viewId]);
+        m.bindPopup(formatCadetPopup(id, cadet));
+        tacticalCadetMarkers[viewId].set(id, m);
+      });
+    }
+  }
+}
+
+function applyTacticalView(viewId) {
+  const config = tacticalViewsConfig[viewId - 1];
+  const miniMap = secondaryMaps[viewId];
+  const panel = document.getElementById(`panel-tactical-${viewId}`);
+  if (!panel || !miniMap || !config) return;
+
+  // 1. Enable / Disable Panel Visibility
+  if (!config.enabled) {
+    panel.style.display = 'none';
+    return;
+  } else {
+    panel.style.display = '';
+  }
+
+  // 2. Custom Title & Theme Accent Color
+  const titleEl = document.getElementById(`tactical-title-${viewId}`);
+  const color = config.color || '#00e5ff';
+  if (titleEl) {
+    titleEl.textContent = config.name.toUpperCase();
+    titleEl.style.color = color;
+    titleEl.style.textShadow = `0 0 6px ${color}80`;
+  }
+  const minimapEl = document.getElementById(`secondary-map-${viewId}`);
+  if (minimapEl) {
+    minimapEl.style.borderColor = color;
+    minimapEl.style.boxShadow = `0 0 10px ${color}35`;
+  }
+
+  // 3. Location & Zoom
+  miniMap.setView([config.lat, config.lng], config.zoom);
+
+  // 4. Map Tiles
+  applyTacticalViewTile(viewId);
+
+  // 5. Radar Overlay
+  if (config.layers && config.layers.radar && rainviewerRadarUrl) {
+    if (!tacticalRadarLayers[viewId]) {
+      tacticalRadarLayers[viewId] = L.tileLayer(rainviewerRadarUrl, {
+        opacity: 0.8,
+        zIndex: 1000,
+        maxNativeZoom: 12
+      }).addTo(miniMap);
+    }
+  } else {
+    if (tacticalRadarLayers[viewId]) {
+      miniMap.removeLayer(tacticalRadarLayers[viewId]);
+      tacticalRadarLayers[viewId] = null;
+    }
+  }
+
+  // 6. Base Command Pin
+  tacticalBaseLayers[viewId].clearLayers();
+  if (config.layers && config.layers.base) {
+    const prof = getStationProfile();
+    const baseIcon = L.divIcon({
+      className: 'tactical-base-blip',
+      html: `<div style="width: 12px; height: 12px; background: ${color}; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 8px ${color};"></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+    L.marker([prof.lat, prof.lng], { icon: baseIcon })
+      .bindPopup(`<strong>${prof.name} COMMAND BASE</strong><br/>${prof.lat.toFixed(5)}, ${prof.lng.toFixed(5)}`)
+      .addTo(tacticalBaseLayers[viewId]);
+  }
+
+  setTimeout(() => miniMap.invalidateSize(), 50);
+}
+
+function applyAllTacticalViews() {
+  for (let i = 1; i <= 4; i++) {
+    applyTacticalView(i);
+    const settingsLbl = document.getElementById(`settings-tac-label-${i}`);
+    if (settingsLbl) {
+      settingsLbl.textContent = `${tacticalViewsConfig[i - 1].name.toUpperCase()} ${tacticalViewsConfig[i - 1].enabled ? '' : '[OFF]'}`;
+    }
+  }
+  if (typeof renderBuoys === 'function') renderBuoys();
+  if (typeof renderEmsLayers === 'function') renderEmsLayers();
+  renderAllCadetsOnTacticalViews();
+}
+
+// Tactical View Configuration Modal Logic
+const tacModal = document.getElementById('tactical-view-modal');
+const btnCloseTacModal = document.getElementById('btn-close-tac-modal');
+const tacModalTitle = document.getElementById('tac-modal-title');
+const tacViewIdInput = document.getElementById('tac-view-id');
+const tacViewEnabled = document.getElementById('tac-view-enabled');
+const tacViewName = document.getElementById('tac-view-name');
+const tacSelectedColor = document.getElementById('tac-selected-color');
+const tacViewMaptype = document.getElementById('tac-view-maptype');
+const tacViewLat = document.getElementById('tac-view-lat');
+const tacViewLng = document.getElementById('tac-view-lng');
+const tacViewZoom = document.getElementById('tac-view-zoom');
+const tacModalFeedback = document.getElementById('tac-modal-feedback');
+
+const tacLayerCadets = document.getElementById('tac-layer-cadets');
+const tacLayerBuoys = document.getElementById('tac-layer-buoys');
+const tacLayerHospitals = document.getElementById('tac-layer-hospitals');
+const tacLayerFire = document.getElementById('tac-layer-fire');
+const tacLayerPolice = document.getElementById('tac-layer-police');
+const tacLayerBase = document.getElementById('tac-layer-base');
+const tacLayerRadar = document.getElementById('tac-layer-radar');
+
+const btnTacPickMap = document.getElementById('btn-tac-pick-map');
+const btnTacUsePrimary = document.getElementById('btn-tac-use-primary');
+const btnTacUseBase = document.getElementById('btn-tac-use-base');
+const btnSaveTacView = document.getElementById('btn-save-tac-view');
+const btnResetThisTacView = document.getElementById('btn-reset-this-tac-view');
+const btnResetTacticalDefaults = document.getElementById('btn-reset-tactical-defaults');
+const btnConfigViewsTop = document.getElementById('btn-config-views-top');
+
+function openTacticalViewModal(viewId = 1) {
+  if (!tacModal) return;
+  viewId = parseInt(viewId, 10) || 1;
+  if (viewId < 1 || viewId > 4) viewId = 1;
+
+  primaryMap.closePopup();
+  if (tacModalFeedback) tacModalFeedback.innerHTML = '';
+
+  const config = tacticalViewsConfig[viewId - 1];
+  if (!config) return;
+
+  if (tacViewIdInput) tacViewIdInput.value = viewId;
+  if (tacModalTitle) tacModalTitle.textContent = `CONFIGURE TACTICAL VIEW ${viewId}`;
+
+  // Update tabs visual state
+  document.querySelectorAll('.tac-tab-btn').forEach(b => {
+    const tabNum = parseInt(b.getAttribute('data-tab'), 10);
+    if (tabNum === viewId) {
+      b.classList.add('active');
+      b.style.borderColor = 'var(--accent-color)';
+      b.style.background = 'rgba(0,210,255,0.2)';
+      b.style.color = '#fff';
+    } else {
+      b.classList.remove('active');
+      b.style.borderColor = 'var(--border-color)';
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text-secondary)';
+    }
+  });
+
+  if (tacViewEnabled) tacViewEnabled.checked = config.enabled !== false;
+  if (tacViewName) tacViewName.value = config.name;
+  if (tacViewMaptype) tacViewMaptype.value = config.mapType || 'dark';
+  if (tacViewLat) tacViewLat.value = config.lat.toFixed(5);
+  if (tacViewLng) tacViewLng.value = config.lng.toFixed(5);
+  if (tacViewZoom) tacViewZoom.value = config.zoom;
+
+  // Color selection
+  const col = config.color || '#00e5ff';
+  if (tacSelectedColor) tacSelectedColor.value = col;
+  document.querySelectorAll('.tac-color-btn').forEach(b => {
+    if (b.getAttribute('data-color') === col) {
+      b.classList.add('active');
+      b.style.boxShadow = `0 0 10px ${col}`;
+      b.style.outline = '1px solid #fff';
+    } else {
+      b.classList.remove('active');
+      b.style.boxShadow = '';
+      b.style.outline = 'none';
+    }
+  });
+
+  // Layer checkboxes
+  const l = config.layers || {};
+  if (tacLayerCadets) tacLayerCadets.checked = l.cadets !== false;
+  if (tacLayerBuoys) tacLayerBuoys.checked = l.buoys !== false;
+  if (tacLayerHospitals) tacLayerHospitals.checked = !!l.hospitals;
+  if (tacLayerFire) tacLayerFire.checked = !!l.fire;
+  if (tacLayerPolice) tacLayerPolice.checked = !!l.police;
+  if (tacLayerBase) tacLayerBase.checked = l.base !== false;
+  if (tacLayerRadar) tacLayerRadar.checked = !!l.radar;
+
+  tacModal.style.display = 'flex';
+}
+window.openTacticalViewModal = openTacticalViewModal;
+
+function closeTacticalViewModal() {
+  if (tacModal) tacModal.style.display = 'none';
+}
+
+if (btnCloseTacModal) btnCloseTacModal.addEventListener('click', closeTacticalViewModal);
+if (tacModal) {
+  tacModal.addEventListener('click', (e) => {
+    if (e.target === tacModal) closeTacticalViewModal();
+  });
+}
+
+// Tab Switching
+document.querySelectorAll('.tac-tab-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const tab = parseInt(b.getAttribute('data-tab'), 10);
+    openTacticalViewModal(tab);
+  });
+});
+
+// Color button selection
+document.querySelectorAll('.tac-color-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const col = b.getAttribute('data-color');
+    if (tacSelectedColor) tacSelectedColor.value = col;
+    document.querySelectorAll('.tac-color-btn').forEach(other => {
+      other.classList.toggle('active', other === b);
+      other.style.boxShadow = other === b ? `0 0 10px ${col}` : '';
+      other.style.outline = other === b ? '1px solid #fff' : 'none';
+    });
+  });
+});
+
+// Quick Buttons inside Tactical View Modal
+if (btnTacUsePrimary) {
+  btnTacUsePrimary.addEventListener('click', () => {
+    const center = primaryMap.getCenter();
+    const zoom = primaryMap.getZoom();
+    if (tacViewLat) tacViewLat.value = center.lat.toFixed(5);
+    if (tacViewLng) tacViewLng.value = center.lng.toFixed(5);
+    if (tacViewZoom) tacViewZoom.value = zoom;
+    if (tacModalFeedback) {
+      tacModalFeedback.innerHTML = `<span style="color: var(--accent-color);">✓ Primary map view coordinates & zoom captured.</span>`;
+    }
+  });
+}
+
+if (btnTacUseBase) {
+  btnTacUseBase.addEventListener('click', () => {
+    const prof = getStationProfile();
+    if (tacViewLat) tacViewLat.value = prof.lat.toFixed(5);
+    if (tacViewLng) tacViewLng.value = prof.lng.toFixed(5);
+    if (tacViewZoom) tacViewZoom.value = prof.zoom;
+    if (tacModalFeedback) {
+      tacModalFeedback.innerHTML = `<span style="color: var(--accent-color);">✓ Base coordinates captured (${prof.name}).</span>`;
+    }
+  });
+}
+
+if (btnTacPickMap) {
+  btnTacPickMap.addEventListener('click', () => {
+    closeTacticalViewModal();
+    const banner = document.getElementById('tactical-picker-hud-banner');
+    const statusText = document.getElementById('tactical-picker-status-text');
+    const viewId = parseInt(tacViewIdInput ? tacViewIdInput.value : 1, 10) || 1;
+
+    if (banner) banner.style.display = 'flex';
+    if (statusText) statusText.textContent = `TARGETING VIEW ${viewId}: CLICK ANYWHERE ON MAP TO SET CENTER COORDINATES`;
+    document.getElementById('primary-map').style.cursor = 'crosshair';
+
+    const onPickClick = (e) => {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+
+      if (tacViewLat) tacViewLat.value = lat.toFixed(5);
+      if (tacViewLng) tacViewLng.value = lng.toFixed(5);
+
+      const chosenColor = (tacSelectedColor && tacSelectedColor.value) || '#00e5ff';
+      const tempMarker = L.circleMarker(e.latlng, {
+        radius: 14,
+        color: chosenColor,
+        fillColor: chosenColor,
+        fillOpacity: 0.35,
+        weight: 2
+      }).addTo(primaryMap);
+      setTimeout(() => primaryMap.removeLayer(tempMarker), 3000);
+
+      cleanupPick();
+      if (tacModal) tacModal.style.display = 'flex';
+      if (tacModalFeedback) {
+        tacModalFeedback.innerHTML = `<span style="color: var(--accent-color);">✓ Target acquired: ${lat.toFixed(5)}, ${lng.toFixed(5)}</span>`;
+      }
+    };
+
+    const cleanupPick = () => {
+      primaryMap.off('click', onPickClick);
+      document.getElementById('primary-map').style.cursor = '';
+      if (banner) banner.style.display = 'none';
+    };
+
+    const cancelBtn = document.getElementById('btn-cancel-tactical-picker');
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        cleanupPick();
+        if (tacModal) tacModal.style.display = 'flex';
+      };
+    }
+
+    primaryMap.once('click', onPickClick);
+  });
+}
+
+if (btnSaveTacView) {
+  btnSaveTacView.addEventListener('click', () => {
+    const viewId = parseInt(tacViewIdInput ? tacViewIdInput.value : 1, 10) || 1;
+    const config = tacticalViewsConfig[viewId - 1];
+    if (!config) return;
+
+    const name = ((tacViewName && tacViewName.value) || '').trim();
+    const lat = parseFloat(tacViewLat ? tacViewLat.value : NaN);
+    const lng = parseFloat(tacViewLng ? tacViewLng.value : NaN);
+    const zoom = parseInt(tacViewZoom ? tacViewZoom.value : NaN, 10);
+
+    if (!name) {
+      if (tacModalFeedback) tacModalFeedback.innerHTML = `<span style="color: var(--danger-color);">PLEASE ENTER A VIEW CALLSIGN / TITLE</span>`;
+      return;
+    }
+    if (isNaN(lat) || lat < -90 || lat > 90 || isNaN(lng) || lng < -180 || lng > 180) {
+      if (tacModalFeedback) tacModalFeedback.innerHTML = `<span style="color: var(--danger-color);">INVALID LATITUDE OR LONGITUDE</span>`;
+      return;
+    }
+    if (isNaN(zoom) || zoom < 1 || zoom > 20) {
+      if (tacModalFeedback) tacModalFeedback.innerHTML = `<span style="color: var(--danger-color);">ZOOM MUST BE BETWEEN 1 AND 20</span>`;
+      return;
+    }
+
+    config.name = name;
+    config.enabled = tacViewEnabled ? tacViewEnabled.checked : true;
+    config.lat = parseFloat(lat.toFixed(5));
+    config.lng = parseFloat(lng.toFixed(5));
+    config.zoom = zoom;
+    config.mapType = (tacViewMaptype && tacViewMaptype.value) || 'dark';
+    config.color = (tacSelectedColor && tacSelectedColor.value) || '#00e5ff';
+
+    config.layers = {
+      cadets: tacLayerCadets ? tacLayerCadets.checked : true,
+      buoys: tacLayerBuoys ? tacLayerBuoys.checked : true,
+      hospitals: tacLayerHospitals ? tacLayerHospitals.checked : false,
+      fire: tacLayerFire ? tacLayerFire.checked : false,
+      police: tacLayerPolice ? tacLayerPolice.checked : false,
+      base: tacLayerBase ? tacLayerBase.checked : true,
+      radar: tacLayerRadar ? tacLayerRadar.checked : false
+    };
+
+    saveTacticalViewsConfig();
+    applyAllTacticalViews();
+    closeTacticalViewModal();
+    logToFeed(`SYS: TACTICAL VIEW [${name.toUpperCase()}] CONFIGURATION SAVED`);
+  });
+}
+
+if (btnResetThisTacView) {
+  btnResetThisTacView.addEventListener('click', () => {
+    const viewId = parseInt(tacViewIdInput ? tacViewIdInput.value : 1, 10) || 1;
+    tacticalViewsConfig[viewId - 1] = JSON.parse(JSON.stringify(DEFAULT_TACTICAL_VIEWS[viewId - 1]));
+    saveTacticalViewsConfig();
+    applyAllTacticalViews();
+    openTacticalViewModal(viewId);
+    logToFeed(`SYS: TACTICAL VIEW ${viewId} RESTORED TO DEFAULT PROFILE`);
+  });
+}
+
+if (btnResetTacticalDefaults) {
+  btnResetTacticalDefaults.addEventListener('click', () => {
+    tacticalViewsConfig = JSON.parse(JSON.stringify(DEFAULT_TACTICAL_VIEWS));
+    saveTacticalViewsConfig();
+    applyAllTacticalViews();
+    logToFeed("SYS: ALL 4 TACTICAL VIEWS RESTORED TO FACTORY DEFAULTS");
+  });
+}
+
+if (btnConfigViewsTop) {
+  btnConfigViewsTop.addEventListener('click', () => openTacticalViewModal(1));
+}
+
+document.querySelectorAll('.btn-open-tac-config').forEach(b => {
+  b.addEventListener('click', () => {
+    const v = parseInt(b.getAttribute('data-view'), 10) || 1;
+    openTacticalViewModal(v);
+  });
+});
+
+// Initialize and render all tactical views on boot
+applyAllTacticalViews();
 
 

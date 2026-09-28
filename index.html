@@ -126,6 +126,15 @@
             <button id="btn-cancel-ems-relocate" class="btn-secondary" style="padding: 3px 8px; font-size: 10px;">[ CANCEL (ESC) ]</button>
           </div>
         </div>
+
+        <!-- Tactical View Target Picker HUD Banner -->
+        <div id="tactical-picker-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 1003; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 20px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 14px; border-radius: 4px;">
+          <span style="color: var(--accent-color); display: flex; align-items: center; gap: 6px;">
+            <span class="pulse-dot" style="background: var(--accent-color);"></span>
+            <span id="tactical-picker-status-text">TARGET LOCATION: CLICK ANYWHERE ON MAP TO SET TACTICAL VIEW CENTER</span>
+          </span>
+          <button id="btn-cancel-tactical-picker" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">[ CANCEL (ESC) ]</button>
+        </div>
         
         <!-- Targeting Crosshair -->
         <div class="crosshair">
@@ -182,7 +191,10 @@
       <div class="sidebar" id="right-sidebar">
         <div class="sidebar-top-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-shrink: 0;">
           <div class="hud-label" style="font-size: 12px; font-weight: bold; margin-bottom: 0; letter-spacing: 1px;">TACTICAL VIEWS</div>
-          <button id="sidebar-expand-btn" class="btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="window.toggleSidebarExpand()">[ EXPAND &lt;&lt; ]</button>
+          <div style="display: flex; gap: 5px;">
+            <button id="btn-config-views-top" class="btn-secondary" style="font-size: 10px; padding: 4px 6px;" onclick="window.openTacticalViewModal(1)" title="Configure Tactical Views (Max 4)">[ ⚙ CONFIGURE ]</button>
+            <button id="sidebar-expand-btn" class="btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="window.toggleSidebarExpand()">[ EXPAND &lt;&lt; ]</button>
+          </div>
         </div>
         
         <div class="minimap-container">
@@ -204,9 +216,23 @@
                 <input type="text" id="hud-transmit-link" readonly style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 4px; font-family: monospace; font-size: 9px; outline: none;" value="Sign in to generate link" />
                 <button id="btn-copy-hud-link" class="btn-secondary" style="font-size: 9px; padding: 4px; letter-spacing: 1px;">[ COPY UPLINK URL ]</button>
               </div>
+
+              <!-- Quick Independent EMS Service Selectors (Directly below Copy Uplink URL) -->
+              <div class="ems-quick-section" style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 9px; color: var(--accent-color); font-family: var(--hud-font); letter-spacing: 0.5px; font-weight: bold;">EMS LAYER SELECTORS:</span>
+                  <button id="btn-add-ems-facility" class="btn-secondary" style="font-size: 8px; padding: 1px 5px; border: 1px solid var(--border-color); color: var(--accent-color); cursor: pointer;" title="Add a custom hospital, fire hall, or police station to the map">[ ➕ ADD ]</button>
+                </div>
+                <div class="ems-quick-bar" style="display: flex; gap: 4px;">
+                  <button id="ems-quick-hospital" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ffffff; background: rgba(255,255,255,0.15); color: #ffffff;" title="Toggle Hospital Blips (White)">[ ⚪ HOSP ]</button>
+                  <button id="ems-quick-fire" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ff8800; background: rgba(255,136,0,0.15); color: #ff8800;" title="Toggle Fire Station Blips (Orange)">[ 🟠 FIRE ]</button>
+                  <button id="ems-quick-police" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #1e6bff; background: rgba(30,107,255,0.15); color: #1e6bff;" title="Toggle Police Station Blips (Royal Blue)">[ 🔵 POLICE ]</button>
+                </div>
+              </div>
             </div>
           </div>
 
+          <!-- Permanent Unchangeable SOS Distress View (Surrounded in red) -->
           <div class="minimap-panel" id="panel-sos">
             <div class="panel-header">
               <div class="hud-label" style="color: var(--danger-color); font-weight: bold; text-shadow: 0 0 5px rgba(255, 85, 85, 0.5);">ACTIVE SOS ALERTS</div>
@@ -218,58 +244,61 @@
             </div>
             <div id="secondary-map-5" class="minimap"></div>
           </div>
-          <div class="minimap-panel" id="panel-buoys">
+
+          <!-- Configurable Tactical View 1 (secondaryMap1) -->
+          <div class="minimap-panel" id="panel-tactical-1">
             <div class="panel-header">
-              <div class="hud-label">LAYER: TACTICAL BUOYS</div>
+              <div class="hud-label" id="tactical-title-1">TACTICAL VIEW 1: BUOYS</div>
               <div>
-                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-buoys')">[-]</button>
-                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-buoys', 'secondaryMap1')">[⛶]</button>
-                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-buoys', 'secondaryMap1')">[↗]</button>
+                <button class="expand-btn config-btn" onclick="window.openTacticalViewModal(1)" title="Configure Tactical View 1">[⚙]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-tactical-1')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-tactical-1', 'secondaryMap1')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-tactical-1', 'secondaryMap1')">[↗]</button>
               </div>
             </div>
             <div id="secondary-map-1" class="minimap"></div>
           </div>
-          <div class="minimap-panel" id="panel-ems">
+
+          <!-- Configurable Tactical View 2 (secondaryMap2) -->
+          <div class="minimap-panel" id="panel-tactical-2">
             <div class="panel-header">
-              <div class="hud-label">LAYER: EMERGENCY SVCS</div>
+              <div class="hud-label" id="tactical-title-2">TACTICAL VIEW 2: EMERGENCY SVCS</div>
               <div>
-                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-ems')">[-]</button>
-                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-ems', 'secondaryMap2')">[⛶]</button>
-                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[↗]</button>
+                <button class="expand-btn config-btn" onclick="window.openTacticalViewModal(2)" title="Configure Tactical View 2">[⚙]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-tactical-2')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-tactical-2', 'secondaryMap2')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-tactical-2', 'secondaryMap2')">[↗]</button>
               </div>
-            </div>
-            <!-- Quick Independent EMS Toggles -->
-            <div class="ems-quick-bar" style="display: flex; gap: 4px; padding: 4px 6px; background: rgba(0,10,20,0.85); border-bottom: 1px solid var(--border-color);">
-              <button id="ems-quick-hospital" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ffffff; background: rgba(255,255,255,0.15); color: #ffffff;" title="Toggle Hospital Blips (White)">[ ⚪ HOSP ]</button>
-              <button id="ems-quick-fire" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ff8800; background: rgba(255,136,0,0.15); color: #ff8800;" title="Toggle Fire Station Blips (Orange)">[ 🟠 FIRE ]</button>
-              <button id="ems-quick-police" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #1e6bff; background: rgba(30,107,255,0.15); color: #1e6bff;" title="Toggle Police Station Blips (Royal Blue)">[ 🔵 POLICE ]</button>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 6px; background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border-color);">
-              <button id="btn-add-ems-facility" class="btn-secondary" style="width: 100%; font-size: 9px; padding: 3px; border: none; background: transparent; color: var(--accent-color); font-family: var(--hud-font); cursor: pointer;" title="Add a custom hospital, fire hall, or police station to the map">[ ➕ ADD EMS FACILITY ]</button>
             </div>
             <div id="secondary-map-2" class="minimap"></div>
           </div>
-          <div class="minimap-panel" id="panel-forestry">
+
+          <!-- Configurable Tactical View 3 (secondaryMap3) -->
+          <div class="minimap-panel" id="panel-tactical-3">
             <div class="panel-header">
-              <div class="hud-label">LAYER: PASADENA FORESTRY</div>
+              <div class="hud-label" id="tactical-title-3">TACTICAL VIEW 3: DOPPLER RADAR</div>
               <div>
-                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-forestry')">[-]</button>
-                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-forestry', 'secondaryMap4')">[⛶]</button>
-                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-forestry', 'secondaryMap4')">[↗]</button>
-              </div>
-            </div>
-            <div id="secondary-map-4" class="minimap"></div>
-          </div>
-          <div class="minimap-panel" id="panel-radar">
-            <div class="panel-header">
-              <div class="hud-label">LAYER: DOPPLER RADAR</div>
-              <div>
-                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-radar')">[-]</button>
-                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-radar', 'secondaryMap3')">[⛶]</button>
-                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-radar', 'secondaryMap3')">[↗]</button>
+                <button class="expand-btn config-btn" onclick="window.openTacticalViewModal(3)" title="Configure Tactical View 3">[⚙]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-tactical-3')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-tactical-3', 'secondaryMap3')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-tactical-3', 'secondaryMap3')">[↗]</button>
               </div>
             </div>
             <div id="secondary-map-3" class="minimap"></div>
+          </div>
+
+          <!-- Configurable Tactical View 4 (secondaryMap4) -->
+          <div class="minimap-panel" id="panel-tactical-4">
+            <div class="panel-header">
+              <div class="hud-label" id="tactical-title-4">TACTICAL VIEW 4: PERIMETER</div>
+              <div>
+                <button class="expand-btn config-btn" onclick="window.openTacticalViewModal(4)" title="Configure Tactical View 4">[⚙]</button>
+                <button class="expand-btn rollup-btn" onclick="window.toggleRollup('panel-tactical-4')">[-]</button>
+                <button class="expand-btn maximize-btn" onclick="window.toggleMaximize('panel-tactical-4', 'secondaryMap4')">[⛶]</button>
+                <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-tactical-4', 'secondaryMap4')">[↗]</button>
+              </div>
+            </div>
+            <div id="secondary-map-4" class="minimap"></div>
           </div>
         </div>
       </div>
@@ -414,6 +443,141 @@
           <div style="display: flex; gap: 8px; margin-top: 4px;">
             <button type="button" id="btn-ems-save-changes" class="btn-primary" style="flex: 2; font-size: 11px; padding: 8px; letter-spacing: 1px;">[ 💾 SAVE FACILITY ]</button>
             <button type="button" id="btn-ems-delete" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 8px; color: var(--danger-color); border-color: rgba(255,85,85,0.4);" title="Remove this station">[ 🗑️ DELETE ]</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tactical View Configuration Modal (Limit 4 Views + SOS) -->
+    <div id="tactical-view-modal" class="modal-overlay" style="display: none; z-index: 10005;">
+      <div class="hud-panel" style="width: 520px; max-width: 95vw; padding: 20px !important; max-height: 92vh; overflow-y: auto;">
+        <div class="hud-label" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <span id="tac-modal-title">CONFIGURE TACTICAL VIEW 1</span>
+          <button id="btn-close-tac-modal" class="btn-secondary" style="padding: 2px 6px; font-size: 10px;">[X]</button>
+        </div>
+
+        <!-- View Selector Tabs: [VIEW 1] [VIEW 2] [VIEW 3] [VIEW 4] -->
+        <div class="tac-tabs-bar" style="display: flex; gap: 6px; margin-top: 12px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+          <button type="button" class="tac-tab-btn active" data-tab="1" style="flex: 1; padding: 6px 4px; font-size: 10px; font-family: var(--hud-font); cursor: pointer; border: 1px solid var(--accent-color); background: rgba(0,210,255,0.15); color: #fff;">VIEW 1</button>
+          <button type="button" class="tac-tab-btn" data-tab="2" style="flex: 1; padding: 6px 4px; font-size: 10px; font-family: var(--hud-font); cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary);">VIEW 2</button>
+          <button type="button" class="tac-tab-btn" data-tab="3" style="flex: 1; padding: 6px 4px; font-size: 10px; font-family: var(--hud-font); cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary);">VIEW 3</button>
+          <button type="button" class="tac-tab-btn" data-tab="4" style="flex: 1; padding: 6px 4px; font-size: 10px; font-family: var(--hud-font); cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary);">VIEW 4</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; font-family: var(--hud-font);">
+          <input type="hidden" id="tac-view-id" value="1">
+
+          <!-- View Enabled & Limit notice -->
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); padding: 8px 10px; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label class="toggle-switch">
+                <input type="checkbox" id="tac-view-enabled" checked>
+                <span class="slider" style="background-color: var(--accent-color);"></span>
+              </label>
+              <span style="font-size: 11px; color: #fff; font-weight: bold;">ENABLE THIS TACTICAL VIEW</span>
+            </div>
+            <span style="font-size: 9px; color: var(--text-secondary); letter-spacing: 0.5px;">MAX LIMIT: 4 VIEWS (+ 1 SOS)</span>
+          </div>
+
+          <!-- Name -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">TACTICAL VIEW CALLSIGN / TITLE:</label>
+            <input type="text" id="tac-view-name" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" placeholder="e.g. TACTICAL VIEW 1: BUOYS">
+          </div>
+
+          <!-- Color Theme Selection -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">VIEW ACCENT COLOR & GLOW:</label>
+            <div id="tac-color-selector" style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="tac-color-btn active" data-color="#00e5ff" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 9px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #00e5ff; background: rgba(0,229,255,0.2); color: #00e5ff;">CYAN</button>
+              <button type="button" class="tac-color-btn" data-color="#ffaa00" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 9px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ffaa00; background: rgba(255,170,0,0.2); color: #ffaa00;">AMBER</button>
+              <button type="button" class="tac-color-btn" data-color="#00ff66" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 9px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #00ff66; background: rgba(0,255,102,0.2); color: #00ff66;">GREEN</button>
+              <button type="button" class="tac-color-btn" data-color="#1e6bff" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 9px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #1e6bff; background: rgba(30,107,255,0.2); color: #1e6bff;">BLUE</button>
+              <button type="button" class="tac-color-btn" data-color="#d633ff" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 9px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #d633ff; background: rgba(214,51,255,0.2); color: #d633ff;">PURPLE</button>
+              <button type="button" class="tac-color-btn" data-color="#ffffff" style="flex: 1; min-width: 48px; padding: 6px 2px; font-size: 9px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ffffff; background: rgba(255,255,255,0.2); color: #ffffff;">WHITE</button>
+            </div>
+            <input type="hidden" id="tac-selected-color" value="#00e5ff">
+          </div>
+
+          <!-- Basemap Tile Style -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">MAP TILE TYPE (BASEMAP):</label>
+            <select id="tac-view-maptype" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              <option value="dark">DARK TACTICAL (CARTO-DARK)</option>
+              <option value="satellite">SATELLITE (ESRI WORLD IMAGERY)</option>
+              <option value="google-satellite">SATELLITE (HIGH-RES)</option>
+              <option value="street">STREET MAP (OPENSTREETMAP)</option>
+              <option value="topo">TOPOGRAPHIC (OPENTOPOMAP)</option>
+              <option value="sea">NAUTICAL / MARITIME (OPENSEAMAP)</option>
+            </select>
+          </div>
+
+          <!-- Target Coordinates & Zoom -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">SPECIFIC LOCATION TO MONITOR & ZOOM:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 0.8fr; gap: 8px;">
+              <div>
+                <span style="font-size: 9px; color: var(--text-secondary); display: block;">LATITUDE</span>
+                <input type="number" step="0.000001" id="tac-view-lat" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              </div>
+              <div>
+                <span style="font-size: 9px; color: var(--text-secondary); display: block;">LONGITUDE</span>
+                <input type="number" step="0.000001" id="tac-view-lng" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              </div>
+              <div>
+                <span style="font-size: 9px; color: var(--text-secondary); display: block;">ZOOM (1-18)</span>
+                <input type="number" min="1" max="18" id="tac-view-zoom" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;">
+              </div>
+            </div>
+            <!-- Quick coordinate capture buttons -->
+            <div style="display: flex; gap: 6px; margin-top: 6px;">
+              <button type="button" id="btn-tac-pick-map" class="btn-secondary" style="flex: 1; font-size: 9px; padding: 5px;" title="Click anywhere on the map to target this tactical view">[ 🎯 PICK ON MAP ]</button>
+              <button type="button" id="btn-tac-use-primary" class="btn-secondary" style="flex: 1; font-size: 9px; padding: 5px;" title="Capture current map view coords & zoom">[ 📍 USE CURRENT MAP VIEW ]</button>
+              <button type="button" id="btn-tac-use-base" class="btn-secondary" style="flex: 1; font-size: 9px; padding: 5px;" title="Set to Base / Command Center coordinates">[ 🏢 USE BASE COORDS ]</button>
+            </div>
+          </div>
+
+          <!-- Data Layers Displayed in this View -->
+          <div>
+            <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">DATA TYPES DISPLAYED IN THIS VIEW:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(0,0,0,0.4); padding: 8px 10px; border: 1px solid var(--border-color);">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer;">
+                <input type="checkbox" id="tac-layer-cadets" checked>
+                <span>📡 LIVE CADETS / UNITS</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer;">
+                <input type="checkbox" id="tac-layer-buoys" checked>
+                <span>⚓ TACTICAL BUOYS</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer;">
+                <input type="checkbox" id="tac-layer-hospitals">
+                <span>⚪ HOSPITALS (WHITE)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer;">
+                <input type="checkbox" id="tac-layer-fire">
+                <span>🟠 FIRE HALLS (ORANGE)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer;">
+                <input type="checkbox" id="tac-layer-police">
+                <span>🔵 POLICE (ROYAL BLUE)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer;">
+                <input type="checkbox" id="tac-layer-base" checked>
+                <span>🏢 BASE COMMAND CENTER</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer; grid-column: span 2;">
+                <input type="checkbox" id="tac-layer-radar">
+                <span>🛰️ DOPPLER WEATHER RADAR OVERLAY</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="tac-modal-feedback" style="font-size: 10px; text-align: center; min-height: 14px;"></div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button type="button" id="btn-save-tac-view" class="btn-primary" style="flex: 2; font-size: 11px; padding: 8px; letter-spacing: 1px;">[ 💾 SAVE & APPLY VIEW ]</button>
+            <button type="button" id="btn-reset-this-tac-view" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 8px;" title="Reset this view back to default settings">[ 🔄 RESET THIS VIEW ]</button>
           </div>
         </div>
       </div>
@@ -1058,6 +1222,35 @@
             </div>
             <div style="margin-top: 12px;">
               <button id="btn-open-hotkeys" class="btn-secondary" style="width: 100%; font-size: 10px; padding: 6px; letter-spacing: 1px;">[ VIEW KEYBOARD SHORTCUTS (?) ]</button>
+            </div>
+          </div>
+
+          <!-- Section 4: Tactical Minimap Views (Max 4 + SOS) -->
+          <div class="settings-section">
+            <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>TACTICAL MINIMAPS (MAX 4 + SOS)</span>
+              <button type="button" id="btn-reset-tactical-defaults" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Reset all 4 tactical views to default settings">[ 🔄 RESET DEFAULTS ]</button>
+            </div>
+            <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 10px; font-family: var(--hud-font);">
+              Configure up to 4 custom tactical views to monitor specific locations, choose independent map types, colors, and data overlays. The Active SOS Alerts view remains permanently dedicated to distress signals.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button type="button" class="btn-secondary btn-open-tac-config" data-view="1" style="font-size: 10px; padding: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                <span id="settings-tac-label-1">VIEW 1: BUOYS</span>
+                <span>⚙️</span>
+              </button>
+              <button type="button" class="btn-secondary btn-open-tac-config" data-view="2" style="font-size: 10px; padding: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                <span id="settings-tac-label-2">VIEW 2: EMERGENCY SVCS</span>
+                <span>⚙️</span>
+              </button>
+              <button type="button" class="btn-secondary btn-open-tac-config" data-view="3" style="font-size: 10px; padding: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                <span id="settings-tac-label-3">VIEW 3: DOPPLER RADAR</span>
+                <span>⚙️</span>
+              </button>
+              <button type="button" class="btn-secondary btn-open-tac-config" data-view="4" style="font-size: 10px; padding: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                <span id="settings-tac-label-4">VIEW 4: PERIMETER</span>
+                <span>⚙️</span>
+              </button>
             </div>
           </div>
 

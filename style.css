@@ -1756,10 +1756,13 @@ input:focus {
   }
 }
 
-/* Active SOS Alerts Minimap Styling */
+/* Active SOS Alerts Minimap Styling - Unchangeable, permanently surrounded in red */
 #panel-sos .minimap {
-  border: 1px solid var(--danger-color);
-  box-shadow: 0 0 10px var(--danger-glow);
+  border: 1px solid var(--danger-color) !important;
+  box-shadow: 0 0 12px var(--danger-glow), inset 0 0 8px rgba(255, 85, 85, 0.2) !important;
+}
+#panel-sos .panel-header .hud-label {
+  color: var(--danger-color) !important;
 }
 
 .sidebar.expanded-sidebar #panel-sos {
@@ -1768,6 +1771,41 @@ input:focus {
 
 .sidebar.expanded-sidebar #panel-sos .minimap {
   height: 240px;
+}
+
+/* Configurable Tactical Minimap Panels */
+.minimap-panel .config-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--hud-font);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: all 0.2s ease;
+}
+.minimap-panel .config-btn:hover {
+  color: #fff;
+  text-shadow: 0 0 6px var(--accent-glow);
+}
+
+.tac-tab-btn {
+  transition: all 0.2s ease;
+}
+.tac-tab-btn.active {
+  border-color: var(--accent-color) !important;
+  background: rgba(0, 210, 255, 0.2) !important;
+  color: #fff !important;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+.tac-color-btn {
+  transition: all 0.2s ease;
+  border-radius: 2px;
+}
+.tac-color-btn.active {
+  box-shadow: 0 0 10px currentColor;
+  font-weight: bold;
+  outline: 1px solid #fff;
 }
 
 /* ==========================================================================
