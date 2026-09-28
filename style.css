@@ -1484,5 +1484,200 @@ input:focus {
   height: 240px;
 }
 
+/* ==========================================================================
+   CYBER-TACTICAL ADVANCED HUD & ENHANCEMENTS
+   ========================================================================== */
+
+/* Tactical Quick Action Toolbar */
+.tactical-quick-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-hud-btn {
+  background: rgba(0, 20, 30, 0.7);
+  border: 1px solid var(--border-color);
+  color: var(--accent-color);
+  font-family: var(--hud-font);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 5px rgba(0, 210, 255, 0.15);
+  user-select: none;
+}
+
+.quick-hud-btn:hover {
+  background: rgba(0, 210, 255, 0.2);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px var(--accent-glow);
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+.quick-hud-btn:active {
+  transform: translateY(1px);
+}
+
+.quick-hud-btn.active {
+  background: var(--accent-color);
+  color: #06090d;
+  font-weight: bold;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Radar Scan Sweep Overlay */
+.radar-sweep-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(85vw, 85vh);
+  height: min(85vw, 85vh);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 600;
+  border: 1px dashed rgba(0, 210, 255, 0.3);
+  box-shadow: inset 0 0 30px rgba(0, 210, 255, 0.1), 0 0 20px rgba(0, 210, 255, 0.1);
+  overflow: hidden;
+}
+
+.radar-sweep-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(0, 210, 255, 0.35) 0deg,
+    rgba(0, 210, 255, 0.12) 35deg,
+    rgba(0, 210, 255, 0.02) 70deg,
+    transparent 100deg,
+    transparent 360deg
+  );
+  animation: radarSweepRotate 4s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes radarSweepRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.radar-sonar-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-color);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.radar-sonar-ring.ring-1 {
+  animation: sonarRingPulse 3.6s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+.radar-sonar-ring.ring-2 {
+  animation: sonarRingPulse 3.6s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.8s;
+}
+
+@keyframes sonarRingPulse {
+  0% {
+    width: 0px;
+    height: 0px;
+    opacity: 0.8;
+    border-color: var(--accent-color);
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    border-color: rgba(0, 210, 255, 0.05);
+  }
+}
+
+/* FLIR Thermal Visual Mode */
+[data-theme="flir-thermal"] {
+  --bg-color: #0b0114;
+  --panel-bg: rgba(22, 4, 38, 0.94);
+  --border-color: rgba(255, 120, 0, 0.7);
+  --text-primary: #fff2e0;
+  --text-secondary: #ffb380;
+  --accent-color: #ff9900;
+  --accent-glow: rgba(255, 153, 0, 0.7);
+  --danger-color: #ff0055;
+  --danger-glow: rgba(255, 0, 85, 0.7);
+  --success-color: #ffea00;
+  --tactical-green: #ffea00;
+  --nautical-color: #ff00cc;
+  --trails-color: #ff5500;
+  --gps-color: #ffcc00;
+  --mtb-color: #cc00ff;
+}
+
+[data-theme="flir-thermal"] #primary-map .leaflet-tile-pane,
+[data-theme="flir-thermal"] .minimap .leaflet-tile-pane {
+  filter: contrast(160%) saturate(220%) hue-rotate(220deg) invert(85%);
+}
+
+[data-theme="flir-thermal"] body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle, rgba(255, 100, 0, 0.05) 0%, rgba(50, 0, 80, 0.25) 100%);
+  pointer-events: none;
+  z-index: 9997;
+}
+
+/* Cyberpunk Mode */
+[data-theme="cyberpunk"] {
+  --bg-color: #05050d;
+  --panel-bg: rgba(9, 10, 24, 0.94);
+  --border-color: rgba(255, 0, 128, 0.6);
+  --text-primary: #f0f6ff;
+  --text-secondary: #00f3ff;
+  --accent-color: #00f3ff;
+  --accent-glow: rgba(0, 243, 255, 0.75);
+  --danger-color: #ff0055;
+  --danger-glow: rgba(255, 0, 85, 0.8);
+  --success-color: #00ffaa;
+  --tactical-green: #00ffaa;
+  --nautical-color: #00f3ff;
+  --trails-color: #ffb700;
+  --gps-color: #00f3ff;
+  --mtb-color: #ff007f;
+}
+
+[data-theme="cyberpunk"] .hud-panel {
+  border-left: 3px solid #ff007f !important;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.2), inset 0 0 10px rgba(255, 0, 127, 0.1);
+}
+
+/* Responder Breadcrumb Glowing Paths */
+.cadet-trail-path {
+  stroke-dasharray: 4, 4;
+  animation: cadetTrailDash 1.2s linear infinite;
+  filter: drop-shadow(0 0 4px var(--accent-color));
+}
+
+@keyframes cadetTrailDash {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+
 
 

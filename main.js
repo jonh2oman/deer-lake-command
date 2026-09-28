@@ -66,7 +66,9 @@ const MAP_THEMES = {
   'google-satellite': 'https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
   street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-  'night-vision': `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`
+  'night-vision': `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`,
+  'flir-thermal': `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`,
+  'cyberpunk': `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`
 };
 
 // --- Dynamic Canvas Graticule (Lat/Lon Grid) ---
@@ -205,6 +207,10 @@ const graticuleLayer = new CanvasGraticule({ zIndex: 850 });
 // --- Cadet GPS Tracking Layer ---
 const cadetsLayer = L.layerGroup().addTo(primaryMap);
 const cadetMarkers = new Map();
+const cadetTrailsLayer = L.layerGroup().addTo(primaryMap);
+const cadetTrails = new Map();
+const cadetHistories = new Map();
+let cadetTrailsEnabled = localStorage.getItem('cmd-cadet-trails') !== 'false';
 
 // --- Dynamic Scale Control ---
 let currentScaleMode = 0; // 0 = Both, 1 = Metric, 2 = Imperial
@@ -1464,37 +1470,117 @@ helpSearch.addEventListener('input', (e) => {
   });
 });
 
-// --- Cadet Real-time Tracking & Audio SFX ---
-function playSfx(type) {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (type === 'sos') {
-      const now = ctx.currentTime;
-      // High pitch double beep
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(880, now);
-      gain1.gain.setValueAtTime(0.15, now);
-      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.3);
+// --- Cyber-Tactical Audio Engine (Procedural Web Audio) ---
+let audioCtx = null;
+let audioEnabled = localStorage.getItem('cmd-audio-enabled') === 'true';
 
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880, now + 0.3);
-      gain2.gain.setValueAtTime(0.15, now + 0.3);
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.3);
-      osc2.stop(now + 0.6);
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playSfx(type) {
+  if (!audioEnabled && type !== 'sos-override' && type !== 'sos') return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    if (type === 'click') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1600, now);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.04);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.045);
+    } else if (type === 'sonar' || type === 'radar') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(950, now);
+      osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(1050, now + 0.45);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.52);
+    } else if (type === 'telemetry') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2400, now);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.025);
+    } else if (type === 'deploy') {
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.06);
+        gain.gain.setValueAtTime(0.1, now + i * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (i + 1) * 0.06 + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.06);
+        osc.stop(now + (i + 1) * 0.06 + 0.12);
+      });
+    } else if (type === 'sos' || type === 'sos-override') {
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const start = now + i * 0.22;
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(i % 2 === 0 ? 880 : 660, start);
+        gain.gain.setValueAtTime(0.2, start);
+        gain.gain.exponentialRampToValueAtTime(0.01, start + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.2);
+      }
     }
   } catch (e) {
     console.error("Audio Context failed:", e);
+  }
+}
+
+// Render cadet glowing vector trail
+function renderCadetTrail(id, coords, status) {
+  if (!cadetTrailsEnabled || coords.length < 2) return;
+  const color = status === 'sos' ? '#ff3b30' : (status === 'warning' ? '#ffcc00' : '#00d2ff');
+  if (cadetTrails.has(id)) {
+    const polyline = cadetTrails.get(id);
+    polyline.setLatLngs(coords);
+    polyline.setStyle({ color: color });
+  } else {
+    const polyline = L.polyline(coords, {
+      color: color,
+      weight: 2.5,
+      opacity: 0.8,
+      className: 'cadet-trail-path',
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(cadetTrailsLayer);
+    cadetTrails.set(id, polyline);
   }
 }
 function getCadetIcon(record) {
@@ -1673,6 +1759,11 @@ function handleCadetLocationUpdate(payload) {
       sosLayerSecondary.removeLayer(marker5);
       sosMarkersSecondary.delete(id);
     }
+    if (cadetTrails.has(id)) {
+      cadetTrailsLayer.removeLayer(cadetTrails.get(id));
+      cadetTrails.delete(id);
+    }
+    cadetHistories.delete(id);
   } else {
     // INSERT or UPDATE
     const id = newRecord.id;
@@ -1684,6 +1775,19 @@ function handleCadetLocationUpdate(payload) {
     if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) return;
     
     const latlng = [lat, lng];
+
+    // Maintain breadcrumb trail history
+    if (!cadetHistories.has(id)) {
+      cadetHistories.set(id, []);
+    }
+    const history = cadetHistories.get(id);
+    if (history.length === 0 || history[history.length - 1][0] !== lat || history[history.length - 1][1] !== lng) {
+      history.push([lat, lng]);
+      if (history.length > 25) history.shift();
+    }
+    if (cadetTrailsEnabled) {
+      renderCadetTrail(id, history, status);
+    }
     
     if (cadetMarkers.has(id)) {
       const marker = cadetMarkers.get(id);
@@ -2061,5 +2165,287 @@ window.addEventListener('error', (e) => {
 });
 window.addEventListener('unhandledrejection', (e) => {
   logToFeed(`SYS REJECTION: ${e.reason}`, true);
+});
+
+// ==========================================================================
+// CYBER-HUD & ADVANCED OPS: AUDIO, RADAR, OSCILLOGRAM, FLIR, HOTKEYS
+// ==========================================================================
+
+// --- 1. Audio HUD Toggle & Controls ---
+const quickBtnAudio = document.getElementById('quick-btn-audio');
+const audioToggle = document.getElementById('audio-toggle');
+
+function updateAudioUI() {
+  if (quickBtnAudio) {
+    quickBtnAudio.textContent = audioEnabled ? '[ 🔊 SFX: ON ]' : '[ 🔇 SFX: OFF ]';
+    quickBtnAudio.classList.toggle('active', audioEnabled);
+  }
+  if (audioToggle) {
+    audioToggle.checked = audioEnabled;
+  }
+}
+
+function setAudioEnabled(state) {
+  audioEnabled = state;
+  localStorage.setItem('cmd-audio-enabled', audioEnabled);
+  updateAudioUI();
+  if (audioEnabled) {
+    playSfx('sonar');
+    logToFeed("SYS: TACTICAL AUDIO HUD ONLINE");
+  } else {
+    logToFeed("SYS: TACTICAL AUDIO HUD MUTED");
+  }
+}
+
+if (quickBtnAudio) {
+  quickBtnAudio.addEventListener('click', () => setAudioEnabled(!audioEnabled));
+}
+if (audioToggle) {
+  audioToggle.addEventListener('change', (e) => setAudioEnabled(e.target.checked));
+}
+updateAudioUI();
+
+// Tactile audio click on any button
+document.addEventListener('click', (e) => {
+  if (e.target.closest('button, .settings-btn, .help-btn, .marker-option, .toggle-switch, .quick-hud-btn')) {
+    playSfx('click');
+  }
+});
+
+// --- 2. Rotating Radar Sweep & Sonar Pulses ---
+const radarOverlay = document.getElementById('radar-sweep-overlay');
+const quickBtnRadar = document.getElementById('quick-btn-radar');
+const sweepToggle = document.getElementById('sweep-toggle');
+let radarSweepEnabled = localStorage.getItem('cmd-radar-sweep') === 'true';
+
+function updateRadarUI() {
+  if (radarOverlay) {
+    radarOverlay.style.display = radarSweepEnabled ? 'block' : 'none';
+  }
+  if (quickBtnRadar) {
+    quickBtnRadar.classList.toggle('active', radarSweepEnabled);
+  }
+  if (sweepToggle) {
+    sweepToggle.checked = radarSweepEnabled;
+  }
+}
+
+function setRadarSweep(state) {
+  radarSweepEnabled = state;
+  localStorage.setItem('cmd-radar-sweep', radarSweepEnabled);
+  updateRadarUI();
+  if (radarSweepEnabled) {
+    playSfx('sonar');
+    logToFeed("SYS: RADAR SCAN SWEEP ACTIVATED");
+  } else {
+    logToFeed("SYS: RADAR SCAN SWEEP DEACTIVATED");
+  }
+}
+
+if (quickBtnRadar) {
+  quickBtnRadar.addEventListener('click', () => setRadarSweep(!radarSweepEnabled));
+}
+if (sweepToggle) {
+  sweepToggle.addEventListener('change', (e) => setRadarSweep(e.target.checked));
+}
+updateRadarUI();
+
+// --- 3. FLIR Thermal, Night Vision & Visual Modes ---
+const quickBtnFlir = document.getElementById('quick-btn-flir');
+const flirToggle = document.getElementById('flir-toggle');
+const visualThemesCycle = ['dark', 'night-vision', 'flir-thermal', 'cyberpunk', 'sea', 'satellite'];
+
+function updateFlirUI(theme) {
+  const isFlir = theme === 'flir-thermal';
+  if (flirToggle) flirToggle.checked = isFlir;
+  if (quickBtnFlir) {
+    quickBtnFlir.classList.toggle('active', isFlir);
+    quickBtnFlir.textContent = isFlir ? '[ 👁 FLIR: ON ]' : '[ 👁 FLIR ]';
+  }
+}
+
+if (quickBtnFlir) {
+  quickBtnFlir.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const nextIdx = (visualThemesCycle.indexOf(current) + 1) % visualThemesCycle.length;
+    const nextTheme = visualThemesCycle[nextIdx];
+    applyTheme(nextTheme);
+    if (themeSelect) themeSelect.value = nextTheme;
+    localStorage.setItem('cmd-theme', nextTheme);
+    updateFlirUI(nextTheme);
+    logToFeed(`SYS: VISUAL MODE SWITCHED TO [${nextTheme.toUpperCase()}]`);
+  });
+}
+
+if (flirToggle) {
+  flirToggle.addEventListener('change', (e) => {
+    const targetTheme = e.target.checked ? 'flir-thermal' : 'dark';
+    applyTheme(targetTheme);
+    if (themeSelect) themeSelect.value = targetTheme;
+    localStorage.setItem('cmd-theme', targetTheme);
+    updateFlirUI(targetTheme);
+    logToFeed(`SYS: FLIR THERMAL [${e.target.checked ? 'ENGAGED' : 'DISENGAGED'}]`);
+  });
+}
+
+// Sync FLIR UI with current theme on init
+updateFlirUI(document.documentElement.getAttribute('data-theme') || 'dark');
+
+// --- 4. Live Telemetry Oscillogram & Wave Sparkline ---
+const telemetryCanvas = document.getElementById('telemetry-canvas');
+const telemetryGraphToggle = document.getElementById('telemetry-graph-toggle');
+const telemetryContainer = document.getElementById('telemetry-sparkline-container');
+let telemetryGraphEnabled = localStorage.getItem('cmd-telemetry-graph') !== 'false';
+
+if (telemetryGraphToggle) {
+  telemetryGraphToggle.checked = telemetryGraphEnabled;
+  if (telemetryContainer) telemetryContainer.style.display = telemetryGraphEnabled ? 'block' : 'none';
+  telemetryGraphToggle.addEventListener('change', (e) => {
+    telemetryGraphEnabled = e.target.checked;
+    localStorage.setItem('cmd-telemetry-graph', telemetryGraphEnabled);
+    if (telemetryContainer) telemetryContainer.style.display = telemetryGraphEnabled ? 'block' : 'none';
+    logToFeed(`SYS: TELEMETRY OSCILLOGRAM [${telemetryGraphEnabled ? 'ONLINE' : 'OFFLINE'}]`);
+  });
+}
+
+if (telemetryCanvas) {
+  const tCtx = telemetryCanvas.getContext('2d');
+  let tPhase = 0;
+  function renderOscilloscope() {
+    if (telemetryGraphEnabled && telemetryCanvas.offsetParent !== null) {
+      const w = telemetryCanvas.width;
+      const h = telemetryCanvas.height;
+      tCtx.clearRect(0, 0, w, h);
+
+      // Grid line
+      tCtx.strokeStyle = 'rgba(0, 210, 255, 0.15)';
+      tCtx.lineWidth = 1;
+      tCtx.beginPath();
+      tCtx.moveTo(0, h / 2);
+      tCtx.lineTo(w, h / 2);
+      tCtx.stroke();
+
+      // Oscilloscope phosphor wave
+      tCtx.beginPath();
+      tCtx.strokeStyle = 'rgba(0, 210, 255, 0.9)';
+      tCtx.lineWidth = 1.5;
+      tCtx.shadowBlur = 6;
+      tCtx.shadowColor = '#00d2ff';
+
+      const mid = h / 2;
+      const amp = 8 + Math.sin(tPhase * 0.4) * 4;
+      for (let x = 0; x < w; x++) {
+        const envelope = Math.sin((x / w) * Math.PI);
+        const y = mid + Math.sin((x * 0.1) + tPhase) * amp * envelope;
+        if (x === 0) tCtx.moveTo(x, y);
+        else tCtx.lineTo(x, y);
+      }
+      tCtx.stroke();
+      tCtx.shadowBlur = 0;
+      tPhase += 0.08;
+    }
+    requestAnimationFrame(renderOscilloscope);
+  }
+  requestAnimationFrame(renderOscilloscope);
+}
+
+// --- 5. Responder Breadcrumb Trails Settings Toggle ---
+const trailsToggleCadet = document.getElementById('trails-toggle-cadet');
+if (trailsToggleCadet) {
+  trailsToggleCadet.checked = cadetTrailsEnabled;
+  trailsToggleCadet.addEventListener('change', (e) => {
+    cadetTrailsEnabled = e.target.checked;
+    localStorage.setItem('cmd-cadet-trails', cadetTrailsEnabled);
+    if (!cadetTrailsEnabled) {
+      cadetTrailsLayer.clearLayers();
+      cadetTrails.clear();
+      logToFeed("SYS: RESPONDER BREADCRUMB TRAILS CLEARED");
+    } else {
+      cadetHistories.forEach((history, id) => {
+        const marker = cadetMarkers.get(id);
+        const status = marker && marker.cadetData ? marker.cadetData.status : 'active';
+        renderCadetTrail(id, history, status);
+      });
+      logToFeed("SYS: RESPONDER BREADCRUMB TRAILS RESTORED");
+    }
+  });
+}
+
+// --- 6. CRT Scanlines & Vignette Toggle ---
+const crtToggle = document.getElementById('crt-toggle');
+const scanlinesEl = document.querySelector('.scanlines');
+const vignetteEl = document.querySelector('.vignette');
+let crtEnabled = localStorage.getItem('cmd-crt-fx') !== 'false';
+
+function updateCrt(state) {
+  crtEnabled = state;
+  localStorage.setItem('cmd-crt-fx', crtEnabled);
+  if (scanlinesEl) scanlinesEl.style.display = crtEnabled ? 'block' : 'none';
+  if (vignetteEl) vignetteEl.style.display = crtEnabled ? 'block' : 'none';
+  if (crtToggle) crtToggle.checked = crtEnabled;
+}
+if (crtToggle) {
+  crtToggle.addEventListener('change', (e) => updateCrt(e.target.checked));
+}
+updateCrt(crtEnabled);
+
+// --- 7. Recenter Base Button ---
+const quickBtnRecenter = document.getElementById('quick-btn-recenter');
+if (quickBtnRecenter) {
+  quickBtnRecenter.addEventListener('click', () => {
+    primaryMap.flyTo([49.0342, -57.5955], 14, { duration: 0.8 });
+    logToFeed("SYS: RE-CENTERED ON DEER LAKE COMMAND BASE");
+  });
+}
+
+// --- 8. Hotkeys Modal & Global Keyboard Listeners ---
+const hotkeysModal = document.getElementById('hotkeys-modal');
+const quickBtnHotkeys = document.getElementById('quick-btn-hotkeys');
+const btnOpenHotkeys = document.getElementById('btn-open-hotkeys');
+const btnCloseHotkeys = document.getElementById('btn-close-hotkeys');
+
+function toggleHotkeysModal() {
+  if (!hotkeysModal) return;
+  const isHidden = hotkeysModal.style.display === 'none';
+  hotkeysModal.style.display = isHidden ? 'flex' : 'none';
+}
+
+if (quickBtnHotkeys) quickBtnHotkeys.addEventListener('click', toggleHotkeysModal);
+if (btnOpenHotkeys) btnOpenHotkeys.addEventListener('click', toggleHotkeysModal);
+if (btnCloseHotkeys) btnCloseHotkeys.addEventListener('click', toggleHotkeysModal);
+if (hotkeysModal) {
+  hotkeysModal.addEventListener('click', (e) => {
+    if (e.target === hotkeysModal) toggleHotkeysModal();
+  });
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.target && e.target.matches('input, textarea, select')) return;
+
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (quickBtnRecenter) quickBtnRecenter.click();
+  } else if (e.code === 'KeyT') {
+    const editToggle = document.getElementById('edit-toggle');
+    if (editToggle) {
+      editToggle.checked = !editToggle.checked;
+      editToggle.dispatchEvent(new Event('change'));
+    }
+  } else if (e.code === 'KeyN') {
+    if (quickBtnFlir) quickBtnFlir.click();
+  } else if (e.code === 'KeyR') {
+    if (quickBtnRadar) quickBtnRadar.click();
+  } else if (e.code === 'KeyM') {
+    if (quickBtnAudio) quickBtnAudio.click();
+  } else if (e.code === 'KeyS') {
+    if (activeSosRecord && primaryMap) {
+      primaryMap.flyTo([activeSosRecord.latitude, activeSosRecord.longitude], 16, { duration: 0.8 });
+      logToFeed(`SYS: EMERGENCY FOCUS ON SOS [${activeSosRecord.name}]`);
+    } else {
+      logToFeed("SYS: NO ACTIVE SOS DISTRESS SIGNALS REPORTED");
+    }
+  } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+    toggleHotkeysModal();
+  }
 });
 

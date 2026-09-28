@@ -33,7 +33,7 @@ console.log('Connecting to Firebase project:', config.projectId);
 const db = getFirestore(initializeApp(config));
 
 async function run() {
-  const ref = doc(db, 'cadet_locations', '__connectivity_probe__');
+  const ref = doc(db, 'cadet_locations', 'connectivity_probe');
   try {
     await setDoc(ref, {
       dispatcher_id: 'probe',
