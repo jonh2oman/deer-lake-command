@@ -569,7 +569,7 @@ input:checked + .slider:before {
   border: 1px solid var(--border-color);
   padding: 8px 24px;
   box-shadow: 0 0 15px rgba(0,0,0,0.8), inset 0 0 10px rgba(47, 129, 247, 0.1);
-  pointer-events: none; /* Let clicks pass through to map */
+  pointer-events: auto;
 }
 #top-title-bar h1 {
   font-family: var(--hud-font);
@@ -1495,6 +1495,7 @@ input:focus {
   align-items: center;
   margin-top: 6px;
   flex-wrap: wrap;
+  pointer-events: auto;
 }
 
 .quick-hud-btn {
@@ -1510,6 +1511,7 @@ input:focus {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 0 5px rgba(0, 210, 255, 0.15);
   user-select: none;
+  pointer-events: auto;
 }
 
 .quick-hud-btn:hover {
