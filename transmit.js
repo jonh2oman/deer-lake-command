@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import { db, firebaseReady } from './src/firebase.js'
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import L from 'leaflet'
-
-// --- Supabase Setup ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // --- State Variables ---
 let deviceId = null; 
@@ -234,17 +230,18 @@ partySizeInput.addEventListener('change', () => {
   if (isBroadcasting) transmitLocation();
 });
 
-// --- Supabase Telemetry Broadcast Logic ---
+// --- Firestore Telemetry Broadcast Logic ---
+// setDoc with { merge: true } is the Firestore equivalent of the old
+// Supabase upsert(onConflict: 'id') — document ID is the device UUID.
 async function transmitLocation() {
-  if (!supabase || !deviceId || !dispatcherId || !currentCoords) return;
+  if (!firebaseReady || !deviceId || !dispatcherId || !currentCoords) return;
 
   const cadetName = cadetNameInput.value.trim() || 'RESPONDER-UNIT';
   const partyType = partyTypeSelect.value;
   const partySize = parseInt(partySizeInput.value) || 1;
   const status = isSos ? 'sos' : 'active';
-  
+
   const payload = {
-    id: deviceId,
     dispatcher_id: dispatcherId,
     name: cadetName,
     latitude: currentCoords.latitude,
@@ -254,19 +251,13 @@ async function transmitLocation() {
     icon_type: selectedIcon,
     icon_color: selectedColor,
     party_type: partyType,
-    party_size: partySize
+    party_size: partySize,
+    updated_at: serverTimestamp()
   };
 
   try {
-    const { error } = await supabase
-      .from('cadet_locations')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (error) {
-      addLog(`TX FAIL: ${error.message}`, 'fail');
-    } else {
-      addLog(`TX SUCCESS: [${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}] (${status.toUpperCase()})`, 'success');
-    }
+    await setDoc(doc(db, 'cadet_locations', deviceId), payload, { merge: true });
+    addLog(`TX SUCCESS: [${payload.latitude.toFixed(4)}, ${payload.longitude.toFixed(4)}] (${status.toUpperCase()})`, 'success');
   } catch (err) {
     addLog(`TX EXCEPTION: ${err.message}`, 'fail');
   }
@@ -353,9 +344,9 @@ async function stopTransmission() {
   stopGpsTracking();
   addLog("Transmission terminated.");
 
-  if (supabase && deviceId) {
+  if (firebaseReady && deviceId) {
     try {
-      await supabase.from('cadet_locations').delete().eq('id', deviceId);
+      await deleteDoc(doc(db, 'cadet_locations', deviceId));
       addLog("Active responder blip deleted from Command GIS.");
     } catch(e) {
       console.error(e);
@@ -373,7 +364,7 @@ btnBroadcast.addEventListener('click', () => {
 
 // SOS Button toggle
 btnSos.addEventListener('click', async () => {
-  if (!supabase || !deviceId) return;
+  if (!firebaseReady || !deviceId) return;
   
   isSos = !isSos;
   if (isSos) {
@@ -402,10 +393,10 @@ if (btnReset) {
     if (isBroadcasting) {
       await stopTransmission();
     }
-    if (supabase && deviceId) {
+    if (firebaseReady && deviceId) {
       try {
         addLog("Deleting active responder blip...");
-        await supabase.from('cadet_locations').delete().eq('id', deviceId);
+        await deleteDoc(doc(db, 'cadet_locations', deviceId));
       } catch(e) {
         console.error(e);
       }

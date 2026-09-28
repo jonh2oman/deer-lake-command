@@ -46,7 +46,7 @@ A secure, collaborative GIS tracking system designed for central dispatchers and
 
 * **Frontend Build Tool:** Vite (V8)
 * **GIS Engine:** Leaflet JS
-* **Real-time Backend:** Supabase (PostgreSQL with Realtime Replication)
+* **Real-time Backend:** Firebase (Firestore with live listeners + Firebase Auth)
 * **Design Language:** Custom neon/futuristic dark CSS theme (responsive grid layout, glassmorphism panel backdrops).
 
 ---
@@ -55,19 +55,24 @@ A secure, collaborative GIS tracking system designed for central dispatchers and
 
 ### Prerequisites
 * Node.js (v18+)
-* Supabase Account & Project
+* A Firebase project (see [FIREBASE_SETUP.md](./FIREBASE_SETUP.md))
 
-### 1. Database Setup
-1. Open your **Supabase Dashboard**.
-2. Navigate to the **SQL Editor** tab.
-3. Paste and run the contents of [supabase_setup.sql](./supabase_setup.sql) to create the `cadet_locations` table, configure row-level security (RLS) policies, and register the table in the real-time publication.
-4. Go to **Settings -> Auth** and ensure the **"Confirm email"** toggle is turned off (for immediate development/testing) or configure SMTP.
+### 1. Backend Setup
+Follow [FIREBASE_SETUP.md](./FIREBASE_SETUP.md): create the Firebase project,
+enable Firestore + Email/Password auth, deploy `firestore.rules`, and fill in
+your `.env`. (The old `supabase_setup.sql` is superseded by `firestore.rules`
+and kept for reference only.)
 
 ### 2. Local Environment Configuration
-Create a `.env` file in the root directory and add your Supabase credentials:
+Copy `.env.example` to `.env` in the root directory and add your Firebase
+config values:
 ```env
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anonymous-key-here
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
 ```
 
 ### 3. Install Dependencies & Start Server

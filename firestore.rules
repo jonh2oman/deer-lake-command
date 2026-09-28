@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Firestore security rules for Deer Lake Command.
+//
+// TRUST MODEL (permissive by design — mirrors the old Supabase RLS):
+//   * Transmit links are PUBLIC and unauthenticated: anyone holding a
+//     transmit.html?dispatcher=<uid> link can create/update/delete tracking
+//     documents. Field transmitters have no accounts, so writes cannot be
+//     attributed or restricted to "their own" document beyond the random
+//     device UUID used as the document ID.
+//   * The dispatcher dashboard is authenticated (Firebase Auth) and only
+//     reads documents tagged with its own UID. Client queries MUST include
+//     where('dispatcher_id', '==', auth.uid); reads that don't match are
+//     denied here as a second layer.
+//
+// If you need a tighter model later (revocable per-link tokens, per-device
+// ownership), that requires a token scheme or Cloud Function — these rules
+// are the direct equivalent of what the app had on Supabase.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /cadet_locations/{deviceId} {
+      // PERMISSIVE BY DESIGN: anonymous field transmitters upsert/delete
+      // their own blip. Anyone with the link (or who guesses a device UUID)
+      // can write any document — same as the old public RLS policies.
+      // We at least require a dispatcher_id so orphan writes can't pollute
+      // other dispatchers' boards unintentionally.
+      allow create: if true
+                    && request.resource.data.dispatcher_id is string
+                    && request.resource.data.dispatcher_id.size() > 0;
+      allow update: if true;
+      allow delete: if true;
+
+      // Dispatcher dashboard: only its own units.
+      allow read: if request.auth != null
+                  && resource.data.dispatcher_id == request.auth.uid;
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,12 +1,21 @@
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 import L from 'leaflet'
-import { createClient } from '@supabase/supabase-js'
+import { db, auth, firebaseReady } from './src/firebase.js'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut
+} from 'firebase/auth'
 
-// --- Supabase Setup ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+// --- Security: escape untrusted responder-supplied strings before HTML render ---
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 
 // --- Custom Transparent Map Overlays ---
 const OpenSeaMapUrl = 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png';
@@ -51,7 +60,7 @@ const MAP_THEMES = {
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   sea: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
   satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  'google-satellite': 'http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
+  'google-satellite': 'https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
   street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
   'night-vision': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -1229,7 +1238,7 @@ async function renderBuoys() {
     const error = null;
       
     if (error) {
-      logToFeed(`[TRACE] Supabase err: ${error.message}`);
+      logToFeed(`[TRACE] backend err: ${error.message}`);
     } else if (supaBuoys) {
       logToFeed(`[TRACE] Added ${supaBuoys.length} Custom Buoys`);
       supaBuoys.forEach(b => {
@@ -1245,7 +1254,7 @@ async function renderBuoys() {
       });
     }
   } catch (err) {
-    logToFeed(`[TRACE] Supabase throw: ${err.message}`);
+    logToFeed(`[TRACE] backend throw: ${err.message}`);
   }
   
   logToFeed(`[TRACE] Filtering deleted base buoys...`);
@@ -1275,7 +1284,7 @@ async function renderBuoys() {
             if (!error) {
               logToFeed(`> REMOVED BUOY: ${feature.properties['Buoys']}`, true);
             } else {
-              logToFeed(`[TRACE] Supabase delete err: ${error.message}`);
+              logToFeed(`[TRACE] backend delete err: ${error.message}`);
               logToFeed(`SYS ERROR: FAILED TO REMOVE BUOY`);
             }
           } else {
@@ -1321,8 +1330,8 @@ async function renderBuoys() {
 
 // Initial render handled by waitForDataAndRender()
 
-// --- Supabase Realtime Subscription ---
-// --- Local Custom Buoys logic replaces Supabase Realtime ---
+// --- Tactical Buoys (localStorage-backed; no backend sync) ---
+// --- Local Custom Buoys logic ---
 // No realtime channel needed for local storage
 
 // Emergency Services
@@ -1486,7 +1495,7 @@ function playSfx(type) {
   }
 }
 function getCadetIcon(record) {
-  const name = record.name || 'Unit';
+  const name = escapeHtml(record.name || 'Unit');
   const type = record.icon_type || 'blip';
   let color = record.icon_color || 'green';
   const status = record.status || 'active';
@@ -1551,7 +1560,7 @@ function updateCadetsHudList() {
   let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
   cadetMarkers.forEach((marker, id) => {
     const data = marker.cadetData;
-    const name = data.name || id;
+    const name = escapeHtml(data.name || id);
     const type = data.icon_type || 'blip';
     let color = data.icon_color || 'green';
     let statusClass = 'status-ok';
@@ -1588,7 +1597,7 @@ function updateCadetsHudList() {
       iconHtml = `<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="margin-right: 6px; vertical-align: middle;" class="svg-${color}">${svgPath}</svg>`;
     }
     
-    const partyInfo = `${data.party_type || 'Party'} (x${data.party_size || 1})`;
+    const partyInfo = `${escapeHtml(data.party_type || 'Party')} (x${Number(data.party_size) || 1})`;
     
     html += `<li style="margin-bottom: 8px; display: flex; flex-direction: column; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1654,7 +1663,7 @@ function handleCadetLocationUpdate(payload) {
       const marker = cadetMarkers.get(id);
       primaryMap.removeLayer(marker);
       cadetMarkers.delete(id);
-      logToFeed(`SYS: RESPONDER DISCONNECTED [${oldRecord.name || 'UNIT'}]`);
+      logToFeed(`SYS: RESPONDER DISCONNECTED [${escapeHtml(oldRecord.name) || 'UNIT'}]`);
     }
     if (sosMarkersSecondary.has(id)) {
       const marker5 = sosMarkersSecondary.get(id);
@@ -1664,7 +1673,7 @@ function handleCadetLocationUpdate(payload) {
   } else {
     // INSERT or UPDATE
     const id = newRecord.id;
-    const name = newRecord.name;
+    const name = escapeHtml(newRecord.name);
     const lat = newRecord.latitude;
     const lng = newRecord.longitude;
     const status = newRecord.status || 'active';
@@ -1728,61 +1737,51 @@ function handleCadetLocationUpdate(payload) {
   updateCadetsHudList();
 }
 
-async function loadInitialCadets() {
-  if (!supabase || !currentUser) return;
-  try {
-    const { data, error } = await supabase
-      .from('cadet_locations')
-      .select('*')
-      .eq('dispatcher_id', currentUser.id);
-    if (error) {
-      console.error("Error loading initial cadets:", error.message);
-    } else if (data) {
-      data.forEach(cadet => {
-        handleCadetLocationUpdate({ eventType: 'INSERT', new: cadet });
-      });
-    }
-  } catch (err) {
-    console.error("Initial load throw:", err);
-  }
-}
-
+// Firestore replaces the Supabase realtime channel: one live listener scoped to
+// this dispatcher's units. The initial snapshot arrives as 'added' changes,
+// so no separate initial-load query is needed.
 function subscribeToCadets() {
-  if (!supabase || !currentUser) {
+  if (!firebaseReady || !currentUser) {
     logToFeed("SYS: COLLABORATIVE DATABASE OFFLINE (NO CREDENTIALS)");
     return;
   }
-  
-  if (realtimeChannel) {
-    supabase.removeChannel(realtimeChannel);
-    realtimeChannel = null;
+
+  if (unsubscribeCadets) {
+    unsubscribeCadets();
+    unsubscribeCadets = null;
   }
-  
+
   logToFeed("SYS: ESTABLISHING COLLABORATION CHANNELS...");
-  
-  realtimeChannel = supabase
-    .channel('public:cadet_locations')
-    .on('postgres_changes', { 
-      event: '*', 
-      schema: 'public', 
-      table: 'cadet_locations',
-      filter: `dispatcher_id=eq.${currentUser.id}`
-    }, (payload) => {
-      handleCadetLocationUpdate(payload);
-    })
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        logToFeed("SYS: REAL-TIME COLLABORATION LINK ESTABLISHED");
-        loadInitialCadets();
-      } else {
-        logToFeed(`SYS: REAL-TIME LINK STATUS - ${status}`);
+
+  const cadetsQuery = query(
+    collection(db, 'cadet_locations'),
+    where('dispatcher_id', '==', currentUser.uid)
+  );
+
+  let firstSnapshot = true;
+  unsubscribeCadets = onSnapshot(cadetsQuery, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      const data = { id: change.doc.id, ...change.doc.data() };
+      if (change.type === 'added') {
+        handleCadetLocationUpdate({ eventType: 'INSERT', new: data });
+      } else if (change.type === 'modified') {
+        handleCadetLocationUpdate({ eventType: 'UPDATE', new: data });
+      } else if (change.type === 'removed') {
+        handleCadetLocationUpdate({ eventType: 'DELETE', old: data });
       }
     });
+    if (firstSnapshot) {
+      firstSnapshot = false;
+      logToFeed("SYS: REAL-TIME COLLABORATION LINK ESTABLISHED");
+    }
+  }, (error) => {
+    logToFeed(`SYS: REAL-TIME LINK ERROR - ${error.message}`, true);
+  });
 }
 
 // --- Dispatcher Authentication & Link Copying Logic ---
 let currentUser = null;
-let realtimeChannel = null;
+let unsubscribeCadets = null;
 
 const dashAuthModal = document.getElementById('dashboard-auth-modal');
 const tabDashLogin = document.getElementById('tab-dash-login');
@@ -1830,21 +1829,13 @@ if (tabDashLogin && tabDashRegister) {
   });
 }
 
-// Check current session on load
-if (supabase) {
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session && session.user) {
-      handleAuthSuccess(session.user);
+// Check current session on load (onAuthStateChanged fires immediately
+// with the current user, or null when signed out)
+if (firebaseReady) {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      handleAuthSuccess(user);
     } else {
-      showAuthScreen();
-    }
-  });
-
-  // Listen for auth events
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      handleAuthSuccess(session.user);
-    } else if (event === 'SIGNED_OUT') {
       showAuthScreen();
     }
   });
@@ -1867,7 +1858,7 @@ function handleAuthSuccess(user) {
 
   // Generate & Display links
   const domain = window.location.origin + window.location.pathname.replace('index.html', '');
-  const transmitUrl = `${domain}transmit.html?dispatcher=${user.id}`;
+  const transmitUrl = `${domain}transmit.html?dispatcher=${user.uid}`;
   
   if (hudTransmitLink) hudTransmitLink.value = transmitUrl;
   if (settingsTransmitLink) settingsTransmitLink.value = transmitUrl;
@@ -1886,10 +1877,10 @@ function showAuthScreen() {
   const appContainer = document.getElementById('app');
   if (appContainer) appContainer.style.display = 'none';
   
-  // Clear realtime channel
-  if (realtimeChannel && supabase) {
-    supabase.removeChannel(realtimeChannel);
-    realtimeChannel = null;
+  // Clear realtime listener
+  if (unsubscribeCadets) {
+    unsubscribeCadets();
+    unsubscribeCadets = null;
   }
   
   // Clear cadet markers
@@ -1945,9 +1936,9 @@ setupCopyBtn(btnCopySettingsLink, settingsTransmitLink, "TRANSMIT LINK COPIED TO
 // Logout Button listener
 if (btnDashLogout) {
   btnDashLogout.addEventListener('click', async () => {
-    if (supabase) {
+    if (firebaseReady) {
       logToFeed("SYS: DISCONNECTING CENTRAL OPERATIONS...");
-      await supabase.auth.signOut();
+      await signOut(auth);
     }
   });
 }
@@ -1955,7 +1946,7 @@ if (btnDashLogout) {
 // Auth Submit Listener
 if (btnDashAuthSubmit) {
   btnDashAuthSubmit.addEventListener('click', async () => {
-    if (!supabase) return;
+    if (!firebaseReady) return;
     
     const email = dashAuthEmail.value.trim();
     const password = dashAuthPassword.value.trim();
@@ -1979,19 +1970,11 @@ if (btnDashAuthSubmit) {
     
     try {
       if (authMode === 'register') {
-        const { data, error } = await supabase.auth.signUp({
-          email: email,
-          password: password
-        });
-        if (error) throw error;
+        await createUserWithEmailAndPassword(auth, email, password);
         dashAuthMessage.style.color = 'var(--success-color)';
         dashAuthMessage.textContent = 'Account created. Initializing key...';
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-        if (error) throw error;
+        await signInWithEmailAndPassword(auth, email, password);
         dashAuthMessage.style.color = 'var(--success-color)';
         dashAuthMessage.textContent = 'Session verified. Welcome.';
       }
