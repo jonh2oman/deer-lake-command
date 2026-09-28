@@ -988,6 +988,130 @@ input:checked + .slider:before {
   100% { transform: scale(3); opacity: 0; }
 }
 
+/* ==========================================================================
+   CANADIAN ARMED FORCES (CAF) BASES LAYER & RADAR BLIPS
+   ========================================================================== */
+.blip-cfb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.blip-cfb::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background-color: #ff2233;
+  box-shadow: 0 0 8px #ff2233, 0 0 16px rgba(255, 34, 51, 0.95);
+  transition: transform 0.2s ease;
+}
+
+.blip-cfb:hover::after {
+  transform: translate(-50%, -50%) scale(1.4);
+}
+
+.blip-cfb::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 50%;
+  border: 2px solid #ff2233;
+  animation: radarPulse 2.2s infinite;
+}
+
+/* Branch Distinct Badges / Colors */
+.blip-cfb-rcaf::after {
+  background-color: #00ddff;
+  box-shadow: 0 0 8px #00ddff, 0 0 16px rgba(0, 221, 255, 0.95);
+}
+.blip-cfb-rcaf::before {
+  border-color: #00ddff;
+}
+
+.blip-cfb-rcn::after {
+  background-color: #00ffcc;
+  box-shadow: 0 0 8px #00ffcc, 0 0 16px rgba(0, 255, 204, 0.95);
+}
+.blip-cfb-rcn::before {
+  border-color: #00ffcc;
+}
+
+.blip-cfb-army::after {
+  background-color: #39ff14;
+  box-shadow: 0 0 8px #39ff14, 0 0 16px rgba(57, 255, 20, 0.95);
+}
+.blip-cfb-army::before {
+  border-color: #39ff14;
+}
+
+.blip-cfb-arctic::after {
+  background-color: #ffffff;
+  box-shadow: 0 0 8px #ffffff, 0 0 16px rgba(255, 255, 255, 0.95);
+}
+.blip-cfb-arctic::before {
+  border-color: #ffffff;
+}
+
+.blip-cfb-intl::after {
+  background-color: #ffbb00;
+  box-shadow: 0 0 8px #ffbb00, 0 0 16px rgba(255, 187, 0, 0.95);
+}
+.blip-cfb-intl::before {
+  border-color: #ffbb00;
+}
+
+/* CFB Filter Chips */
+.cfb-chip-btn {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--hud-font);
+  font-size: 8px;
+  padding: 3px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.cfb-chip-btn:hover {
+  filter: brightness(1.25);
+  box-shadow: 0 0 6px rgba(255, 51, 68, 0.35);
+}
+
+.cfb-chip-btn.active {
+  background: rgba(255, 51, 68, 0.2);
+  border-color: #ff3344;
+  color: #fff;
+  box-shadow: 0 0 5px rgba(255, 51, 68, 0.4);
+}
+
+.cfb-chip-btn.inactive {
+  opacity: 0.35 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #666 !important;
+  text-decoration: line-through;
+  box-shadow: none !important;
+}
+
+.cfb-popup-container .leaflet-popup-content-wrapper {
+  background: rgba(4, 14, 24, 0.97) !important;
+  border: 1px solid #ff3344 !important;
+  box-shadow: 0 0 20px rgba(255, 51, 68, 0.35) !important;
+  border-radius: 3px !important;
+}
+
+.cfb-popup-container .leaflet-popup-tip {
+  background: rgba(4, 14, 24, 0.97) !important;
+  border: 1px solid #ff3344 !important;
+}
+
 /* Leaflet Overrides */
 .leaflet-container { background: #000; font-family: var(--hud-font); }
 .leaflet-popup-content-wrapper { background: var(--panel-bg); color: var(--text-primary); border: 1px solid var(--border-color); font-family: var(--hud-font); border-radius: 0; }

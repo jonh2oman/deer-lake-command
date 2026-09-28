@@ -63,6 +63,7 @@
           </div>
           <div class="tactical-quick-bar hdr-quick-bar">
             <button id="quick-btn-recenter" class="quick-hud-btn" title="Recenter Base (Space)">[ 🎯 CENTER ]</button>
+            <button id="quick-btn-cfb" class="quick-hud-btn active" title="Toggle Canadian Forces Bases Layer (B)">[ 🍁 CFB ]</button>
             <button id="quick-btn-wind" class="quick-hud-btn active" title="Wind Telemetry HUD Banner (Focus W)">[ 💨 WIND ]</button>
             <button id="quick-btn-rangefinder" class="quick-hud-btn" title="Tactical Range & Bearing Vector (X)">[ 📐 RANGE ]</button>
             <button id="quick-btn-export" class="quick-hud-btn" title="Export Mission Data (GeoJSON)">[ 💾 EXPORT ]</button>
@@ -229,6 +230,25 @@
                   <button id="ems-quick-hospital" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ffffff; background: rgba(255,255,255,0.15); color: #ffffff;" title="Toggle Hospital Blips (White)">[ ⚪ HOSP ]</button>
                   <button id="ems-quick-fire" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ff8800; background: rgba(255,136,0,0.15); color: #ff8800;" title="Toggle Fire Station Blips (Orange)">[ 🟠 FIRE ]</button>
                   <button id="ems-quick-police" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #1e6bff; background: rgba(30,107,255,0.15); color: #1e6bff;" title="Toggle Police Station Blips (Royal Blue)">[ 🔵 POLICE ]</button>
+                </div>
+              </div>
+
+              <!-- Canadian Armed Forces (CAF) Bases Layer Section -->
+              <div class="cfb-quick-section" style="margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 9px; color: #ff3344; font-family: var(--hud-font); letter-spacing: 0.5px; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                    <span>🍁 CANADIAN FORCES BASES</span>
+                    <span id="cfb-count-badge" style="font-size: 8px; background: rgba(255, 51, 68, 0.15); color: #ff5566; padding: 1px 4px; border-radius: 2px; border: 1px solid rgba(255, 51, 68, 0.4);">52 SITES</span>
+                  </span>
+                  <button id="cfb-main-toggle-btn" class="btn-secondary active" style="font-size: 8px; padding: 1px 6px; border-color: #ff3344; color: #ff3344; cursor: pointer;" title="Toggle Canadian Forces Bases Layer">[ ON ]</button>
+                </div>
+                <div class="cfb-filter-chips" style="display: flex; gap: 3px; flex-wrap: wrap;">
+                  <button id="cfb-filter-all" class="cfb-chip-btn active" data-branch="all" style="flex: 1; text-align: center;">[ ALL (52) ]</button>
+                  <button id="cfb-filter-rcaf" class="cfb-chip-btn active" data-branch="rcaf" style="flex: 1; text-align: center; color: #00ddff; border-color: #00ddff;" title="Royal Canadian Air Force Wings">[ ✈ RCAF ]</button>
+                  <button id="cfb-filter-army" class="cfb-chip-btn active" data-branch="army" style="flex: 1; text-align: center; color: #39ff14; border-color: #39ff14;" title="Canadian Army Bases">[ ⚔ ARMY ]</button>
+                  <button id="cfb-filter-rcn" class="cfb-chip-btn active" data-branch="rcn" style="flex: 1; text-align: center; color: #00ffcc; border-color: #00ffcc;" title="Royal Canadian Navy Fleet Bases">[ ⚓ NAVY ]</button>
+                  <button id="cfb-filter-arctic" class="cfb-chip-btn active" data-branch="arctic" style="flex: 1; text-align: center; color: #ffffff; border-color: #ffffff;" title="High Arctic & Northern Bases">[ ❄ ARCTIC ]</button>
+                  <button id="cfb-filter-intl" class="cfb-chip-btn active" data-branch="international" style="flex: 1; text-align: center; color: #ffbb00; border-color: #ffbb00;" title="Overseas Bases & Support Hubs">[ 🌐 OVERSEAS ]</button>
                 </div>
               </div>
             </div>
@@ -570,6 +590,10 @@
               <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #fff; cursor: pointer; grid-column: span 2;">
                 <input type="checkbox" id="tac-layer-radar">
                 <span>🛰️ DOPPLER WEATHER RADAR OVERLAY</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 10px; color: #ff3344; cursor: pointer; grid-column: span 2;">
+                <input type="checkbox" id="tac-layer-cfb" checked>
+                <span>🍁 CANADIAN FORCES BASES (CFB)</span>
               </label>
             </div>
           </div>
@@ -1129,6 +1153,22 @@
                   POLICE (ROYAL BLUE)
                 </span>
               </div>
+
+              <!-- Canadian Armed Forces (CAF) Bases Toggle -->
+              <div class="radar-control" style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; margin-top: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                  <span style="font-size: 10px; color: #ff3344; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+                    <span>🍁 CANADIAN FORCES BASES (DOMESTIC & OVERSEAS)</span>
+                    <span style="font-size: 8px; background: rgba(255, 51, 68, 0.15); color: #ff5566; padding: 1px 4px; border-radius: 2px; border: 1px solid rgba(255, 51, 68, 0.4);">52 SITES</span>
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="cfb-toggle" checked>
+                      <span class="slider" style="background-color: #ff3344;"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1271,6 +1311,10 @@
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
             <span style="color: var(--accent-color); font-weight: bold;"><kbd style="background: rgba(0,210,255,0.15); border: 1px solid var(--border-color); padding: 1px 5px; border-radius: 3px;">SPACE</kbd></span>
             <span style="color: var(--text-primary);">Recenter on Tactical Command Base</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
+            <span style="color: #ff3344; font-weight: bold;"><kbd style="background: rgba(255,51,68,0.15); border: 1px solid rgba(255,51,68,0.4); padding: 1px 5px; border-radius: 3px;">B</kbd></span>
+            <span style="color: var(--text-primary);">Toggle Canadian Forces Bases Layer (52 Sites)</span>
           </div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
             <span style="color: var(--accent-color); font-weight: bold;"><kbd style="background: rgba(0,210,255,0.15); border: 1px solid var(--border-color); padding: 1px 5px; border-radius: 3px;">W</kbd></span>

@@ -1,6 +1,7 @@
 import 'leaflet/dist/leaflet.css'
 import './style.css'
 import L from 'leaflet'
+import { CANADIAN_FORCES_BASES } from './canadianForcesBases.js'
 import { db, auth, firebaseReady } from './src/firebase.js'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import {
@@ -343,6 +344,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       hospitals: false,
       fire: false,
       police: false,
+      cfb: true,
       base: true,
       radar: false
     }
@@ -362,6 +364,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       hospitals: true,
       fire: true,
       police: true,
+      cfb: true,
       base: true,
       radar: false
     }
@@ -381,6 +384,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       hospitals: false,
       fire: false,
       police: false,
+      cfb: true,
       base: true,
       radar: true
     }
@@ -400,6 +404,7 @@ const DEFAULT_TACTICAL_VIEWS = [
       hospitals: false,
       fire: false,
       police: false,
+      cfb: true,
       base: true,
       radar: false
     }
@@ -1223,6 +1228,43 @@ const policeIcon = L.divIcon({
   iconAnchor: [10, 10]
 });
 
+// Canadian Armed Forces (CAF) Radar Blip Icons
+const cfbIconDefault = L.divIcon({
+  className: 'radar-blip blip-cfb',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
+const cfbIconRcaf = L.divIcon({
+  className: 'radar-blip blip-cfb blip-cfb-rcaf',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
+const cfbIconRcn = L.divIcon({
+  className: 'radar-blip blip-cfb blip-cfb-rcn',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
+const cfbIconArmy = L.divIcon({
+  className: 'radar-blip blip-cfb blip-cfb-army',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
+const cfbIconArctic = L.divIcon({
+  className: 'radar-blip blip-cfb blip-cfb-arctic',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
+const cfbIconIntl = L.divIcon({
+  className: 'radar-blip blip-cfb blip-cfb-intl',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
 // --- Edit Mode Logic ---
 let isEditMode = false;
 const editToggle = document.getElementById('edit-toggle');
@@ -1535,6 +1577,18 @@ const tacticalEmsLayers = {
 let emsHospitalsEnabled = localStorage.getItem('cmd-ems-hospitals') !== 'false';
 let emsFireEnabled = localStorage.getItem('cmd-ems-fire') !== 'false';
 let emsPoliceEnabled = localStorage.getItem('cmd-ems-police') !== 'false';
+
+// Canadian Armed Forces (CAF) Bases Layer Groups
+const cfbLayerPrimary = L.layerGroup();
+const cfbLayerSecondary = L.layerGroup();
+const tacticalCfbLayers = {
+  1: L.layerGroup().addTo(secondaryMap1),
+  2: cfbLayerSecondary.addTo(secondaryMap2),
+  3: L.layerGroup().addTo(secondaryMap3),
+  4: L.layerGroup().addTo(secondaryMap4)
+};
+let cfbLayerEnabled = localStorage.getItem('cmd-cfb-layer') !== 'false';
+let currentCfbBranchFilter = 'all';
 
 // Preloaded Comprehensive Regional Facilities Database
 const EMS_PRELOAD_STATIONS = [
@@ -2121,6 +2175,7 @@ function waitForDataAndRender() {
       logToFeed(`[DIAG] BUOYS RENDERED: ${bCount} markers.`);
     }).catch(e => logToFeed(`[DIAG] BUOY ERR: ${e.message}`));
     renderEmsLayers();
+    renderCfbLayers();
   } else if (retryCount < 20) {
     retryCount++;
     setTimeout(waitForDataAndRender, 100);
@@ -2128,6 +2183,7 @@ function waitForDataAndRender() {
     logToFeed("SYS: LOCAL ASSETS READY");
     renderBuoys();
     renderEmsLayers();
+    renderCfbLayers();
   }
 }
 
@@ -2196,9 +2252,234 @@ function setupEmsEventListeners() {
   }
 }
 
+// =========================================================================
+// CANADIAN ARMED FORCES (CAF) BASES LAYER LOGIC
+// =========================================================================
+
+function getCfbIcon(base) {
+  if (base.branch === 'rcaf') return cfbIconRcaf;
+  if (base.branch === 'rcn') return cfbIconRcn;
+  if (base.branch === 'army') return cfbIconArmy;
+  if (base.branch === 'arctic') return cfbIconArctic;
+  if (base.branch === 'international') return cfbIconIntl;
+  return cfbIconDefault;
+}
+
+function createCfbPopupContent(base) {
+  let badgeColor = '#ff3344';
+  let badgeBg = 'rgba(255, 51, 68, 0.15)';
+  let iconGlyph = '🍁';
+
+  if (base.branch === 'rcaf') {
+    badgeColor = '#00ddff';
+    badgeBg = 'rgba(0, 221, 255, 0.15)';
+    iconGlyph = '✈️';
+  } else if (base.branch === 'rcn') {
+    badgeColor = '#00ffcc';
+    badgeBg = 'rgba(0, 255, 204, 0.15)';
+    iconGlyph = '⚓';
+  } else if (base.branch === 'army') {
+    badgeColor = '#39ff14';
+    badgeBg = 'rgba(57, 255, 20, 0.15)';
+    iconGlyph = '⚔️';
+  } else if (base.branch === 'arctic') {
+    badgeColor = '#ffffff';
+    badgeBg = 'rgba(255, 255, 255, 0.15)';
+    iconGlyph = '❄️';
+  } else if (base.branch === 'international') {
+    badgeColor = '#ffbb00';
+    badgeBg = 'rgba(255, 187, 0, 0.15)';
+    iconGlyph = '🌐';
+  }
+
+  const wingHtml = base.wing ? `<div style="font-size: 10px; color: ${badgeColor}; font-weight: bold; margin-bottom: 2px;">${escapeHtml(base.wing)}</div>` : '';
+  const desigHtml = base.designation ? `<div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">${escapeHtml(base.designation)}</div>` : '';
+  const unitsHtml = base.units ? `<div style="margin-top: 4px; font-size: 9px; color: #ddd; background: rgba(0,0,0,0.45); padding: 4px 6px; border-left: 2px solid ${badgeColor}; border-radius: 2px;"><strong>KEY UNITS:</strong> ${escapeHtml(base.units)}</div>` : '';
+  const detailsHtml = base.details ? `<div style="margin-top: 4px; font-size: 9px; color: #bbb; line-height: 1.35;">${escapeHtml(base.details)}</div>` : '';
+  const locHtml = `<div style="margin-top: 4px; font-size: 9px; color: var(--text-secondary);">📍 ${escapeHtml(base.province || '')}${base.country && base.country !== 'Canada' ? ', ' + escapeHtml(base.country) : ', Canada'}</div>`;
+
+  return `
+    <div style="font-family: var(--hud-font); min-width: 240px; max-width: 290px; padding: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; color: ${badgeColor}; background: ${badgeBg}; border: 1px solid ${badgeColor}; border-radius: 2px;">
+          ${iconGlyph} ${escapeHtml(base.branchLabel || base.branch.toUpperCase())}
+        </span>
+        <span style="font-size: 8px; color: var(--text-secondary); font-family: monospace;">CAF / DND</span>
+      </div>
+      <div style="font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 2px; letter-spacing: 0.5px;">
+        ${escapeHtml(base.name)}
+      </div>
+      ${wingHtml}
+      ${desigHtml}
+      ${locHtml}
+      ${detailsHtml}
+      ${unitsHtml}
+      <div style="margin-top: 6px; font-size: 9px; color: var(--text-secondary); font-family: monospace;">
+        COORDS: ${base.lat.toFixed(4)}°, ${base.lng.toFixed(4)}°
+      </div>
+      <div style="margin-top: 8px; display: flex; gap: 4px;">
+        <button onclick="window.primaryMap.flyTo([${base.lat}, ${base.lng}], 13, { duration: 1.2 })" style="flex: 1.2; background: rgba(255,51,68,0.2); border: 1px solid #ff3344; color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ 🎯 TARGET VIEW ]</button>
+        <button onclick="window.primaryMap.flyTo([${base.lat}, ${base.lng}], 7, { duration: 1.0 })" style="flex: 0.8; background: rgba(0,210,255,0.15); border: 1px solid var(--accent-color); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ SECTOR ]</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCfbLayers() {
+  cfbLayerPrimary.clearLayers();
+  cfbLayerSecondary.clearLayers();
+
+  for (let i = 1; i <= 4; i++) {
+    if (tacticalCfbLayers[i]) {
+      tacticalCfbLayers[i].clearLayers();
+    }
+  }
+
+  let visibleCount = 0;
+
+  CANADIAN_FORCES_BASES.forEach(base => {
+    // Check branch filter
+    if (currentCfbBranchFilter !== 'all' && base.branch !== currentCfbBranchFilter) {
+      return;
+    }
+
+    visibleCount++;
+    const icon = getCfbIcon(base);
+    const popupHtml = createCfbPopupContent(base);
+
+    // Primary Map Marker
+    const m1 = L.marker([base.lat, base.lng], { icon: icon, zIndexOffset: 500 }).bindPopup(popupHtml);
+    m1.baseData = base;
+    cfbLayerPrimary.addLayer(m1);
+
+    // Secondary Map 2 Marker
+    const m2 = L.marker([base.lat, base.lng], { icon: icon }).bindPopup(popupHtml);
+    cfbLayerSecondary.addLayer(m2);
+
+    // Tactical mini-maps 1-4
+    for (let i = 1; i <= 4; i++) {
+      const cfg = tacticalViewsConfig[i - 1];
+      if (cfg && cfg.enabled && cfg.layers && cfg.layers.cfb !== false && tacticalCfbLayers[i]) {
+        const miniMarker = L.marker([base.lat, base.lng], { icon: icon }).bindPopup(popupHtml);
+        tacticalCfbLayers[i].addLayer(miniMarker);
+      }
+    }
+  });
+
+  const countBadge = document.getElementById('cfb-count-badge');
+  if (countBadge) {
+    countBadge.textContent = `${visibleCount} SITES`;
+  }
+
+  updateCfbLayerVisibility();
+}
+
+function updateCfbLayerVisibility() {
+  if (cfbLayerEnabled) {
+    if (!primaryMap.hasLayer(cfbLayerPrimary)) primaryMap.addLayer(cfbLayerPrimary);
+    if (!secondaryMap2.hasLayer(cfbLayerSecondary)) secondaryMap2.addLayer(cfbLayerSecondary);
+  } else {
+    if (primaryMap.hasLayer(cfbLayerPrimary)) primaryMap.removeLayer(cfbLayerPrimary);
+    if (!secondaryMap2.hasLayer(cfbLayerSecondary)) secondaryMap2.removeLayer(cfbLayerSecondary);
+  }
+
+  // Update Tactical Views
+  for (let i = 1; i <= 4; i++) {
+    const cfg = tacticalViewsConfig[i - 1];
+    const miniMap = i === 1 ? secondaryMap1 : i === 2 ? secondaryMap2 : i === 3 ? secondaryMap3 : secondaryMap4;
+    const lyr = tacticalCfbLayers[i];
+    if (lyr && miniMap) {
+      if (cfbLayerEnabled && (!cfg || !cfg.layers || cfg.layers.cfb !== false)) {
+        if (!miniMap.hasLayer(lyr)) miniMap.addLayer(lyr);
+      } else {
+        if (miniMap.hasLayer(lyr)) miniMap.removeLayer(lyr);
+      }
+    }
+  }
+
+  // Sync Quick HUD Button
+  const quickBtnCfb = document.getElementById('quick-btn-cfb');
+  if (quickBtnCfb) {
+    quickBtnCfb.classList.toggle('active', cfbLayerEnabled);
+  }
+
+  // Sync Sidebar Main Toggle Button
+  const cfbMainToggleBtn = document.getElementById('cfb-main-toggle-btn');
+  if (cfbMainToggleBtn) {
+    cfbMainToggleBtn.textContent = cfbLayerEnabled ? '[ ON ]' : '[ OFF ]';
+    cfbMainToggleBtn.classList.toggle('active', cfbLayerEnabled);
+    cfbMainToggleBtn.style.color = cfbLayerEnabled ? '#ff3344' : '#666';
+    cfbMainToggleBtn.style.borderColor = cfbLayerEnabled ? '#ff3344' : 'rgba(255,255,255,0.2)';
+  }
+
+  // Sync Settings Modal toggle
+  const cfbSettingsToggle = document.getElementById('cfb-toggle');
+  if (cfbSettingsToggle) {
+    cfbSettingsToggle.checked = cfbLayerEnabled;
+  }
+
+  // Persist state
+  localStorage.setItem('cmd-cfb-layer', cfbLayerEnabled);
+}
+
+function toggleCfbLayer(targetState) {
+  if (typeof targetState === 'boolean') {
+    cfbLayerEnabled = targetState;
+  } else {
+    cfbLayerEnabled = !cfbLayerEnabled;
+  }
+  updateCfbLayerVisibility();
+  logToFeed(`CFB: CANADIAN FORCES BASES LAYER ${cfbLayerEnabled ? 'ONLINE' : 'OFFLINE'}`);
+}
+window.toggleCfbLayer = toggleCfbLayer;
+
+function setupCfbEventListeners() {
+  const quickBtnCfb = document.getElementById('quick-btn-cfb');
+  const cfbMainToggleBtn = document.getElementById('cfb-main-toggle-btn');
+  const cfbSettingsToggle = document.getElementById('cfb-toggle');
+
+  if (quickBtnCfb) {
+    quickBtnCfb.addEventListener('click', () => toggleCfbLayer());
+  }
+
+  if (cfbMainToggleBtn) {
+    cfbMainToggleBtn.addEventListener('click', () => toggleCfbLayer());
+  }
+
+  if (cfbSettingsToggle) {
+    cfbSettingsToggle.addEventListener('change', (e) => {
+      toggleCfbLayer(e.target.checked);
+    });
+  }
+
+  // Branch filter chips
+  const filterChips = document.querySelectorAll('.cfb-chip-btn');
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const branch = chip.getAttribute('data-branch') || 'all';
+      currentCfbBranchFilter = branch;
+
+      // Update chips UI
+      filterChips.forEach(c => {
+        if (c === chip) {
+          c.classList.add('active');
+          c.classList.remove('inactive');
+        } else {
+          c.classList.remove('active');
+          c.classList.add('inactive');
+        }
+      });
+
+      renderCfbLayers();
+      logToFeed(`CFB: FILTER SET TO [${branch.toUpperCase()}]`);
+    });
+  });
+}
+
 // Start data polling & attach event listeners
 waitForDataAndRender();
 setupEmsEventListeners();
+setupCfbEventListeners();
 
 setTimeout(() => {
   primaryMap.invalidateSize();
@@ -3621,6 +3902,8 @@ window.addEventListener('keydown', (e) => {
     if (quickBtnRadar) quickBtnRadar.click();
   } else if (e.code === 'KeyM') {
     if (quickBtnAudio) quickBtnAudio.click();
+  } else if (e.code === 'KeyB') {
+    toggleCfbLayer();
   } else if (e.code === 'KeyS') {
     if (activeSosRecord && primaryMap) {
       primaryMap.flyTo([activeSosRecord.latitude, activeSosRecord.longitude], 16, { duration: 0.8 });
@@ -4180,6 +4463,7 @@ function applyAllTacticalViews() {
   }
   if (typeof renderBuoys === 'function') renderBuoys();
   if (typeof renderEmsLayers === 'function') renderEmsLayers();
+  if (typeof renderCfbLayers === 'function') renderCfbLayers();
   renderAllCadetsOnTacticalViews();
 }
 
@@ -4202,6 +4486,7 @@ const tacLayerBuoys = document.getElementById('tac-layer-buoys');
 const tacLayerHospitals = document.getElementById('tac-layer-hospitals');
 const tacLayerFire = document.getElementById('tac-layer-fire');
 const tacLayerPolice = document.getElementById('tac-layer-police');
+const tacLayerCfb = document.getElementById('tac-layer-cfb');
 const tacLayerBase = document.getElementById('tac-layer-base');
 const tacLayerRadar = document.getElementById('tac-layer-radar');
 
@@ -4272,6 +4557,7 @@ function openTacticalViewModal(viewId = 1) {
   if (tacLayerHospitals) tacLayerHospitals.checked = !!l.hospitals;
   if (tacLayerFire) tacLayerFire.checked = !!l.fire;
   if (tacLayerPolice) tacLayerPolice.checked = !!l.police;
+  if (tacLayerCfb) tacLayerCfb.checked = l.cfb !== false;
   if (tacLayerBase) tacLayerBase.checked = l.base !== false;
   if (tacLayerRadar) tacLayerRadar.checked = !!l.radar;
 
@@ -4428,6 +4714,7 @@ if (btnSaveTacView) {
       hospitals: tacLayerHospitals ? tacLayerHospitals.checked : false,
       fire: tacLayerFire ? tacLayerFire.checked : false,
       police: tacLayerPolice ? tacLayerPolice.checked : false,
+      cfb: tacLayerCfb ? tacLayerCfb.checked : true,
       base: tacLayerBase ? tacLayerBase.checked : true,
       radar: tacLayerRadar ? tacLayerRadar.checked : false
     };
