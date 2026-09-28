@@ -2284,8 +2284,38 @@ function setupEmsEventListeners() {
 }
 
 // =========================================================================
-// CANADIAN ARMED FORCES (CAF) BASES LAYER LOGIC
+// CANADIAN ARMED FORCES (CAF) BASES LAYER & RELOCATION LOGIC
 // =========================================================================
+
+function loadCfbBases() {
+  const saved = localStorage.getItem('cmd-cfb-custom-bases');
+  let customMap = {};
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(b => { if (b && b.id) customMap[b.id] = b; });
+      } else if (typeof parsed === 'object') {
+        customMap = parsed;
+      }
+    } catch (e) {
+      console.warn("Failed to parse custom CFB bases from localStorage", e);
+    }
+  }
+  return CANADIAN_FORCES_BASES.map(base => {
+    if (customMap[base.id]) {
+      return { ...base, ...customMap[base.id] };
+    }
+    return { ...base };
+  });
+}
+
+function saveCfbBases() {
+  localStorage.setItem('cmd-cfb-custom-bases', JSON.stringify(allCfbBases));
+}
+
+let allCfbBases = loadCfbBases();
+const cfbPrimaryMarkers = new Map();
 
 function getCfbIcon(base) {
   if (base.branch === 'rcaf') return cfbIconRcaf;
@@ -2346,11 +2376,12 @@ function createCfbPopupContent(base) {
       ${detailsHtml}
       ${unitsHtml}
       <div style="margin-top: 6px; font-size: 9px; color: var(--text-secondary); font-family: monospace;">
-        COORDS: ${base.lat.toFixed(4)}°, ${base.lng.toFixed(4)}°
+        COORDS: ${base.lat.toFixed(5)}°, ${base.lng.toFixed(5)}°
       </div>
       <div style="margin-top: 8px; display: flex; gap: 4px;">
-        <button onclick="window.primaryMap.flyTo([${base.lat}, ${base.lng}], 13, { duration: 1.2 })" style="flex: 1.2; background: rgba(255,51,68,0.2); border: 1px solid #ff3344; color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ 🎯 TARGET VIEW ]</button>
-        <button onclick="window.primaryMap.flyTo([${base.lat}, ${base.lng}], 7, { duration: 1.0 })" style="flex: 0.8; background: rgba(0,210,255,0.15); border: 1px solid var(--accent-color); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ SECTOR ]</button>
+        <button onclick="window.primaryMap.flyTo([${base.lat}, ${base.lng}], 13, { duration: 1.2 })" style="flex: 1; background: rgba(255,51,68,0.2); border: 1px solid #ff3344; color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 5px; cursor: pointer; border-radius: 2px;">[ 🎯 VIEW ]</button>
+        <button onclick="window.startRelocatingMilTarget('cfb', '${base.id}')" style="flex: 1.2; background: rgba(255,51,68,0.15); border: 1px solid #ff3344; color: #ff3344; font-family: var(--hud-font); font-size: 9px; padding: 4px 5px; cursor: pointer; border-radius: 2px;" title="Drag marker or click map to move">[ 📍 RELOCATE ]</button>
+        <button onclick="window.openTargetEditorModal('cfb', '${base.id}')" style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 5px; cursor: pointer; border-radius: 2px;" title="Edit coordinates or details">[ ✏️ EDIT ]</button>
       </div>
     </div>
   `;
@@ -2359,6 +2390,7 @@ function createCfbPopupContent(base) {
 function renderCfbLayers() {
   cfbLayerPrimary.clearLayers();
   cfbLayerSecondary.clearLayers();
+  cfbPrimaryMarkers.clear();
 
   for (let i = 1; i <= 4; i++) {
     if (tacticalCfbLayers[i]) {
@@ -2368,7 +2400,7 @@ function renderCfbLayers() {
 
   let visibleCount = 0;
 
-  CANADIAN_FORCES_BASES.forEach(base => {
+  allCfbBases.forEach(base => {
     // Check branch filter
     if (currentCfbBranchFilter !== 'all' && base.branch !== currentCfbBranchFilter) {
       return;
@@ -2382,6 +2414,7 @@ function renderCfbLayers() {
     const m1 = L.marker([base.lat, base.lng], { icon: icon, zIndexOffset: 500 }).bindPopup(popupHtml);
     m1.baseData = base;
     cfbLayerPrimary.addLayer(m1);
+    cfbPrimaryMarkers.set(base.id, m1);
 
     // Secondary Map 2 Marker
     const m2 = L.marker([base.lat, base.lng], { icon: icon }).bindPopup(popupHtml);
@@ -2464,10 +2497,21 @@ function toggleCfbLayer(targetState) {
 }
 window.toggleCfbLayer = toggleCfbLayer;
 
+function resetAllCfbDefaults() {
+  localStorage.removeItem('cmd-cfb-custom-bases');
+  allCfbBases = CANADIAN_FORCES_BASES.map(b => ({ ...b }));
+  saveCfbBases();
+  renderCfbLayers();
+  logToFeed("SYS: ALL CANADIAN FORCES BASES RESTORED TO FACTORY COORDINATES");
+}
+window.resetAllCfbDefaults = resetAllCfbDefaults;
+
 function setupCfbEventListeners() {
   const quickBtnCfb = document.getElementById('quick-btn-cfb');
   const cfbMainToggleBtn = document.getElementById('cfb-main-toggle-btn');
   const cfbSettingsToggle = document.getElementById('cfb-toggle');
+  const cfbResetBtn = document.getElementById('cfb-reset-btn');
+  const btnSettingsResetCfb = document.getElementById('btn-settings-reset-cfb');
 
   if (quickBtnCfb) {
     quickBtnCfb.addEventListener('click', () => toggleCfbLayer());
@@ -2481,6 +2525,14 @@ function setupCfbEventListeners() {
     cfbSettingsToggle.addEventListener('change', (e) => {
       toggleCfbLayer(e.target.checked);
     });
+  }
+
+  if (cfbResetBtn) {
+    cfbResetBtn.addEventListener('click', resetAllCfbDefaults);
+  }
+
+  if (btnSettingsResetCfb) {
+    btnSettingsResetCfb.addEventListener('click', resetAllCfbDefaults);
   }
 
   // Branch filter chips
@@ -2508,8 +2560,38 @@ function setupCfbEventListeners() {
 }
 
 // =========================================================================
-// CANADIAN CADETS & CANADIAN RANGERS (CJCR) LAYER LOGIC
+// CANADIAN CADETS & CANADIAN RANGERS (CJCR) LAYER & RELOCATION LOGIC
 // =========================================================================
+
+function loadCjcrTargets() {
+  const saved = localStorage.getItem('cmd-cjcr-custom-targets');
+  let customMap = {};
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(t => { if (t && t.id) customMap[t.id] = t; });
+      } else if (typeof parsed === 'object') {
+        customMap = parsed;
+      }
+    } catch (e) {
+      console.warn("Failed to parse custom CJCR targets from localStorage", e);
+    }
+  }
+  return CADETS_AND_RANGERS.map(target => {
+    if (customMap[target.id]) {
+      return { ...target, ...customMap[target.id] };
+    }
+    return { ...target };
+  });
+}
+
+function saveCjcrTargets() {
+  localStorage.setItem('cmd-cjcr-custom-targets', JSON.stringify(allCjcrTargets));
+}
+
+let allCjcrTargets = loadCjcrTargets();
+const cjcrPrimaryMarkers = new Map();
 
 function getCjcrIcon(item) {
   if (item.type === 'sea_cadet') return cjcrIconSea;
@@ -2588,11 +2670,12 @@ function createCjcrPopupContent(item) {
       ${locHtml}
       ${detailsHtml}
       <div style="margin-top: 6px; font-size: 9px; color: var(--text-secondary); font-family: monospace;">
-        COORDS: ${item.lat.toFixed(4)}°, ${item.lng.toFixed(4)}°
+        COORDS: ${item.lat.toFixed(5)}°, ${item.lng.toFixed(5)}°
       </div>
       <div style="margin-top: 8px; display: flex; gap: 4px;">
-        <button onclick="window.primaryMap.flyTo([${item.lat}, ${item.lng}], 13, { duration: 1.2 })" style="flex: 1.2; background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ 🎯 TARGET VIEW ]</button>
-        <button onclick="window.primaryMap.flyTo([${item.lat}, ${item.lng}], 8, { duration: 1.0 })" style="flex: 0.8; background: rgba(0,210,255,0.15); border: 1px solid var(--accent-color); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 6px; cursor: pointer; border-radius: 2px;">[ SECTOR ]</button>
+        <button onclick="window.primaryMap.flyTo([${item.lat}, ${item.lng}], 13, { duration: 1.2 })" style="flex: 1; background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 5px; cursor: pointer; border-radius: 2px;">[ 🎯 VIEW ]</button>
+        <button onclick="window.startRelocatingMilTarget('cjcr', '${item.id}')" style="flex: 1.2; background: rgba(56,189,248,0.15); border: 1px solid #38bdf8; color: #38bdf8; font-family: var(--hud-font); font-size: 9px; padding: 4px 5px; cursor: pointer; border-radius: 2px;" title="Drag marker or click map to move">[ 📍 RELOCATE ]</button>
+        <button onclick="window.openTargetEditorModal('cjcr', '${item.id}')" style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px 5px; cursor: pointer; border-radius: 2px;" title="Edit coordinates or details">[ ✏️ EDIT ]</button>
       </div>
     </div>
   `;
@@ -2601,6 +2684,7 @@ function createCjcrPopupContent(item) {
 function renderCjcrLayers() {
   cjcrLayerPrimary.clearLayers();
   cjcrLayerSecondary.clearLayers();
+  cjcrPrimaryMarkers.clear();
 
   for (let i = 1; i <= 4; i++) {
     if (tacticalCjcrLayers[i]) {
@@ -2610,7 +2694,7 @@ function renderCjcrLayers() {
 
   let visibleCount = 0;
 
-  CADETS_AND_RANGERS.forEach(item => {
+  allCjcrTargets.forEach(item => {
     // Check type filter
     if (currentCjcrTypeFilter !== 'all' && item.type !== currentCjcrTypeFilter) {
       return;
@@ -2624,6 +2708,7 @@ function renderCjcrLayers() {
     const m1 = L.marker([item.lat, item.lng], { icon: icon, zIndexOffset: 450 }).bindPopup(popupHtml);
     m1.cjcrData = item;
     cjcrLayerPrimary.addLayer(m1);
+    cjcrPrimaryMarkers.set(item.id, m1);
 
     // Secondary Map 2 Marker
     const m2 = L.marker([item.lat, item.lng], { icon: icon }).bindPopup(popupHtml);
@@ -2707,10 +2792,21 @@ function toggleCjcrLayer(targetState) {
 }
 window.toggleCjcrLayer = toggleCjcrLayer;
 
+function resetAllCjcrDefaults() {
+  localStorage.removeItem('cmd-cjcr-custom-targets');
+  allCjcrTargets = CADETS_AND_RANGERS.map(t => ({ ...t }));
+  saveCjcrTargets();
+  renderCjcrLayers();
+  logToFeed("SYS: ALL CADETS & CANADIAN RANGERS RESTORED TO FACTORY COORDINATES");
+}
+window.resetAllCjcrDefaults = resetAllCjcrDefaults;
+
 function setupCjcrEventListeners() {
   const quickBtnCjcr = document.getElementById('quick-btn-cjcr');
   const cjcrMainToggleBtn = document.getElementById('cjcr-main-toggle-btn');
   const cjcrSettingsToggle = document.getElementById('cjcr-toggle');
+  const cjcrResetBtn = document.getElementById('cjcr-reset-btn');
+  const btnSettingsResetCjcr = document.getElementById('btn-settings-reset-cjcr');
 
   if (quickBtnCjcr) {
     quickBtnCjcr.addEventListener('click', () => toggleCjcrLayer());
@@ -2724,6 +2820,14 @@ function setupCjcrEventListeners() {
     cjcrSettingsToggle.addEventListener('change', (e) => {
       toggleCjcrLayer(e.target.checked);
     });
+  }
+
+  if (cjcrResetBtn) {
+    cjcrResetBtn.addEventListener('click', resetAllCjcrDefaults);
+  }
+
+  if (btnSettingsResetCjcr) {
+    btnSettingsResetCjcr.addEventListener('click', resetAllCjcrDefaults);
   }
 
   // Type filter chips
@@ -2747,6 +2851,312 @@ function setupCjcrEventListeners() {
       renderCjcrLayers();
       logToFeed(`CJCR: FILTER SET TO [${type.toUpperCase()}]`);
     });
+  });
+}
+
+// =========================================================================
+// MILITARY & CADET TARGET RELOCATION & MODAL EDITOR SYSTEM
+// =========================================================================
+
+let activeRelocatingMilCategory = null; // 'cfb' or 'cjcr'
+let activeRelocatingMilTarget = null;
+let activeRelocatingMilMarker = null;
+let pendingMilRelocateCoords = null;
+
+function startRelocatingMilTarget(category, targetId) {
+  let target = null;
+  let marker = null;
+
+  if (category === 'cfb') {
+    target = allCfbBases.find(b => b.id === targetId);
+    marker = cfbPrimaryMarkers.get(targetId);
+  } else if (category === 'cjcr') {
+    target = allCjcrTargets.find(t => t.id === targetId);
+    marker = cjcrPrimaryMarkers.get(targetId);
+  }
+
+  if (!target || !marker) {
+    console.warn(`Target ${targetId} (${category}) not found or marker not rendered on map.`);
+    return;
+  }
+
+  primaryMap.closePopup();
+  activeRelocatingMilCategory = category;
+  activeRelocatingMilTarget = target;
+  activeRelocatingMilMarker = marker;
+  pendingMilRelocateCoords = { lat: target.lat, lng: target.lng };
+
+  const banner = document.getElementById('mil-relocate-hud-banner');
+  const statusText = document.getElementById('mil-relocate-status-text');
+  const labelWrap = document.getElementById('mil-relocate-label-wrap');
+  const pulseDot = document.getElementById('mil-relocate-pulse');
+  const saveBtn = document.getElementById('btn-save-mil-relocate');
+
+  const themeColor = category === 'cfb' ? '#ff3344' : '#38bdf8';
+  const themeBoxShadow = category === 'cfb' ? '0 0 20px rgba(255, 51, 68, 0.45)' : '0 0 20px rgba(56, 189, 248, 0.45)';
+
+  if (banner) {
+    banner.style.display = 'flex';
+    banner.style.borderColor = themeColor;
+    banner.style.boxShadow = themeBoxShadow;
+  }
+  if (labelWrap) labelWrap.style.color = themeColor;
+  if (pulseDot) pulseDot.style.background = themeColor;
+  if (saveBtn) {
+    saveBtn.style.borderColor = themeColor;
+    saveBtn.style.background = category === 'cfb' ? 'rgba(255,51,68,0.25)' : 'rgba(56,189,248,0.25)';
+  }
+
+  const catLabel = category === 'cfb' ? 'BASE' : 'UNIT';
+  if (statusText) {
+    statusText.textContent = `RELOCATING ${catLabel} [${target.name.toUpperCase()}]: DRAG PIN OR CLICK MAP TO REPOSITION`;
+  }
+
+  document.getElementById('primary-map').style.cursor = 'crosshair';
+
+  marker.dragging.enable();
+
+  const onMarkerDrag = (e) => {
+    pendingMilRelocateCoords = e.target.getLatLng();
+  };
+  marker.on('drag', onMarkerDrag);
+  marker.on('dragend', onMarkerDrag);
+
+  const onMapClickRelocate = (e) => {
+    marker.setLatLng(e.latlng);
+    pendingMilRelocateCoords = e.latlng;
+  };
+  primaryMap.on('click', onMapClickRelocate);
+
+  const onKeyDownRelocate = (e) => {
+    if (e.key === 'Escape') {
+      cancelRelocatingMilTarget();
+    } else if (e.key === 'Enter') {
+      saveRelocatedMilTarget();
+    }
+  };
+  window.addEventListener('keydown', onKeyDownRelocate);
+
+  activeRelocatingMilMarker._cleanupRelocate = () => {
+    marker.dragging.disable();
+    marker.off('drag', onMarkerDrag);
+    marker.off('dragend', onMarkerDrag);
+    primaryMap.off('click', onMapClickRelocate);
+    window.removeEventListener('keydown', onKeyDownRelocate);
+    document.getElementById('primary-map').style.cursor = '';
+    if (banner) banner.style.display = 'none';
+  };
+}
+
+function saveRelocatedMilTarget() {
+  if (!activeRelocatingMilTarget || !pendingMilRelocateCoords) return;
+
+  const category = activeRelocatingMilCategory;
+  const newLat = parseFloat(pendingMilRelocateCoords.lat.toFixed(5));
+  const newLng = parseFloat(pendingMilRelocateCoords.lng.toFixed(5));
+
+  activeRelocatingMilTarget.lat = newLat;
+  activeRelocatingMilTarget.lng = newLng;
+
+  if (category === 'cfb') {
+    saveCfbBases();
+  } else if (category === 'cjcr') {
+    saveCjcrTargets();
+  }
+
+  if (activeRelocatingMilMarker && activeRelocatingMilMarker._cleanupRelocate) {
+    activeRelocatingMilMarker._cleanupRelocate();
+  }
+
+  const targetName = activeRelocatingMilTarget.name;
+
+  activeRelocatingMilCategory = null;
+  activeRelocatingMilTarget = null;
+  activeRelocatingMilMarker = null;
+  pendingMilRelocateCoords = null;
+
+  if (category === 'cfb') {
+    renderCfbLayers();
+  } else {
+    renderCjcrLayers();
+  }
+
+  logToFeed(`SYS: [${targetName.toUpperCase()}] REPOSITIONED TO [${newLat.toFixed(5)}, ${newLng.toFixed(5)}]`);
+}
+
+function cancelRelocatingMilTarget() {
+  const category = activeRelocatingMilCategory;
+  if (activeRelocatingMilMarker && activeRelocatingMilMarker._cleanupRelocate) {
+    activeRelocatingMilMarker._cleanupRelocate();
+  }
+
+  activeRelocatingMilCategory = null;
+  activeRelocatingMilTarget = null;
+  activeRelocatingMilMarker = null;
+  pendingMilRelocateCoords = null;
+
+  if (category === 'cfb') {
+    renderCfbLayers();
+  } else if (category === 'cjcr') {
+    renderCjcrLayers();
+  }
+
+  logToFeed("SYS: TARGET RELOCATION CANCELLED");
+}
+
+window.startRelocatingMilTarget = startRelocatingMilTarget;
+window.saveRelocatedMilTarget = saveRelocatedMilTarget;
+window.cancelRelocatingMilTarget = cancelRelocatingMilTarget;
+
+const btnSaveMilRelocate = document.getElementById('btn-save-mil-relocate');
+const btnCancelMilRelocate = document.getElementById('btn-cancel-mil-relocate');
+if (btnSaveMilRelocate) btnSaveMilRelocate.addEventListener('click', saveRelocatedMilTarget);
+if (btnCancelMilRelocate) btnCancelMilRelocate.addEventListener('click', cancelRelocatingMilTarget);
+
+// --- Target Modal Editor ---
+const targetEditModal = document.getElementById('target-edit-modal');
+const targetEditModalTitle = document.getElementById('target-edit-modal-title');
+const targetEditId = document.getElementById('target-edit-id');
+const targetEditCategory = document.getElementById('target-edit-category');
+const targetEditName = document.getElementById('target-edit-name');
+const targetEditTypeBadge = document.getElementById('target-edit-type-badge');
+const targetEditLocationBadge = document.getElementById('target-edit-location-badge');
+const targetEditLat = document.getElementById('target-edit-lat');
+const targetEditLng = document.getElementById('target-edit-lng');
+const targetEditDetails = document.getElementById('target-edit-details');
+const targetEditFeedback = document.getElementById('target-edit-feedback');
+const btnCloseTargetEdit = document.getElementById('btn-close-target-edit');
+const btnTargetCloseModal = document.getElementById('btn-target-close-modal');
+const btnTargetPickMap = document.getElementById('btn-target-pick-map');
+const btnTargetUseCenter = document.getElementById('btn-target-use-center');
+const btnTargetResetDefault = document.getElementById('btn-target-reset-default');
+const btnTargetSaveChanges = document.getElementById('btn-target-save-changes');
+
+function openTargetEditorModal(category, targetId) {
+  primaryMap.closePopup();
+  if (targetEditFeedback) targetEditFeedback.innerHTML = '';
+
+  let target = null;
+  if (category === 'cfb') {
+    target = allCfbBases.find(b => b.id === targetId);
+  } else if (category === 'cjcr') {
+    target = allCjcrTargets.find(t => t.id === targetId);
+  }
+
+  if (!target) return;
+
+  if (targetEditModalTitle) {
+    targetEditModalTitle.textContent = category === 'cfb' ? `EDIT CFB POSITION: ${target.name.toUpperCase()}` : `EDIT CADET/RANGER POSITION: ${target.name.toUpperCase()}`;
+  }
+  if (targetEditId) targetEditId.value = target.id;
+  if (targetEditCategory) targetEditCategory.value = category;
+  if (targetEditName) targetEditName.value = target.name;
+  if (targetEditTypeBadge) {
+    const label = target.branchLabel || target.typeLabel || target.branch || target.type;
+    targetEditTypeBadge.textContent = (label || '').toUpperCase();
+    targetEditTypeBadge.style.color = category === 'cfb' ? '#ff3344' : '#38bdf8';
+    targetEditTypeBadge.style.borderColor = category === 'cfb' ? '#ff3344' : '#38bdf8';
+  }
+  if (targetEditLocationBadge) {
+    targetEditLocationBadge.textContent = `${target.location || target.province || ''}${target.country && target.country !== 'Canada' ? ', ' + target.country : ''}` || '-';
+  }
+  if (targetEditLat) targetEditLat.value = target.lat.toFixed(5);
+  if (targetEditLng) targetEditLng.value = target.lng.toFixed(5);
+  if (targetEditDetails) targetEditDetails.value = target.details || target.units || '';
+
+  if (targetEditModal) targetEditModal.style.display = 'flex';
+}
+
+function closeTargetEditorModal() {
+  if (targetEditModal) targetEditModal.style.display = 'none';
+}
+
+window.openTargetEditorModal = openTargetEditorModal;
+window.closeTargetEditorModal = closeTargetEditorModal;
+
+if (btnCloseTargetEdit) btnCloseTargetEdit.addEventListener('click', closeTargetEditorModal);
+if (btnTargetCloseModal) btnTargetCloseModal.addEventListener('click', closeTargetEditorModal);
+
+if (btnTargetUseCenter) {
+  btnTargetUseCenter.addEventListener('click', () => {
+    const center = primaryMap.getCenter();
+    if (targetEditLat) targetEditLat.value = center.lat.toFixed(5);
+    if (targetEditLng) targetEditLng.value = center.lng.toFixed(5);
+    if (targetEditFeedback) {
+      targetEditFeedback.innerHTML = `<span style="color: var(--accent-color);">COORDINATES SET TO CURRENT MAP CENTER</span>`;
+    }
+  });
+}
+
+if (btnTargetPickMap) {
+  btnTargetPickMap.addEventListener('click', () => {
+    const category = targetEditCategory ? targetEditCategory.value : '';
+    const id = targetEditId ? targetEditId.value : '';
+    closeTargetEditorModal();
+    if (category && id) {
+      startRelocatingMilTarget(category, id);
+    }
+  });
+}
+
+if (btnTargetResetDefault) {
+  btnTargetResetDefault.addEventListener('click', () => {
+    const category = targetEditCategory ? targetEditCategory.value : '';
+    const id = targetEditId ? targetEditId.value : '';
+    let orig = null;
+    if (category === 'cfb') {
+      orig = CANADIAN_FORCES_BASES.find(b => b.id === id);
+    } else if (category === 'cjcr') {
+      orig = CADETS_AND_RANGERS.find(t => t.id === id);
+    }
+    if (orig) {
+      if (targetEditLat) targetEditLat.value = orig.lat.toFixed(5);
+      if (targetEditLng) targetEditLng.value = orig.lng.toFixed(5);
+      if (targetEditFeedback) {
+        targetEditFeedback.innerHTML = `<span style="color: #ffbb00;">FACTORY COORDINATES LOADED [${orig.lat.toFixed(5)}, ${orig.lng.toFixed(5)}]. CLICK SAVE TO APPLY.</span>`;
+      }
+    }
+  });
+}
+
+if (btnTargetSaveChanges) {
+  btnTargetSaveChanges.addEventListener('click', () => {
+    const category = targetEditCategory ? targetEditCategory.value : '';
+    const id = targetEditId ? targetEditId.value : '';
+    const lat = parseFloat(targetEditLat ? targetEditLat.value : '');
+    const lng = parseFloat(targetEditLng ? targetEditLng.value : '');
+    const details = ((targetEditDetails && targetEditDetails.value) || '').trim();
+
+    if (isNaN(lat) || lat < -90 || lat > 90 || isNaN(lng) || lng < -180 || lng > 180) {
+      if (targetEditFeedback) {
+        targetEditFeedback.innerHTML = `<span style="color: var(--danger-color);">INVALID LATITUDE OR LONGITUDE</span>`;
+      }
+      return;
+    }
+
+    let target = null;
+    if (category === 'cfb') {
+      target = allCfbBases.find(b => b.id === id);
+    } else if (category === 'cjcr') {
+      target = allCjcrTargets.find(t => t.id === id);
+    }
+
+    if (!target) return;
+
+    target.lat = parseFloat(lat.toFixed(5));
+    target.lng = parseFloat(lng.toFixed(5));
+    if (details) target.details = details;
+
+    if (category === 'cfb') {
+      saveCfbBases();
+      renderCfbLayers();
+    } else {
+      saveCjcrTargets();
+      renderCjcrLayers();
+    }
+
+    closeTargetEditorModal();
+    logToFeed(`SYS: [${target.name.toUpperCase()}] REPOSITIONED TO [${target.lat.toFixed(5)}, ${target.lng.toFixed(5)}]`);
   });
 }
 
