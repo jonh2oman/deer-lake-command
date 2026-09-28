@@ -387,6 +387,7 @@ applyTheme(savedTheme);
 const feedEl = document.getElementById('activity-feed');
 
 function logToFeed(msg, isAlert = false) {
+  if (!feedEl) return;
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
   
@@ -398,9 +399,10 @@ function logToFeed(msg, isAlert = false) {
   
   feedEl.appendChild(li);
   
-  if (feedEl.children.length > 8) {
+  if (feedEl.children.length > 25) {
     feedEl.removeChild(feedEl.firstChild);
   }
+  feedEl.scrollTop = feedEl.scrollHeight;
 }
 
 setTimeout(() => logToFeed("CMD CTR SYSTEM INITIALIZED"), 1500);
