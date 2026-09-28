@@ -191,8 +191,22 @@ const CanvasGraticule = L.GridLayer.extend({
   }
 });
 
-const defaultCenter = [49.0342, -57.5955]; 
-const defaultZoom = 13;
+const DEFAULT_STATION_NAME = "DEER LAKE";
+const DEFAULT_BASE_LAT = 49.0342;
+const DEFAULT_BASE_LNG = -57.5955;
+const DEFAULT_BASE_ZOOM = 13;
+
+function getStationProfile() {
+  const name = localStorage.getItem('cmd-station-name') || DEFAULT_STATION_NAME;
+  const lat = parseFloat(localStorage.getItem('cmd-default-lat')) || DEFAULT_BASE_LAT;
+  const lng = parseFloat(localStorage.getItem('cmd-default-lng')) || DEFAULT_BASE_LNG;
+  const zoom = parseInt(localStorage.getItem('cmd-default-zoom'), 10) || DEFAULT_BASE_ZOOM;
+  return { name, lat, lng, zoom };
+}
+
+const initialStationProfile = getStationProfile();
+const defaultCenter = [initialStationProfile.lat, initialStationProfile.lng]; 
+const defaultZoom = initialStationProfile.zoom;
 
 // --- Initialize Maps ---
 const primaryMap = L.map('primary-map', {
@@ -313,7 +327,7 @@ const secondaryMap4 = L.map('secondary-map-4', {
 const secondaryMap5 = L.map('secondary-map-5', {
   zoomControl: true,
   zoomAnimation: false
-}).setView([49.0342, -57.5955], 14); // Default to Deer Lake
+}).setView([initialStationProfile.lat, initialStationProfile.lng], 14);
 
 // Feature: Click any minimap to sync the primary map to its exact view
 [secondaryMap1, secondaryMap2, secondaryMap3, secondaryMap4, secondaryMap5].forEach(miniMap => {
@@ -1425,6 +1439,318 @@ if (btnWelcomeEnter && welcomeModal) {
   });
 }
 
+// --- Station Identity & Base Location Configuration ---
+const stationNameDisplay = document.getElementById('station-name-display');
+const windStationDisplay = document.getElementById('wind-station-display');
+const settingStationName = document.getElementById('setting-station-name');
+const settingLocationSearch = document.getElementById('setting-location-search');
+const btnSearchLocation = document.getElementById('btn-search-location');
+const locationSearchStatus = document.getElementById('location-search-status');
+const locationSearchResults = document.getElementById('location-search-results');
+const settingDefaultLat = document.getElementById('setting-default-lat');
+const settingDefaultLng = document.getElementById('setting-default-lng');
+const settingDefaultZoom = document.getElementById('setting-default-zoom');
+const btnSetCurrentCenter = document.getElementById('btn-set-current-center');
+const btnPickMapLoc = document.getElementById('btn-pick-map-loc');
+const btnSaveStationProfile = document.getElementById('btn-save-station-profile');
+const btnResetStationProfile = document.getElementById('btn-reset-station-profile');
+const stationSettingsFeedback = document.getElementById('station-settings-feedback');
+const locationPickerHudBanner = document.getElementById('location-picker-hud-banner');
+const btnCancelLocationPicker = document.getElementById('btn-cancel-location-picker');
+
+function applyStationProfile() {
+  const profile = getStationProfile();
+  if (stationNameDisplay) stationNameDisplay.textContent = profile.name;
+  if (windStationDisplay) windStationDisplay.textContent = `${profile.name} // 10M SENSOR`;
+  document.title = `${profile.name} - Tactical Command Screen`;
+  
+  if (typeof secondaryMap5 !== 'undefined' && secondaryMap5) {
+    secondaryMap5.setView([profile.lat, profile.lng], secondaryMap5.getZoom() || 14);
+  }
+
+  if (currentUser) {
+    const domain = window.location.origin + window.location.pathname.replace('index.html', '');
+    const transmitUrl = `${domain}transmit.html?dispatcher=${currentUser.uid}&lat=${profile.lat}&lng=${profile.lng}&base=${encodeURIComponent(profile.name)}`;
+    if (hudTransmitLink) hudTransmitLink.value = transmitUrl;
+    if (settingsTransmitLink) settingsTransmitLink.value = transmitUrl;
+  }
+}
+
+function populateStationSettingsUI() {
+  const profile = getStationProfile();
+  if (settingStationName) settingStationName.value = profile.name;
+  if (settingDefaultLat) settingDefaultLat.value = profile.lat.toFixed(5);
+  if (settingDefaultLng) settingDefaultLng.value = profile.lng.toFixed(5);
+  if (settingDefaultZoom) settingDefaultZoom.value = profile.zoom;
+  if (stationSettingsFeedback) stationSettingsFeedback.innerHTML = '';
+  if (locationSearchStatus) {
+    locationSearchStatus.style.display = 'none';
+    locationSearchStatus.innerHTML = '';
+  }
+  if (locationSearchResults) {
+    locationSearchResults.style.display = 'none';
+    locationSearchResults.innerHTML = '';
+  }
+}
+
+// 1. Geocoding Location Search
+async function executeLocationSearch() {
+  if (!settingLocationSearch) return;
+  const query = settingLocationSearch.value.trim();
+  if (!query) {
+    if (locationSearchStatus) {
+      locationSearchStatus.style.display = 'block';
+      locationSearchStatus.innerHTML = '<span style="color: var(--danger-color);">ENTER A LOCATION QUERY OR COORDINATES</span>';
+    }
+    return;
+  }
+
+  // Check if query is direct coordinates (e.g. 49.034, -57.595)
+  const coordMatch = query.match(/^([-+]?[0-9]*\.?[0-9]+)[,\s]+([-+]?[0-9]*\.?[0-9]+)$/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      if (settingDefaultLat) settingDefaultLat.value = lat.toFixed(5);
+      if (settingDefaultLng) settingDefaultLng.value = lng.toFixed(5);
+      primaryMap.flyTo([lat, lng], parseInt(settingDefaultZoom.value, 10) || 13);
+      if (locationSearchStatus) {
+        locationSearchStatus.style.display = 'block';
+        locationSearchStatus.innerHTML = `<span style="color: #00ffcc;">✓ COORDS IDENTIFIED: [${lat.toFixed(4)}, ${lng.toFixed(4)}]</span>`;
+      }
+      if (stationSettingsFeedback) {
+        stationSettingsFeedback.innerHTML = `<span style="color: #00ffcc;">Target centered. Click [ SAVE & APPLY ] to confirm.</span>`;
+      }
+      return;
+    }
+  }
+
+  if (locationSearchStatus) {
+    locationSearchStatus.style.display = 'block';
+    locationSearchStatus.innerHTML = 'SCANNING GLOBAL SATELLITE DIRECTORY...';
+  }
+  if (locationSearchResults) {
+    locationSearchResults.style.display = 'none';
+    locationSearchResults.innerHTML = '';
+  }
+
+  try {
+    const endpoint = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+    const res = await fetch(endpoint);
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      if (locationSearchStatus) {
+        locationSearchStatus.innerHTML = '<span style="color: var(--danger-color);">NO SATELLITE MATCHES FOUND. TRY A DIFFERENT QUERY.</span>';
+      }
+      return;
+    }
+
+    if (locationSearchStatus) {
+      locationSearchStatus.innerHTML = `<span style="color: var(--accent-color);">FOUND ${data.length} MATCHES (CLICK TO POSITION):</span>`;
+    }
+    if (locationSearchResults) {
+      locationSearchResults.innerHTML = '';
+      locationSearchResults.style.display = 'block';
+
+      data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'search-result-item';
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        const displayName = item.display_name;
+        const shortName = (item.name || displayName.split(',')[0]).trim();
+
+        div.innerHTML = `
+          <div class="sr-title">📍 ${displayName}</div>
+          <div class="sr-coords">LAT: ${lat.toFixed(5)} | LON: ${lon.toFixed(5)}</div>
+        `;
+
+        div.addEventListener('click', () => {
+          if (settingDefaultLat) settingDefaultLat.value = lat.toFixed(5);
+          if (settingDefaultLng) settingDefaultLng.value = lon.toFixed(5);
+
+          if (settingStationName && (!settingStationName.value || settingStationName.value === DEFAULT_STATION_NAME)) {
+            settingStationName.value = shortName.toUpperCase();
+          }
+
+          primaryMap.flyTo([lat, lon], 13);
+          locationSearchResults.style.display = 'none';
+          if (locationSearchStatus) {
+            locationSearchStatus.innerHTML = `<span style="color: #00ffcc;">✓ SELECTED: ${shortName.toUpperCase()} [${lat.toFixed(4)}, ${lon.toFixed(4)}]</span>`;
+          }
+          if (stationSettingsFeedback) {
+            stationSettingsFeedback.innerHTML = `<span style="color: #00ffcc;">Base re-targeted to ${shortName.toUpperCase()}. Click [ SAVE & APPLY ] to confirm.</span>`;
+          }
+        });
+
+        locationSearchResults.appendChild(div);
+      });
+    }
+  } catch (err) {
+    if (locationSearchStatus) {
+      locationSearchStatus.innerHTML = '<span style="color: var(--danger-color);">DIRECTORY SEARCH FAILED (OFFLINE / TIMEOUT).</span>';
+    }
+  }
+}
+
+if (btnSearchLocation) {
+  btnSearchLocation.addEventListener('click', executeLocationSearch);
+}
+if (settingLocationSearch) {
+  settingLocationSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeLocationSearch();
+    }
+  });
+}
+
+// 2. Use Current Map View
+if (btnSetCurrentCenter) {
+  btnSetCurrentCenter.addEventListener('click', () => {
+    const center = primaryMap.getCenter();
+    const zoom = primaryMap.getZoom();
+    if (settingDefaultLat) settingDefaultLat.value = center.lat.toFixed(5);
+    if (settingDefaultLng) settingDefaultLng.value = center.lng.toFixed(5);
+    if (settingDefaultZoom) settingDefaultZoom.value = zoom;
+    if (stationSettingsFeedback) {
+      stationSettingsFeedback.innerHTML = `<span style="color: #00ffcc;">✓ CAPTURED MAP VIEW: [${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}] @ ZOOM ${zoom}</span>`;
+    }
+  });
+}
+
+// 3. Pick on Map
+let isPickingLocation = false;
+let locationPickerMarker = null;
+
+function startLocationPicker() {
+  isPickingLocation = true;
+  if (settingsModal) settingsModal.style.display = 'none';
+  if (locationPickerHudBanner) locationPickerHudBanner.style.display = 'flex';
+  const mapEl = document.getElementById('primary-map');
+  if (mapEl) mapEl.style.cursor = 'crosshair';
+
+  const onMapPickClick = (e) => {
+    if (!isPickingLocation) return;
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+
+    if (settingDefaultLat) settingDefaultLat.value = lat.toFixed(5);
+    if (settingDefaultLng) settingDefaultLng.value = lng.toFixed(5);
+
+    if (locationPickerMarker) primaryMap.removeLayer(locationPickerMarker);
+    locationPickerMarker = L.circleMarker([lat, lng], {
+      radius: 14,
+      color: '#00ffcc',
+      fillColor: '#00ffcc',
+      fillOpacity: 0.35,
+      weight: 2
+    }).addTo(primaryMap);
+
+    setTimeout(() => {
+      if (locationPickerMarker) {
+        primaryMap.removeLayer(locationPickerMarker);
+        locationPickerMarker = null;
+      }
+    }, 4000);
+
+    stopLocationPicker();
+    if (settingsModal) settingsModal.style.display = 'flex';
+    if (stationSettingsFeedback) {
+      stationSettingsFeedback.innerHTML = `<span style="color: #00ffcc;">✓ PICKED COORDS: [${lat.toFixed(5)}, ${lng.toFixed(5)}]. Click [ SAVE & APPLY ] to confirm.</span>`;
+    }
+    logToFeed(`LOCATION PICKED: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+  };
+
+  primaryMap.once('click', onMapPickClick);
+
+  const onPickKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      primaryMap.off('click', onMapPickClick);
+      stopLocationPicker();
+      if (settingsModal) settingsModal.style.display = 'flex';
+    }
+  };
+  window.addEventListener('keydown', onPickKeyDown, { once: true });
+}
+
+function stopLocationPicker() {
+  isPickingLocation = false;
+  if (locationPickerHudBanner) locationPickerHudBanner.style.display = 'none';
+  const mapEl = document.getElementById('primary-map');
+  if (mapEl) mapEl.style.cursor = '';
+}
+
+if (btnPickMapLoc) {
+  btnPickMapLoc.addEventListener('click', startLocationPicker);
+}
+if (btnCancelLocationPicker) {
+  btnCancelLocationPicker.addEventListener('click', () => {
+    stopLocationPicker();
+    if (settingsModal) settingsModal.style.display = 'flex';
+  });
+}
+
+// 4. Save & Apply Station Profile
+function saveAndApplyStationProfile() {
+  const name = ((settingStationName && settingStationName.value) || DEFAULT_STATION_NAME).trim().toUpperCase();
+  const lat = parseFloat(settingDefaultLat ? settingDefaultLat.value : DEFAULT_BASE_LAT);
+  const lng = parseFloat(settingDefaultLng ? settingDefaultLng.value : DEFAULT_BASE_LNG);
+  const zoom = parseInt(settingDefaultZoom ? settingDefaultZoom.value : DEFAULT_BASE_ZOOM, 10) || DEFAULT_BASE_ZOOM;
+
+  if (isNaN(lat) || lat < -90 || lat > 90) {
+    if (stationSettingsFeedback) stationSettingsFeedback.innerHTML = `<span style="color: var(--danger-color);">INVALID LATITUDE (-90 to 90)</span>`;
+    return;
+  }
+  if (isNaN(lng) || lng < -180 || lng > 180) {
+    if (stationSettingsFeedback) stationSettingsFeedback.innerHTML = `<span style="color: var(--danger-color);">INVALID LONGITUDE (-180 to 180)</span>`;
+    return;
+  }
+
+  localStorage.setItem('cmd-station-name', name);
+  localStorage.setItem('cmd-default-lat', lat);
+  localStorage.setItem('cmd-default-lng', lng);
+  localStorage.setItem('cmd-default-zoom', zoom);
+
+  applyStationProfile();
+
+  if (stationSettingsFeedback) {
+    stationSettingsFeedback.innerHTML = `<span style="color: #00ffcc;">✓ STATION PROFILE SAVED & APPLIED</span>`;
+  }
+  logToFeed(`SYS: BASE RECONFIGURED TO ${name} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+
+  primaryMap.flyTo([lat, lng], zoom, { duration: 1.0 });
+  handleWeatherUpdate();
+}
+
+if (btnSaveStationProfile) {
+  btnSaveStationProfile.addEventListener('click', saveAndApplyStationProfile);
+}
+
+// 5. Reset to Deer Lake
+function resetToDefaultDeerLake() {
+  localStorage.setItem('cmd-station-name', DEFAULT_STATION_NAME);
+  localStorage.setItem('cmd-default-lat', DEFAULT_BASE_LAT);
+  localStorage.setItem('cmd-default-lng', DEFAULT_BASE_LNG);
+  localStorage.setItem('cmd-default-zoom', DEFAULT_BASE_ZOOM);
+
+  populateStationSettingsUI();
+  applyStationProfile();
+
+  if (stationSettingsFeedback) {
+    stationSettingsFeedback.innerHTML = `<span style="color: #00ffcc;">✓ RESET TO DEER LAKE BASE</span>`;
+  }
+  logToFeed(`SYS: BASE RESET TO DEFAULT (DEER LAKE)`);
+
+  primaryMap.flyTo([DEFAULT_BASE_LAT, DEFAULT_BASE_LNG], DEFAULT_BASE_ZOOM, { duration: 1.0 });
+  handleWeatherUpdate();
+}
+
+if (btnResetStationProfile) {
+  btnResetStationProfile.addEventListener('click', resetToDefaultDeerLake);
+}
+
 // --- Settings Configuration Terminal Logic ---
 const settingsModal = document.getElementById('settings-modal');
 const settingsBtn = document.getElementById('settings-btn');
@@ -1432,6 +1758,7 @@ const btnCloseSettings = document.getElementById('btn-close-settings');
 
 if (settingsBtn && settingsModal) {
   settingsBtn.addEventListener('click', () => {
+    populateStationSettingsUI();
     settingsModal.style.display = 'flex';
   });
 }
@@ -1447,6 +1774,9 @@ if (settingsModal) {
     }
   });
 }
+
+// Initial apply of saved station profile on boot
+applyStationProfile();
 
 // --- Help Terminal Logic ---
 const helpBtn = document.getElementById('help-btn');
@@ -2449,8 +2779,9 @@ updateCrt(crtEnabled);
 const quickBtnRecenter = document.getElementById('quick-btn-recenter');
 if (quickBtnRecenter) {
   quickBtnRecenter.addEventListener('click', () => {
-    primaryMap.flyTo([49.0342, -57.5955], 14, { duration: 0.8 });
-    logToFeed("SYS: RE-CENTERED ON DEER LAKE COMMAND BASE");
+    const profile = getStationProfile();
+    primaryMap.flyTo([profile.lat, profile.lng], profile.zoom, { duration: 0.8 });
+    logToFeed(`SYS: RE-CENTERED ON ${profile.name.toUpperCase()} BASE`);
   });
 }
 
@@ -2862,10 +3193,11 @@ primaryMap.on('click', (e) => {
 
 // 3. Mission Data GeoJSON / GPX Export
 function exportMissionData() {
+  const profile = getStationProfile();
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const exportDoc = {
     type: "FeatureCollection",
-    mission: "Deer Lake Tactical Command Mission",
+    mission: `${profile.name} Tactical Command Mission`,
     exported_at: new Date().toISOString(),
     features: []
   };

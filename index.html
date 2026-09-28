@@ -53,7 +53,7 @@
           <!-- 3. CENTER: Command Center Title & Clocks & Quick Action Toolbar -->
           <div class="hdr-sec hdr-center-branding">
             <div class="hdr-title-row">
-              <h1 class="hdr-main-title">CMD CTR // DEER LAKE</h1>
+              <h1 class="hdr-main-title" id="hdr-main-title">CMD CTR // <span id="station-name-display">DEER LAKE</span></h1>
               <div class="hdr-status-badge">
                 <span class="pulse-dot"></span>
                 <span>SYS.STATUS: <strong class="status-ok">ONLINE</strong></span>
@@ -104,6 +104,15 @@
         <div id="rangefinder-hud-banner" class="hud-panel" style="display: none; position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 14px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
           <span id="rangefinder-status-text" style="color: var(--accent-color);">🎯 RANGEFINDER ACTIVE: CLICK FIRST POINT OR UNIT</span>
           <button id="btn-cancel-rangefinder" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">[CANCEL ESC]</button>
+        </div>
+
+        <!-- Base Location Picker HUD Banner -->
+        <div id="location-picker-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 1001; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 18px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
+          <span style="color: var(--accent-color); display: flex; align-items: center; gap: 6px;">
+            <span class="pulse-dot" style="background: var(--accent-color);"></span>
+            <span id="location-picker-status-text">BASE LOCATION PICKER ACTIVE: CLICK ANYWHERE ON MAP TO SET BASE COORDINATES</span>
+          </span>
+          <button id="btn-cancel-location-picker" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">[CANCEL ESC]</button>
         </div>
         
         <!-- Targeting Crosshair -->
@@ -253,7 +262,7 @@
         <div class="wind-banner-sec wind-banner-brand">
           <div class="wind-live-dot"></div>
           <span class="wind-banner-title">WIND TELEMETRY</span>
-          <span class="wind-banner-station">DEER LAKE // 10M SENSOR</span>
+          <span class="wind-banner-station" id="wind-station-display">DEER LAKE // 10M SENSOR</span>
         </div>
 
         <div class="wind-banner-divider"></div>
@@ -655,6 +664,61 @@
           <button id="btn-close-settings" class="btn-secondary" style="padding: 2px 6px; font-size: 10px;">[X]</button>
         </div>
         <div class="settings-content">
+          
+          <!-- Section 0: Station Identity & Base Location -->
+          <div class="settings-section station-config-section">
+            <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>STATION IDENTITY & BASE LOCATION</span>
+              <button id="btn-reset-station-profile" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Reset back to default Deer Lake base">[ 🔄 RESET DEER LAKE ]</button>
+            </div>
+
+            <!-- Station Callsign / Title -->
+            <div style="margin-bottom: 12px;">
+              <label for="setting-station-name" style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">STATION CALLSIGN / MAP TITLE:</label>
+              <input type="text" id="setting-station-name" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 13px; outline: none; letter-spacing: 1px; box-sizing: border-box;" placeholder="e.g. DEER LAKE, HALIFAX SAR, ECHO BASE" value="DEER LAKE">
+              <span style="font-size: 9px; color: var(--text-secondary); display: block; margin-top: 3px;">Updates header HUD branding, browser title, and mission telemetry.</span>
+            </div>
+
+            <!-- Geocoding Location Search -->
+            <div style="margin-bottom: 12px;">
+              <label for="setting-location-search" style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">SEARCH GLOBAL LOCATION OR COORDINATES:</label>
+              <div style="display: flex; gap: 6px;">
+                <input type="text" id="setting-location-search" style="flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" placeholder="Search city, town, province, or lat/lon (e.g. Gander, NL)">
+                <button type="button" id="btn-search-location" class="btn-primary" style="font-size: 10px; padding: 6px 10px; white-space: nowrap;">[ 🔍 SEARCH ]</button>
+              </div>
+              <div id="location-search-status" style="font-size: 9px; color: var(--accent-color); margin-top: 4px; display: none;"></div>
+              <div id="location-search-results" class="search-results-box" style="display: none; margin-top: 6px; max-height: 120px; overflow-y: auto; background: rgba(0,10,20,0.95); border: 1px solid var(--accent-color); padding: 4px;"></div>
+            </div>
+
+            <!-- Manual Lat / Lng / Zoom Coordinates -->
+            <div style="margin-bottom: 12px;">
+              <label style="font-size: 10px; color: var(--accent-color); letter-spacing: 1px; display: block; margin-bottom: 4px;">DEFAULT BASE COORDINATES & ZOOM:</label>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 0.8fr; gap: 8px;">
+                <div>
+                  <span style="font-size: 9px; color: var(--text-secondary); display: block;">LATITUDE</span>
+                  <input type="number" step="0.000001" id="setting-default-lat" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="49.0342">
+                </div>
+                <div>
+                  <span style="font-size: 9px; color: var(--text-secondary); display: block;">LONGITUDE</span>
+                  <input type="number" step="0.000001" id="setting-default-lng" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="-57.5955">
+                </div>
+                <div>
+                  <span style="font-size: 9px; color: var(--text-secondary); display: block;">ZOOM LVL</span>
+                  <input type="number" min="5" max="20" id="setting-default-zoom" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; padding: 5px 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="13">
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Action Location Buttons -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <button type="button" id="btn-set-current-center" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 6px 4px;" title="Capture the currently visible map center and zoom">[ 📍 USE CURRENT MAP VIEW ]</button>
+              <button type="button" id="btn-pick-map-loc" class="btn-secondary" style="flex: 1; font-size: 10px; padding: 6px 4px;" title="Click anywhere on the map to set coordinates">[ 🎯 PICK ON MAP ]</button>
+            </div>
+
+            <!-- Save & Status -->
+            <button type="button" id="btn-save-station-profile" class="btn-primary" style="width: 100%; font-size: 11px; padding: 8px; letter-spacing: 1.5px; font-weight: bold;">[ 💾 SAVE & APPLY BASE CONFIGURATION ]</button>
+            <div id="station-settings-feedback" style="font-size: 10px; text-align: center; margin-top: 6px; font-family: var(--hud-font); min-height: 14px;"></div>
+          </div>
           
           <!-- Section 1: Map Themes & HUD Instruments -->
           <div class="settings-section">

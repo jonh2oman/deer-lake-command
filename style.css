@@ -1244,6 +1244,52 @@ input:checked + .slider:before {
   gap: 12px 15px;
 }
 
+/* Station Identity & Location Search UI */
+.station-config-section {
+  border-left: 3px solid var(--accent-color);
+  background: rgba(0, 20, 30, 0.45);
+}
+
+.search-results-box {
+  border-radius: 3px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 255, 204, 0.3) !important;
+}
+
+.search-result-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--hud-font);
+  font-size: 11px;
+  color: #ccc;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: rgba(0, 255, 204, 0.2);
+  color: #fff;
+  border-left: 3px solid var(--accent-color);
+  padding-left: 12px;
+}
+
+.search-result-item .sr-title {
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.search-result-item .sr-coords {
+  color: var(--text-secondary);
+  font-size: 9px;
+  margin-top: 2px;
+  font-family: monospace;
+}
+
 /* Floating Help Button */
 .help-btn {
   position: fixed;

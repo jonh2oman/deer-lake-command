@@ -20,7 +20,7 @@ let currentBattery = null;  // %
 let currentOpStatus = 'SEARCHING';
 let compassHeading = null;  // hardware compass fallback
 
-const BASE_COORDS = [49.0342, -57.5955]; // Deer Lake Tactical Command Base
+let BASE_COORDS = [49.0342, -57.5955]; // Base Coordinates (defaults to Deer Lake)
 const CARDINALS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 
 function degToCardinal(deg) {
@@ -58,6 +58,11 @@ let simMarker = null;
 // --- URL Parsing ---
 const urlParams = new URLSearchParams(window.location.search);
 dispatcherId = urlParams.get('dispatcher');
+const urlLat = parseFloat(urlParams.get('lat'));
+const urlLng = parseFloat(urlParams.get('lng'));
+if (!isNaN(urlLat) && !isNaN(urlLng)) {
+  BASE_COORDS = [urlLat, urlLng];
+}
 
 // --- DOM Elements ---
 const errorCard = document.getElementById('error-card');
@@ -212,7 +217,7 @@ function initSimMap() {
     return;
   }
   
-  const defaultMock = [49.0342, -57.5955]; // Deer Lake Center
+  const defaultMock = [BASE_COORDS[0], BASE_COORDS[1]];
   if (!currentCoords) {
     currentCoords = { latitude: defaultMock[0], longitude: defaultMock[1] };
     currentAccuracy = 5.0;
