@@ -15,100 +15,101 @@
     <div class="scanlines"></div>
 
     <div id="app" class="boot-sequence" style="display: none;">
-      <!-- Primary Map Area -->
-      <div id="primary-map-container">
-        <!-- Full-Width Tactical Command Header -->
-        <div id="top-title-bar" class="tactical-header-banner">
-          <!-- 1. LEFT: Targeting (Center) Coordinates -->
-          <div class="hdr-sec hdr-targeting">
-            <div class="hdr-sec-header">
-              <span class="hdr-icon">🎯</span>
-              <span class="hdr-sec-title">TARGETING (CENTER)</span>
-            </div>
-            <div class="coord-display hdr-coord-box" id="coord-readout">
-              LAT: --.----<br>
-              LON: --.----
+      <!-- Full-Width Tactical Command Header -->
+      <div id="top-title-bar" class="tactical-header-banner">
+        <!-- 1. LEFT: Targeting (Center) Coordinates -->
+        <div class="hdr-sec hdr-targeting">
+          <div class="hdr-sec-header">
+            <span class="hdr-icon">🎯</span>
+            <span class="hdr-sec-title">TARGETING (CENTER)</span>
+          </div>
+          <div class="coord-display hdr-coord-box" id="coord-readout">
+            LAT: --.----<br>
+            LON: --.----
+          </div>
+        </div>
+
+        <div class="hdr-divider"></div>
+
+        <!-- 2. CENTER-LEFT: Live Intel Feed -->
+        <div class="hdr-sec hdr-intel">
+          <div class="hdr-sec-header">
+            <span class="hdr-icon">⚡</span>
+            <span class="hdr-sec-title">LIVE INTEL FEED</span>
+            <span class="hdr-intel-tag">REALTIME</span>
+          </div>
+          <div class="hdr-feed-box">
+            <ul id="activity-feed" class="feed-list hdr-feed-list">
+              <!-- Populated by JS -->
+            </ul>
+          </div>
+        </div>
+
+        <div class="hdr-divider"></div>
+
+        <!-- 3. CENTER: Command Center Title & Clocks & Quick Action Toolbar -->
+        <div class="hdr-sec hdr-center-branding">
+          <div class="hdr-title-row">
+            <h1 class="hdr-main-title" id="hdr-main-title">CMD CTR // <span id="station-name-display">DEER LAKE</span></h1>
+            <div class="hdr-status-badge">
+              <span class="pulse-dot"></span>
+              <span>SYS.STATUS: <strong class="status-ok">ONLINE</strong></span>
             </div>
           </div>
-
-          <div class="hdr-divider"></div>
-
-          <!-- 2. CENTER-LEFT: Live Intel Feed -->
-          <div class="hdr-sec hdr-intel">
-            <div class="hdr-sec-header">
-              <span class="hdr-icon">⚡</span>
-              <span class="hdr-sec-title">LIVE INTEL FEED</span>
-              <span class="hdr-intel-tag">REALTIME</span>
-            </div>
-            <div class="hdr-feed-box">
-              <ul id="activity-feed" class="feed-list hdr-feed-list">
-                <!-- Populated by JS -->
-              </ul>
-            </div>
+          <div class="clock-display hdr-clock-row">
+            <span id="time-zulu">--:--:--Z</span>
+            <span class="clock-divider">|</span>
+            <span id="time-local">--:--:-- LOC</span>
           </div>
-
-          <div class="hdr-divider"></div>
-
-          <!-- 3. CENTER: Command Center Title & Clocks & Quick Action Toolbar -->
-          <div class="hdr-sec hdr-center-branding">
-            <div class="hdr-title-row">
-              <h1 class="hdr-main-title" id="hdr-main-title">CMD CTR // <span id="station-name-display">DEER LAKE</span></h1>
-              <div class="hdr-status-badge">
-                <span class="pulse-dot"></span>
-                <span>SYS.STATUS: <strong class="status-ok">ONLINE</strong></span>
-              </div>
-            </div>
-            <div class="clock-display hdr-clock-row">
-              <span id="time-zulu">--:--:--Z</span>
-              <span class="clock-divider">|</span>
-              <span id="time-local">--:--:-- LOC</span>
-            </div>
-            <div class="tactical-quick-bar hdr-quick-bar">
-              <button id="quick-btn-recenter" class="quick-hud-btn" title="Recenter Base (Space)">[ 🎯 CENTER ]</button>
-              <button id="quick-btn-wind" class="quick-hud-btn active" title="Wind Telemetry HUD Banner (Focus W)">[ 💨 WIND ]</button>
-              <button id="quick-btn-rangefinder" class="quick-hud-btn" title="Tactical Range & Bearing Vector (X)">[ 📐 RANGE ]</button>
-              <button id="quick-btn-export" class="quick-hud-btn" title="Export Mission Data (GeoJSON)">[ 💾 EXPORT ]</button>
-              <button id="quick-btn-flir" class="quick-hud-btn" title="Cycle FLIR/NVG (N)">[ 👁 FLIR ]</button>
-              <button id="quick-btn-radar" class="quick-hud-btn" title="Toggle Radar Sweep (R)">[ 📡 RADAR ]</button>
-              <button id="quick-btn-audio" class="quick-hud-btn" title="Toggle Audio HUD (M)">[ 🔇 SFX: OFF ]</button>
-              <button id="quick-btn-hotkeys" class="quick-hud-btn" title="Keyboard Shortcuts (?)">[ ⌨ KEYS ]</button>
-            </div>
+          <div class="tactical-quick-bar hdr-quick-bar">
+            <button id="quick-btn-recenter" class="quick-hud-btn" title="Recenter Base (Space)">[ 🎯 CENTER ]</button>
+            <button id="quick-btn-wind" class="quick-hud-btn active" title="Wind Telemetry HUD Banner (Focus W)">[ 💨 WIND ]</button>
+            <button id="quick-btn-rangefinder" class="quick-hud-btn" title="Tactical Range & Bearing Vector (X)">[ 📐 RANGE ]</button>
+            <button id="quick-btn-export" class="quick-hud-btn" title="Export Mission Data (GeoJSON)">[ 💾 EXPORT ]</button>
+            <button id="quick-btn-flir" class="quick-hud-btn" title="Cycle FLIR/NVG (N)">[ 👁 FLIR ]</button>
+            <button id="quick-btn-radar" class="quick-hud-btn" title="Toggle Radar Sweep (R)">[ 📡 RADAR ]</button>
+            <button id="quick-btn-audio" class="quick-hud-btn" title="Toggle Audio HUD (M)">[ 🔇 SFX: OFF ]</button>
+            <button id="quick-btn-hotkeys" class="quick-hud-btn" title="Keyboard Shortcuts (?)">[ ⌨ KEYS ]</button>
           </div>
+        </div>
 
-          <div class="hdr-divider"></div>
+        <div class="hdr-divider"></div>
 
-          <!-- 4. RIGHT: Environmental Conditions & Telemetry Oscillogram -->
-          <div class="hdr-sec hdr-weather">
-            <div class="hdr-sec-header">
-              <span class="hdr-icon">⛅</span>
-              <span class="hdr-sec-title">ENV. CONDITIONS</span>
+        <!-- 4. RIGHT: Environmental Conditions & Telemetry Oscillogram -->
+        <div class="hdr-sec hdr-weather">
+          <div class="hdr-sec-header">
+            <span class="hdr-icon">⛅</span>
+            <span class="hdr-sec-title">ENV. CONDITIONS</span>
+          </div>
+          <div class="hdr-weather-body">
+            <div class="weather-display hdr-weather-text" id="weather-readout">
+              ACQUIRING SENSOR DATA...
             </div>
-            <div class="hdr-weather-body">
-              <div class="weather-display hdr-weather-text" id="weather-readout">
-                ACQUIRING SENSOR DATA...
+            <div id="telemetry-sparkline-container" class="hdr-sparkline-box">
+              <div class="hdr-sparkline-meta">
+                <span>OSCILLOGRAM</span>
+                <span id="telemetry-hz">1.2 Hz</span>
               </div>
-              <div id="telemetry-sparkline-container" class="hdr-sparkline-box">
-                <div class="hdr-sparkline-meta">
-                  <span>OSCILLOGRAM</span>
-                  <span id="telemetry-hz">1.2 Hz</span>
-                </div>
-                <canvas id="telemetry-canvas" width="130" height="28" class="hdr-sparkline-canvas"></canvas>
-              </div>
+              <canvas id="telemetry-canvas" width="130" height="28" class="hdr-sparkline-canvas"></canvas>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Primary Map Area (Restricted strictly between header and footer) -->
+      <div id="primary-map-container">
         <div id="primary-map"></div>
         <!-- Tactical Map Vignette: confined strictly to primary map viewport -->
         <div class="vignette"></div>
 
         <!-- Tactical Range & Bearing Measure HUD Banner -->
-        <div id="rangefinder-hud-banner" class="hud-panel" style="display: none; position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 14px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
+        <div id="rangefinder-hud-banner" class="hud-panel" style="display: none; position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 14px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
           <span id="rangefinder-status-text" style="color: var(--accent-color);">🎯 RANGEFINDER ACTIVE: CLICK FIRST POINT OR UNIT</span>
           <button id="btn-cancel-rangefinder" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">[CANCEL ESC]</button>
         </div>
 
         <!-- Base Location Picker HUD Banner -->
-        <div id="location-picker-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 1001; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 18px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
+        <div id="location-picker-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1001; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 18px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
           <span style="color: var(--accent-color); display: flex; align-items: center; gap: 6px;">
             <span class="pulse-dot" style="background: var(--accent-color);"></span>
             <span id="location-picker-status-text">BASE LOCATION PICKER ACTIVE: CLICK ANYWHERE ON MAP TO SET BASE COORDINATES</span>
@@ -117,7 +118,7 @@
         </div>
 
         <!-- EMS Facility Relocate HUD Banner -->
-        <div id="ems-relocate-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 1002; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid #ffaa00; box-shadow: 0 0 20px rgba(255, 170, 0, 0.45); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 14px; border-radius: 4px;">
+        <div id="ems-relocate-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1002; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid #ffaa00; box-shadow: 0 0 20px rgba(255, 170, 0, 0.45); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 14px; border-radius: 4px;">
           <span style="color: #ffaa00; display: flex; align-items: center; gap: 6px;">
             <span class="pulse-dot" style="background: #ffaa00;"></span>
             <span id="ems-relocate-status-text">RELOCATING FACILITY: DRAG PIN OR CLICK MAP TO REPOSITION</span>
@@ -129,7 +130,7 @@
         </div>
 
         <!-- Tactical View Target Picker HUD Banner -->
-        <div id="tactical-picker-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 96px; left: 50%; transform: translateX(-50%); z-index: 1003; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 20px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 14px; border-radius: 4px;">
+        <div id="tactical-picker-hud-banner" class="hud-panel" style="display: none; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1003; padding: 8px 16px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 20px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 14px; border-radius: 4px;">
           <span style="color: var(--accent-color); display: flex; align-items: center; gap: 6px;">
             <span class="pulse-dot" style="background: var(--accent-color);"></span>
             <span id="tactical-picker-status-text">TARGET LOCATION: CLICK ANYWHERE ON MAP TO SET TACTICAL VIEW CENTER</span>
