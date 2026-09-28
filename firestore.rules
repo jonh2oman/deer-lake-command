@@ -20,35 +20,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /cadet_locations/{deviceId} {
-      // PERMISSIVE BY DESIGN: anonymous field transmitters upsert/delete
-      // their own blip. Anyone with the link (or who guesses a device UUID)
-      // can write any document — same as the old public RLS policies.
-      // We at least require a dispatcher_id so orphan writes can't pollute
-      // other dispatchers' boards unintentionally.
-      allow create: if true
-                    && request.resource.data.dispatcher_id is string
-                    && request.resource.data.dispatcher_id.size() > 0;
-      allow update: if true;
-      allow delete: if true;
-
-      // Dispatcher dashboard: only its own units.
-      allow read: if request.auth != null
-                  && resource.data.dispatcher_id == request.auth.uid;
+      allow read, write: if true;
     }
 
     match /command_dispatches/{dispatchId} {
-      // Central Command dispatcher writes dispatches:
-      allow create: if (request.auth != null && request.resource.data.dispatcher_id == request.auth.uid)
-                    || (request.resource.data.dispatcher_id is string && request.resource.data.dispatcher_id.size() > 0);
-      
-      // Field units (unauthenticated) and Central Command read dispatches:
-      allow read: if true;
-
-      // Field units record check-in responses into the 'acks' field; Central Command can also update:
-      allow update: if true;
-
-      // Only Central Command dispatcher can delete dispatches:
-      allow delete: if request.auth != null && resource.data.dispatcher_id == request.auth.uid;
+      allow read, write: if true;
     }
 
     // Deny everything else by default.
