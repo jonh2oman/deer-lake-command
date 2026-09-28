@@ -17,11 +17,14 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// --- CARTO API Key support ---
+const cartoKeyParam = import.meta.env.VITE_CARTO_API_KEY ? `?key=${import.meta.env.VITE_CARTO_API_KEY}` : '';
+
 // --- Custom Transparent Map Overlays ---
 const OpenSeaMapUrl = 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png';
 const WaymarkedTrailsUrl = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
 const OpenTopoMapUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
-const CartoDbLabelsUrl = 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
+const CartoDbLabelsUrl = `https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png${cartoKeyParam}`;
 
 const nauticalLayer = L.tileLayer(OpenSeaMapUrl, {
   maxZoom: 18,
@@ -56,14 +59,14 @@ const labelsLayer = L.tileLayer(CartoDbLabelsUrl, {
 
 // Map Themes
 const MAP_THEMES = {
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`,
+  light: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`,
   sea: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
   satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   'google-satellite': 'https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
   street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-  'night-vision': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+  'night-vision': `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`
 };
 
 // --- Dynamic Canvas Graticule (Lat/Lon Grid) ---
@@ -354,7 +357,7 @@ function applyTheme(theme) {
   if (labelsLayer) {
     const isLightTheme = activeTheme === 'light' || activeTheme === 'street' || activeTheme === 'topo';
     const labelType = isLightTheme ? 'light_only_labels' : 'dark_only_labels';
-    labelsLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${labelType}/{z}/{x}/{y}{r}.png`);
+    labelsLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${labelType}/{z}/{x}/{y}{r}.png${cartoKeyParam}`);
   }
   
   // Theme-aware updates for graticule grid lines

@@ -182,7 +182,8 @@ function initSimMap() {
     attributionControl: false
   }).setView([currentCoords.latitude, currentCoords.longitude], 13);
   
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  const cartoKeyParam = import.meta.env.VITE_CARTO_API_KEY ? `?key=${import.meta.env.VITE_CARTO_API_KEY}` : '';
+  L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${cartoKeyParam}`, {
     maxZoom: 20
   }).addTo(simMap);
   
