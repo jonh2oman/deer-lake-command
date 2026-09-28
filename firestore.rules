@@ -27,6 +27,14 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /officer_profiles/{userId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;

@@ -686,11 +686,12 @@ function playTacticalTone(type = 'roger') {
   }
 }
 
-function speakDispatchMessage(text, priority) {
+function speakDispatchMessage(text, priority, senderName) {
   if (!('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
-    const prefix = priority === 'FLASH' ? "Emergency flash from Central Command: " : "Directive from Central Command: ";
+    const sender = senderName || "Central Command";
+    const prefix = priority === 'FLASH' ? `Emergency flash from ${sender}: ` : `Directive from ${sender}: `;
     const utterance = new SpeechSynthesisUtterance(prefix + text);
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
@@ -874,7 +875,7 @@ function handleIncomingDispatch(dispatch) {
 
   // Text-To-Speech Readout (if enabled and message present)
   if (dispatch.tts_enabled && dispatch.message_text && !dispatch.audio_base64) {
-    speakDispatchMessage(dispatch.message_text, priority);
+    speakDispatchMessage(dispatch.message_text, priority, dispatch.sender_name);
   }
 
   if (incomingAlertModal) {

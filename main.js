@@ -11,6 +11,7 @@ import {
   where,
   onSnapshot,
   doc,
+  getDoc,
   setDoc,
   addDoc,
   updateDoc,
@@ -21,6 +22,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
   signOut
 } from 'firebase/auth'
 
@@ -4053,6 +4055,7 @@ function subscribeToCadets() {
 
 // --- Dispatcher Authentication & Link Copying Logic ---
 let currentUser = null;
+let currentOfficerProfile = null;
 let unsubscribeCadets = null;
 
 const dashAuthModal = document.getElementById('dashboard-auth-modal');
@@ -4063,8 +4066,40 @@ const dashAuthEmail = document.getElementById('dash-auth-email');
 const dashAuthPassword = document.getElementById('dash-auth-password');
 const groupDashConfirm = document.getElementById('group-dash-confirm');
 const dashAuthConfirm = document.getElementById('dash-auth-confirm');
+const groupDashOfficerFields = document.getElementById('group-dash-officer-fields');
+const dashRegRank = document.getElementById('dash-reg-rank');
+const dashRegName = document.getElementById('dash-reg-name');
+const dashRegRole = document.getElementById('dash-reg-role');
+const dashRegStation = document.getElementById('dash-reg-station');
+const dashRegCallsign = document.getElementById('dash-reg-callsign');
 const btnDashAuthSubmit = document.getElementById('btn-dash-auth-submit');
 const btnDashLogout = document.getElementById('btn-dash-logout');
+
+// Header Officer Badge
+const hdrOfficerBadge = document.getElementById('hdr-officer-badge');
+const hdrOfficerRole = document.getElementById('hdr-officer-role');
+const hdrOfficerName = document.getElementById('hdr-officer-name');
+
+// Comms Modal & Settings Officer Display
+const commsSenderPreview = document.getElementById('comms-sender-preview');
+const btnCommsEditOfficer = document.getElementById('btn-comms-edit-officer');
+const settingsOfficerRoleDisplay = document.getElementById('settings-officer-role-display');
+const settingsOfficerNameDisplay = document.getElementById('settings-officer-name-display');
+const settingsOfficerDispatchDisplay = document.getElementById('settings-officer-dispatch-display');
+const btnSettingsOpenOfficerModal = document.getElementById('btn-settings-open-officer-modal');
+
+// Officer Profile Modal
+const officerProfileModal = document.getElementById('officer-profile-modal');
+const btnCloseOfficerModal = document.getElementById('btn-close-officer-modal');
+const profRank = document.getElementById('prof-rank');
+const profName = document.getElementById('prof-name');
+const profRole = document.getElementById('prof-role');
+const profStation = document.getElementById('prof-station');
+const profCallsign = document.getElementById('prof-callsign');
+const profPreviewSignature = document.getElementById('prof-preview-signature');
+const profPreviewRoleTag = document.getElementById('prof-preview-role-tag');
+const btnSaveOfficerProfile = document.getElementById('btn-save-officer-profile');
+const officerProfileFeedback = document.getElementById('officer-profile-feedback');
 
 const hudTransmitLink = document.getElementById('hud-transmit-link');
 const settingsTransmitLink = document.getElementById('settings-transmit-link');
@@ -4072,6 +4107,178 @@ const btnCopyHudLink = document.getElementById('btn-copy-hud-link');
 const btnCopySettingsLink = document.getElementById('btn-copy-settings-link');
 
 let authMode = 'login'; // 'login' or 'register'
+
+function updateOfficerProfileUI() {
+  if (!currentOfficerProfile) return;
+  const rank = currentOfficerProfile.rank || 'Lt(N)';
+  const name = currentOfficerProfile.name || 'Jonathan Waterman';
+  const role = currentOfficerProfile.role || 'Officer in Command';
+  const station = currentOfficerProfile.station || 'Deer Lake Central Command';
+  const callsign = currentOfficerProfile.callsign || 'COMMAND-ACTUAL';
+  const formattedName = `${rank} ${name}`.trim();
+  const dispatchSignature = `${formattedName} at Central Command`;
+
+  if (hdrOfficerRole) hdrOfficerRole.textContent = role.toUpperCase();
+  if (hdrOfficerName) hdrOfficerName.textContent = formattedName;
+  if (hdrOfficerBadge) {
+    hdrOfficerBadge.title = `Officer: ${formattedName} (${role}) // Station: ${station} // Callsign: ${callsign}\n[Click to View / Edit Profile]`;
+  }
+
+  if (commsSenderPreview) commsSenderPreview.textContent = dispatchSignature;
+
+  if (settingsOfficerRoleDisplay) settingsOfficerRoleDisplay.textContent = role.toUpperCase();
+  if (settingsOfficerNameDisplay) settingsOfficerNameDisplay.textContent = formattedName;
+  if (settingsOfficerDispatchDisplay) settingsOfficerDispatchDisplay.textContent = dispatchSignature;
+
+  if (profRank && document.activeElement !== profRank) profRank.value = rank;
+  if (profName && document.activeElement !== profName) profName.value = name;
+  if (profRole && document.activeElement !== profRole) profRole.value = role;
+  if (profStation && document.activeElement !== profStation) profStation.value = station;
+  if (profCallsign && document.activeElement !== profCallsign) profCallsign.value = callsign;
+
+  if (profPreviewSignature) profPreviewSignature.textContent = dispatchSignature;
+  if (profPreviewRoleTag) profPreviewRoleTag.textContent = `${role} // ${station}`;
+}
+
+function updateModalLivePreview() {
+  const r = (profRank && profRank.value.trim()) || 'Lt(N)';
+  const n = (profName && profName.value.trim()) || 'Jonathan Waterman';
+  const ro = (profRole && profRole.value.trim()) || 'Officer in Command';
+  const st = (profStation && profStation.value.trim()) || 'Deer Lake Central Command';
+  
+  if (profPreviewSignature) profPreviewSignature.textContent = `${r} ${n} at Central Command`;
+  if (profPreviewRoleTag) profPreviewRoleTag.textContent = `${ro} // ${st}`;
+}
+
+[profRank, profName, profRole, profStation, profCallsign].forEach(input => {
+  if (input) input.addEventListener('input', updateModalLivePreview);
+});
+
+async function loadOfficerProfile(user) {
+  if (!user) return;
+  let profile = null;
+
+  // 1. Check local storage cache for instant rendering
+  try {
+    const cached = localStorage.getItem('officer_profile_' + user.uid);
+    if (cached) profile = JSON.parse(cached);
+  } catch(e) {}
+
+  // 2. Fetch latest from Firestore
+  if (firebaseReady) {
+    try {
+      const snap = await getDoc(doc(db, 'officer_profiles', user.uid));
+      if (snap.exists()) {
+        profile = snap.data();
+        localStorage.setItem('officer_profile_' + user.uid, JSON.stringify(profile));
+      }
+    } catch(e) {
+      console.warn("Could not fetch officer profile from firestore", e);
+    }
+  }
+
+  // 3. Fallback / Default profile if none found
+  if (!profile) {
+    profile = {
+      uid: user.uid,
+      email: user.email,
+      rank: 'Lt(N)',
+      name: user.displayName || 'Jonathan Waterman',
+      display_name: user.displayName || 'Lt(N) Jonathan Waterman',
+      role: 'Officer in Command',
+      station: 'Deer Lake Central Command',
+      callsign: 'COMMAND-ACTUAL'
+    };
+    try {
+      await setDoc(doc(db, 'officer_profiles', user.uid), {
+        ...profile,
+        updated_at: serverTimestamp()
+      }, { merge: true });
+    } catch(e) {}
+    localStorage.setItem('officer_profile_' + user.uid, JSON.stringify(profile));
+  }
+
+  currentOfficerProfile = profile;
+  updateOfficerProfileUI();
+  logToFeed(`SYS: OFFICER IN COMMAND ACTIVE - ${currentOfficerProfile.display_name}`);
+}
+
+async function saveOfficerProfileFromModal() {
+  if (!currentUser || !currentOfficerProfile) return;
+
+  const rank = (profRank && profRank.value.trim()) || 'Lt(N)';
+  const name = (profName && profName.value.trim()) || 'Jonathan Waterman';
+  const role = (profRole && profRole.value.trim()) || 'Officer in Command';
+  const station = (profStation && profStation.value.trim()) || 'Deer Lake Central Command';
+  const callsign = (profCallsign && profCallsign.value.trim()) || 'COMMAND-ACTUAL';
+  const formattedDisplayName = `${rank} ${name}`.trim();
+
+  const updatedPayload = {
+    uid: currentUser.uid,
+    email: currentUser.email,
+    rank,
+    name,
+    display_name: formattedDisplayName,
+    role,
+    station,
+    callsign,
+    updated_at: serverTimestamp()
+  };
+
+  if (officerProfileFeedback) {
+    officerProfileFeedback.style.color = 'var(--accent-color)';
+    officerProfileFeedback.textContent = 'Saving officer credentials...';
+  }
+
+  try {
+    // 1. Save in Firestore
+    await setDoc(doc(db, 'officer_profiles', currentUser.uid), updatedPayload, { merge: true });
+    
+    // 2. Update Firebase Auth displayName
+    try {
+      await updateProfile(currentUser, { displayName: formattedDisplayName });
+    } catch(e) {}
+
+    // 3. Cache in local storage
+    localStorage.setItem('officer_profile_' + currentUser.uid, JSON.stringify(updatedPayload));
+    currentOfficerProfile = updatedPayload;
+
+    updateOfficerProfileUI();
+    playCommsChirp('roger');
+    logToFeed(`SYS: OFFICER PROFILE UPDATED - ${formattedDisplayName} (${role})`);
+
+    if (officerProfileFeedback) {
+      officerProfileFeedback.style.color = '#39ff14';
+      officerProfileFeedback.textContent = '✓ CREDENTIALS SAVED & BROADCAST READY';
+      setTimeout(() => {
+        if (officerProfileFeedback) officerProfileFeedback.textContent = '';
+        if (officerProfileModal) officerProfileModal.style.display = 'none';
+      }, 1200);
+    }
+  } catch (err) {
+    console.error("Failed to save officer profile", err);
+    if (officerProfileFeedback) {
+      officerProfileFeedback.style.color = 'var(--danger-color)';
+      officerProfileFeedback.textContent = `SAVE FAILED: ${err.message}`;
+    }
+  }
+}
+
+function openOfficerProfileModal() {
+  updateOfficerProfileUI();
+  if (officerProfileFeedback) officerProfileFeedback.textContent = '';
+  if (officerProfileModal) officerProfileModal.style.display = 'flex';
+}
+
+function closeOfficerProfileModal() {
+  if (officerProfileModal) officerProfileModal.style.display = 'none';
+}
+
+if (hdrOfficerBadge) hdrOfficerBadge.addEventListener('click', openOfficerProfileModal);
+if (btnCommsEditOfficer) btnCommsEditOfficer.addEventListener('click', openOfficerProfileModal);
+if (btnSettingsOpenOfficerModal) btnSettingsOpenOfficerModal.addEventListener('click', openOfficerProfileModal);
+if (btnCloseOfficerModal) btnCloseOfficerModal.addEventListener('click', closeOfficerProfileModal);
+if (btnSaveOfficerProfile) btnSaveOfficerProfile.addEventListener('click', saveOfficerProfileFromModal);
 
 if (tabDashLogin && tabDashRegister) {
   tabDashLogin.addEventListener('click', () => {
@@ -4085,6 +4292,7 @@ if (tabDashLogin && tabDashRegister) {
     btnDashAuthSubmit.textContent = '[ AUTHENTICATE COMMANDER ]';
     dashAuthMessage.textContent = '';
     if (groupDashConfirm) groupDashConfirm.style.display = 'none';
+    if (groupDashOfficerFields) groupDashOfficerFields.style.display = 'none';
   });
 
   tabDashRegister.addEventListener('click', () => {
@@ -4098,6 +4306,7 @@ if (tabDashLogin && tabDashRegister) {
     btnDashAuthSubmit.textContent = '[ CREATE OPERATOR KEY ]';
     dashAuthMessage.textContent = '';
     if (groupDashConfirm) groupDashConfirm.style.display = 'flex';
+    if (groupDashOfficerFields) groupDashOfficerFields.style.display = 'flex';
   });
 }
 
@@ -4137,6 +4346,9 @@ function handleAuthSuccess(user) {
 
   logToFeed("SYS: COMMAND TERMINAL ACCESS AUTHORIZED");
   logToFeed(`SYS: OPERATOR ACTIVE - ${user.email}`);
+
+  // Load and apply officer in command profile
+  loadOfficerProfile(user);
 
   // Subscribe to cadets
   subscribeToCadets();
@@ -4258,7 +4470,41 @@ if (btnDashAuthSubmit) {
     
     try {
       if (authMode === 'register') {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        const rank = (dashRegRank && dashRegRank.value.trim()) || 'Lt(N)';
+        const name = (dashRegName && dashRegName.value.trim()) || 'Jonathan Waterman';
+        const role = (dashRegRole && dashRegRole.value.trim()) || 'Officer in Command';
+        const station = (dashRegStation && dashRegStation.value.trim()) || 'Deer Lake Central Command';
+        const callsign = (dashRegCallsign && dashRegCallsign.value.trim()) || 'COMMAND-ACTUAL';
+        const formattedDisplayName = `${rank} ${name}`.trim();
+
+        const profileData = {
+          uid: user.uid,
+          email: user.email,
+          rank,
+          name,
+          display_name: formattedDisplayName,
+          role,
+          station,
+          callsign,
+          updated_at: serverTimestamp()
+        };
+
+        try {
+          await setDoc(doc(db, 'officer_profiles', user.uid), profileData, { merge: true });
+        } catch(e) {
+          console.warn("Could not save profile to firestore", e);
+        }
+
+        try {
+          await updateProfile(user, { displayName: formattedDisplayName });
+        } catch(e) {}
+
+        localStorage.setItem('officer_profile_' + user.uid, JSON.stringify(profileData));
+        currentOfficerProfile = profileData;
+
         dashAuthMessage.style.color = 'var(--success-color)';
         dashAuthMessage.textContent = 'Account created. Initializing key...';
       } else {
@@ -5901,9 +6147,19 @@ async function sendCommandDispatch() {
   }
 
   try {
+    const officerRankName = (currentOfficerProfile && (currentOfficerProfile.display_name || `${currentOfficerProfile.rank} ${currentOfficerProfile.name}`.trim()))
+      || (currentUser && currentUser.displayName)
+      || 'Officer in Command';
+
+    const senderTag = `${officerRankName} at Central Command`;
+
     const payload = {
       dispatcher_id: currentUser.uid,
       dispatcher_email: currentUser.email || 'Central Command',
+      sender_name: senderTag,
+      officer_rank: currentOfficerProfile?.rank || '',
+      officer_name: currentOfficerProfile?.name || '',
+      officer_role: currentOfficerProfile?.role || 'Officer in Command',
       target_device_id: targetId,
       target_name: targetName,
       priority: currentDispatchPriority,
@@ -6281,9 +6537,19 @@ async function dispatchMedicalRouteToUnit() {
   }
 
   try {
+    const officerRankName = (currentOfficerProfile && (currentOfficerProfile.display_name || `${currentOfficerProfile.rank} ${currentOfficerProfile.name}`.trim()))
+      || (currentUser && currentUser.displayName)
+      || 'Officer in Command';
+
+    const senderTag = `${officerRankName} at Central Command`;
+
     const payload = {
       dispatcher_id: currentUser.uid,
       dispatcher_email: currentUser.email || 'Central Command',
+      sender_name: senderTag,
+      officer_rank: currentOfficerProfile?.rank || '',
+      officer_name: currentOfficerProfile?.name || '',
+      officer_role: currentOfficerProfile?.role || 'Officer in Command',
       target_device_id: unitId,
       target_name: unitName,
       priority: 'FLASH',

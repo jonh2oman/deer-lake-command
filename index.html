@@ -55,6 +55,15 @@
               <span class="pulse-dot"></span>
               <span>SYS.STATUS: <strong class="status-ok">ONLINE</strong></span>
             </div>
+            <!-- Officer in Command Badge -->
+            <div id="hdr-officer-badge" class="hdr-officer-badge" title="Officer in Command Profile (Click to View / Edit)">
+              <span class="officer-badge-insignia">🎖️</span>
+              <div class="officer-badge-text">
+                <span class="officer-badge-role" id="hdr-officer-role">OFFICER IN COMMAND</span>
+                <span class="officer-badge-name" id="hdr-officer-name">Lt(N) Jonathan Waterman</span>
+              </div>
+              <span class="officer-badge-edit-hint">⚙</span>
+            </div>
           </div>
           <div class="clock-display hdr-clock-row">
             <span id="time-zulu">--:--:--Z</span>
@@ -595,6 +604,15 @@
         <div style="margin-top: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
           <span style="color: var(--text-secondary);">ACTIVE FIELD TRANSMITTERS:</span>
           <span id="comms-active-units-count" style="color: #00d2ff; font-weight: bold;">0 UNITS ONLINE</span>
+        </div>
+
+        <!-- Transmitting Officer Identity Banner -->
+        <div style="margin-top: 8px; background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.25); border-left: 3px solid #39ff14; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+          <div>
+            <span style="font-size: 9px; color: var(--text-secondary); letter-spacing: 1px; display: block;">TRANSMITTING FROM CENTRAL COMMAND AS:</span>
+            <strong id="comms-sender-preview" style="color: #39ff14; font-size: 12px; letter-spacing: 0.5px;">Lt(N) Jonathan Waterman at Central Command</strong>
+          </div>
+          <button type="button" id="btn-comms-edit-officer" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Update Officer Rank or Name">[ ⚙ EDIT ]</button>
         </div>
 
         <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px; font-family: var(--hud-font);">
@@ -1189,12 +1207,132 @@
           <input type="password" id="dash-auth-password" placeholder="PASSWORD" style="background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 10px; font-family: var(--hud-font); font-size: 14px; outline: none;" />
         </div>
 
-        <div class="form-group" id="group-dash-confirm" style="display: none; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+        <div class="form-group" id="group-dash-confirm" style="display: none; flex-direction: column; gap: 6px; margin-bottom: 14px;">
           <label style="color: var(--accent-color); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-family: var(--hud-font);">CONFIRM PASSWORD</label>
           <input type="password" id="dash-auth-confirm" placeholder="CONFIRM PASSWORD" style="background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 10px; font-family: var(--hud-font); font-size: 14px; outline: none;" />
         </div>
 
+        <!-- Officer Profile Fields (Shown during Registration / Initialize Key) -->
+        <div id="group-dash-officer-fields" style="display: none; flex-direction: column; gap: 10px; margin-bottom: 18px; border-top: 1px dashed rgba(0, 210, 255, 0.3); padding-top: 12px;">
+          <div style="font-size: 10px; color: #ffaa00; letter-spacing: 1.5px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+            <span>🎖️</span>
+            <span>COMMAND OFFICER CREDENTIALS</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px;">
+            <div>
+              <label style="color: var(--accent-color); font-size: 9px; letter-spacing: 1px; display: block; margin-bottom: 3px;">RANK / TITLE</label>
+              <input type="text" id="dash-reg-rank" list="rank-suggestions" placeholder="e.g. Lt(N)" style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="Lt(N)" />
+              <datalist id="rank-suggestions">
+                <option value="Lt(N)">Lieutenant(N) - Navy</option>
+                <option value="LCdr">Lieutenant-Commander</option>
+                <option value="Cdr">Commander</option>
+                <option value="Capt">Captain - Army/Air Force</option>
+                <option value="Maj">Major</option>
+                <option value="LCol">Lieutenant-Colonel</option>
+                <option value="Col">Colonel</option>
+                <option value="2Lt">Second Lieutenant</option>
+                <option value="Lt">Lieutenant</option>
+                <option value="OCdt">Officer Cadet</option>
+                <option value="Chief">Chief</option>
+                <option value="Deputy Chief">Deputy Chief</option>
+                <option value="Incident Commander">Incident Commander</option>
+                <option value="Search Director">Search Director</option>
+                <option value="CI">Civilian Instructor</option>
+                <option value="CV">Cadet Volunteer</option>
+              </datalist>
+            </div>
+            <div>
+              <label style="color: var(--accent-color); font-size: 9px; letter-spacing: 1px; display: block; margin-bottom: 3px;">OFFICER NAME</label>
+              <input type="text" id="dash-reg-name" placeholder="e.g. Jonathan Waterman" style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="Jonathan Waterman" />
+            </div>
+          </div>
+
+          <div>
+            <label style="color: var(--accent-color); font-size: 9px; letter-spacing: 1px; display: block; margin-bottom: 3px;">DUTY APPOINTMENT / ROLE</label>
+            <input type="text" id="dash-reg-role" list="role-suggestions" placeholder="e.g. Officer in Command" style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="Officer in Command" />
+            <datalist id="role-suggestions">
+              <option value="Officer in Command (OIC)">
+              <option value="Commanding Officer (CO)">
+              <option value="Incident Commander">
+              <option value="Operations Officer (Ops O)">
+              <option value="Search and Rescue Coordinator">
+              <option value="Watch Commander">
+              <option value="Dispatcher / Watchkeeper">
+            </datalist>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px;">
+            <div>
+              <label style="color: var(--accent-color); font-size: 9px; letter-spacing: 1px; display: block; margin-bottom: 3px;">STATION / BASE</label>
+              <input type="text" id="dash-reg-station" placeholder="e.g. Deer Lake Central Command" style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="Deer Lake Central Command" />
+            </div>
+            <div>
+              <label style="color: var(--accent-color); font-size: 9px; letter-spacing: 1px; display: block; margin-bottom: 3px;">CALLSIGN</label>
+              <input type="text" id="dash-reg-callsign" placeholder="e.g. COMMAND-1" style="width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-color); color: #fff; padding: 8px; font-family: var(--hud-font); font-size: 12px; outline: none; box-sizing: border-box;" value="COMMAND-ACTUAL" />
+            </div>
+          </div>
+        </div>
+
         <button id="btn-dash-auth-submit" class="btn-primary" style="width: 100%; font-family: var(--hud-font); font-size: 14px; letter-spacing: 2px; padding: 12px; font-weight: bold; cursor: pointer;">[ AUTHENTICATE COMMANDER ]</button>
+      </div>
+    </div>
+
+    <!-- Command Officer Profile Modal -->
+    <div id="officer-profile-modal" class="modal-overlay" style="display: none; z-index: 10020;">
+      <div class="hud-panel" style="width: 450px; max-width: 95vw; padding: 20px !important;">
+        <div class="hud-label" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <span style="display: flex; align-items: center; gap: 8px; color: var(--accent-color);">
+            <span>🎖️</span>
+            <span>COMMAND OFFICER PROFILE & CREDENTIALS</span>
+          </span>
+          <button id="btn-close-officer-modal" class="btn-secondary" style="padding: 2px 6px; font-size: 10px;">[X]</button>
+        </div>
+
+        <div style="margin-top: 14px; font-family: var(--hud-font);">
+          <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px;">
+            <div class="officer-profile-field-group">
+              <label>RANK / TITLE</label>
+              <input type="text" id="prof-rank" list="rank-suggestions" placeholder="e.g. Lt(N)" value="Lt(N)">
+            </div>
+            <div class="officer-profile-field-group">
+              <label>OFFICER FULL NAME</label>
+              <input type="text" id="prof-name" placeholder="e.g. Jonathan Waterman" value="Jonathan Waterman">
+            </div>
+          </div>
+
+          <div class="officer-profile-field-group">
+            <label>DUTY APPOINTMENT / ROLE</label>
+            <input type="text" id="prof-role" list="role-suggestions" placeholder="e.g. Officer in Command" value="Officer in Command">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px;">
+            <div class="officer-profile-field-group">
+              <label>COMMAND CENTER / BASE</label>
+              <input type="text" id="prof-station" placeholder="e.g. Deer Lake Central Command" value="Deer Lake Central Command">
+            </div>
+            <div class="officer-profile-field-group">
+              <label>CALLSIGN</label>
+              <input type="text" id="prof-callsign" placeholder="e.g. COMMAND-1" value="COMMAND-ACTUAL">
+            </div>
+          </div>
+
+          <!-- Live Signature Preview Card -->
+          <div class="officer-preview-card">
+            <span style="font-size: 9px; color: var(--text-secondary); letter-spacing: 1px; display: block; margin-bottom: 4px;">FIELD DISPATCH TRANSMISSION SIGNATURE:</span>
+            <div id="prof-preview-signature" style="color: #39ff14; font-size: 13px; font-weight: bold; letter-spacing: 0.5px;">
+              Lt(N) Jonathan Waterman at Central Command
+            </div>
+            <div id="prof-preview-role-tag" style="color: #ffaa00; font-size: 10px; margin-top: 3px;">
+              Officer in Command // Deer Lake Central Command
+            </div>
+          </div>
+
+          <button type="button" id="btn-save-officer-profile" class="btn-primary" style="width: 100%; padding: 11px; font-size: 12px; font-weight: bold; letter-spacing: 1.5px; cursor: pointer;">
+            [ 💾 SAVE & APPLY OFFICER CREDENTIALS ]
+          </button>
+          <div id="officer-profile-feedback" style="font-size: 10px; text-align: center; margin-top: 6px; min-height: 14px;"></div>
+        </div>
       </div>
     </div>
 
@@ -1250,6 +1388,27 @@
         </div>
         <div class="settings-content">
           
+          <!-- Section -1: Command Officer Profile -->
+          <div class="settings-section" style="border-left: 3px solid #ffaa00; background: rgba(255, 170, 0, 0.04);">
+            <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #ffaa00; display: flex; align-items: center; gap: 6px;">
+                <span>🎖️</span>
+                <span>COMMAND OFFICER PROFILE</span>
+              </span>
+              <button type="button" id="btn-settings-open-officer-modal" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;">[ EDIT PROFILE ]</button>
+            </div>
+            <div style="font-size: 11px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span id="settings-officer-role-display" style="color: var(--text-secondary); font-size: 10px; display: block;">OFFICER IN COMMAND</span>
+                <strong id="settings-officer-name-display" style="color: #fff; font-size: 13px;">Lt(N) Jonathan Waterman</strong>
+              </div>
+              <div style="text-align: right;">
+                <span style="color: var(--text-secondary); font-size: 9px; display: block;">DISPATCH TAG:</span>
+                <span id="settings-officer-dispatch-display" style="color: #39ff14; font-size: 10px; font-weight: bold;">... at Central Command</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Section 0: Station Identity & Base Location -->
           <div class="settings-section station-config-section">
             <div class="settings-section-title" style="display: flex; justify-content: space-between; align-items: center;">

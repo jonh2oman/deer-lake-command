@@ -2781,6 +2781,115 @@ input:focus {
   animation: pulseMedicalRoute 2.5s infinite ease-in-out;
 }
 
+/* ==========================================================================
+   OFFICER IN COMMAND PROFILE & BADGE STYLES
+   ========================================================================== */
+
+.hdr-officer-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  border-radius: 3px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
+  text-decoration: none;
+}
+
+.hdr-officer-badge:hover {
+  background: rgba(0, 210, 255, 0.18);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.officer-badge-insignia {
+  font-size: 14px;
+  filter: drop-shadow(0 0 4px #ffaa00);
+}
+
+.officer-badge-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.officer-badge-role {
+  font-size: 8px;
+  color: #ffaa00;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.officer-badge-name {
+  font-size: 11px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.officer-badge-edit-hint {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.hdr-officer-badge:hover .officer-badge-edit-hint {
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+/* Officer Profile Modal Form */
+.officer-profile-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.officer-profile-field-group label {
+  font-size: 10px;
+  color: var(--accent-color);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.officer-profile-field-group input,
+.officer-profile-field-group select {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 8px 10px;
+  font-family: var(--hud-font);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.officer-profile-field-group input:focus,
+.officer-profile-field-group select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.officer-preview-card {
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  border-left: 3px solid var(--accent-color);
+  padding: 10px 12px;
+  margin-top: 12px;
+  margin-bottom: 14px;
+  border-radius: 2px;
+}
+
+
 
 
 
