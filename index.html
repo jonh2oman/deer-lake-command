@@ -28,7 +28,7 @@
           </div>
           <div class="tactical-quick-bar">
             <button id="quick-btn-recenter" class="quick-hud-btn" title="Recenter Base (Space)">[ 🎯 CENTER ]</button>
-            <button id="quick-btn-wind" class="quick-hud-btn active" title="Toggle Wind Vector Gauge (W)">[ 💨 WIND ]</button>
+            <button id="quick-btn-wind" class="quick-hud-btn active" title="Wind Telemetry HUD Banner (Focus W)">[ 💨 WIND ]</button>
             <button id="quick-btn-rangefinder" class="quick-hud-btn" title="Tactical Range & Bearing Vector (X)">[ 📐 RANGE ]</button>
             <button id="quick-btn-export" class="quick-hud-btn" title="Export Mission Data (GeoJSON)">[ 💾 EXPORT ]</button>
             <button id="quick-btn-flir" class="quick-hud-btn" title="Cycle FLIR/NVG (N)">[ 👁 FLIR ]</button>
@@ -40,7 +40,7 @@
         <div id="primary-map"></div>
 
         <!-- Tactical Range & Bearing Measure HUD Banner -->
-        <div id="rangefinder-hud-banner" class="hud-panel" style="display: none; position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 14px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
+        <div id="rangefinder-hud-banner" class="hud-panel" style="display: none; position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 14px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
           <span id="rangefinder-status-text" style="color: var(--accent-color);">🎯 RANGEFINDER ACTIVE: CLICK FIRST POINT OR UNIT</span>
           <button id="btn-cancel-rangefinder" class="btn-secondary" style="padding: 2px 8px; font-size: 10px;">[CANCEL ESC]</button>
         </div>
@@ -59,49 +59,6 @@
           <div class="radar-sonar-ring ring-2"></div>
         </div>
 
-        <!-- HUD: Movable Wind Speed & Direction Indicator -->
-        <div id="wind-hud-widget" class="hud-panel wind-widget" style="display: block;">
-          <div class="hud-label wind-widget-header" id="wind-widget-drag-handle">
-            <span><span class="drag-icon">⠿</span> WIND VECTOR</span>
-            <div class="wind-widget-actions">
-              <button id="btn-wind-reset" class="wind-mini-btn" title="Reset Position">[↺]</button>
-              <button id="btn-wind-collapse" class="wind-mini-btn" title="Collapse/Expand">[-]</button>
-            </div>
-          </div>
-          <div class="wind-widget-body" id="wind-widget-body">
-            <div class="wind-dial-container">
-              <div class="wind-dial" id="wind-dial">
-                <div class="wind-cardinal n">N</div>
-                <div class="wind-cardinal e">E</div>
-                <div class="wind-cardinal s">S</div>
-                <div class="wind-cardinal w">W</div>
-                <div class="wind-arrow-wrapper" id="wind-arrow-wrapper">
-                  <div class="wind-arrow-shaft"></div>
-                  <div class="wind-arrow-head"></div>
-                </div>
-                <div class="wind-dial-center"></div>
-              </div>
-            </div>
-            <div class="wind-metrics">
-              <div class="wind-bearing-readout" id="wind-bearing-readout">---° ---</div>
-              <div class="wind-speed-grid">
-                <div class="wind-unit-box">
-                  <span class="wind-val" id="wind-val-kmh">--.-</span>
-                  <span class="wind-lbl">KM/H</span>
-                </div>
-                <div class="wind-unit-box">
-                  <span class="wind-val" id="wind-val-mph">--.-</span>
-                  <span class="wind-lbl">MPH</span>
-                </div>
-                <div class="wind-unit-box">
-                  <span class="wind-val" id="wind-val-kts">--.-</span>
-                  <span class="wind-lbl">KTS</span>
-                </div>
-              </div>
-              <div class="wind-condition-tag" id="wind-condition-tag">CALM</div>
-            </div>
-          </div>
-        </div>
 
 
         <!-- HUD: Coordinates (Fixed top-left) -->
@@ -255,6 +212,79 @@
 
       <!-- Sidebar Toggle Tab -->
       <button id="sidebar-toggle-btn" onclick="window.toggleSidebar()">[ &lt; VIEWS ]</button>
+
+      <!-- Permanent Bottom Wind Telemetry Banner (Spans Width of Screen) -->
+      <div id="wind-hud-widget" class="wind-telemetry-banner">
+        <!-- Brand / Identity -->
+        <div class="wind-banner-sec wind-banner-brand">
+          <div class="wind-live-dot"></div>
+          <span class="wind-banner-title">WIND TELEMETRY</span>
+          <span class="wind-banner-station">DEER LAKE // 10M SENSOR</span>
+        </div>
+
+        <div class="wind-banner-divider"></div>
+
+        <!-- Mini Vector Compass Dial & Direction -->
+        <div class="wind-banner-sec wind-banner-vector">
+          <div class="wind-mini-dial" id="wind-dial">
+            <div class="wind-mini-cardinal n">N</div>
+            <div class="wind-arrow-wrapper" id="wind-arrow-wrapper">
+              <div class="wind-arrow-shaft"></div>
+              <div class="wind-arrow-head"></div>
+            </div>
+            <div class="wind-dial-center"></div>
+          </div>
+          <div class="wind-bearing-group">
+            <span class="wind-sec-lbl">VECTOR:</span>
+            <div class="wind-bearing-readout" id="wind-bearing-readout">FROM ---° --- ➔ ---</div>
+          </div>
+        </div>
+
+        <div class="wind-banner-divider"></div>
+
+        <!-- Velocities across units: KM/H, MPH, KTS -->
+        <div class="wind-banner-sec wind-banner-speeds">
+          <span class="wind-sec-lbl">VELOCITY:</span>
+          <div class="wind-speed-pills">
+            <div class="wind-pill">
+              <span class="wind-val" id="wind-val-kmh">--.-</span>
+              <span class="wind-lbl">KM/H</span>
+            </div>
+            <div class="wind-pill">
+              <span class="wind-val" id="wind-val-mph">--.-</span>
+              <span class="wind-lbl">MPH</span>
+            </div>
+            <div class="wind-pill">
+              <span class="wind-val" id="wind-val-kts">--.-</span>
+              <span class="wind-lbl">KTS</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wind-banner-divider"></div>
+
+        <!-- Beaufort Scale Tag -->
+        <div class="wind-banner-sec wind-banner-bft">
+          <span class="wind-sec-lbl">BEAUFORT:</span>
+          <div class="wind-condition-tag" id="wind-condition-tag">CALM</div>
+        </div>
+
+        <div class="wind-banner-divider"></div>
+
+        <!-- Gusts & Atmosphere -->
+        <div class="wind-banner-sec wind-banner-gusts">
+          <span class="wind-sec-lbl">ATMOSPHERE:</span>
+          <div class="wind-gusts-val" id="wind-val-gusts">GUSTS: --.- KM/H | 1013 hPa</div>
+        </div>
+
+        <div class="wind-banner-divider"></div>
+
+        <!-- Mission Status Tag -->
+        <div class="wind-banner-sec wind-banner-status">
+          <span class="wind-sec-lbl">STATUS:</span>
+          <span class="wind-mission-badge">LIVE // CRITICAL TELEMETRY</span>
+        </div>
+      </div>
     </div>
     
     <!-- Load GeoJSON Variables -->

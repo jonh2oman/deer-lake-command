@@ -585,7 +585,7 @@ async function fetchWeatherAndMarine(lat, lng) {
   weatherReadout.innerHTML = `SCANNING ATMOSPHERE...`;
   try {
     // 1. Fetch Atmosphere
-    const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure`);
+    const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure`);
     const weatherData = await weatherRes.json();
     
     // 2. Fetch Marine (Sea State)
@@ -596,6 +596,7 @@ async function fetchWeatherAndMarine(lat, lng) {
       const t = weatherData.current.temperature_2m;
       const ws = weatherData.current.wind_speed_10m;
       const wd = weatherData.current.wind_direction_10m;
+      const wg = weatherData.current.wind_gusts_10m;
       const sp = weatherData.current.surface_pressure;
       
       let marineHtml = `WAVES: <span class="val">INLAND/NO DATA</span>`;
@@ -616,7 +617,7 @@ async function fetchWeatherAndMarine(lat, lng) {
       `;
 
       if (typeof updateWindWidget === 'function') {
-        updateWindWidget(ws, wd);
+        updateWindWidget(ws, wd, wg, sp);
       }
 
       logToFeed(`TELEMETRY RECV: WIND ${ws}km/h @ ${wd}°${waveLog}`);
@@ -2548,7 +2549,7 @@ function getBeaufortScale(kmh) {
   return { level: 11, desc: 'VIOLENT STORM', color: '#ff0055' };
 }
 
-function updateWindWidget(wsKmh, wdDeg) {
+function updateWindWidget(wsKmh, wdDeg, gustsKmh, pressureHpa) {
   if (wsKmh !== undefined && wsKmh !== null && !isNaN(wsKmh)) lastWindKmh = Number(wsKmh);
   if (wdDeg !== undefined && wdDeg !== null && !isNaN(wdDeg)) lastWindDeg = Number(wdDeg);
 
@@ -2580,152 +2581,64 @@ function updateWindWidget(wsKmh, wdDeg) {
     windConditionTag.style.borderColor = beaufort.color;
     windConditionTag.style.color = beaufort.color;
   }
+
+  const windValGusts = document.getElementById('wind-val-gusts');
+  if (windValGusts) {
+    const gustVal = (gustsKmh !== undefined && gustsKmh !== null && !isNaN(gustsKmh)) 
+      ? Number(gustsKmh).toFixed(1) 
+      : (kmh * 1.35).toFixed(1);
+    const pressVal = pressureHpa ? ` | ${Math.round(pressureHpa)} hPa` : '';
+    windValGusts.textContent = `GUSTS: ${gustVal} KM/H${pressVal}`;
+  }
 }
 
 function setWindWidgetVisibility(visible, log = true) {
+  // Always visible permanent banner across bottom of screen
   if (windHudWidget) {
-    windHudWidget.style.display = visible ? 'block' : 'none';
+    windHudWidget.style.display = 'flex';
   }
   if (quickBtnWind) {
-    if (visible) quickBtnWind.classList.add('active');
-    else quickBtnWind.classList.remove('active');
+    quickBtnWind.classList.add('active');
   }
   if (windVectorToggle) {
-    windVectorToggle.checked = visible;
-  }
-  localStorage.setItem('cmd-wind-visible', visible);
-  if (log) {
-    logToFeed(`SYS: WIND VECTOR HUD [${visible ? 'DEPLOYED' : 'STOWED'}]`);
+    windVectorToggle.checked = true;
   }
 }
 
 function toggleWindWidget() {
-  const isCurrentlyVisible = windHudWidget && windHudWidget.style.display !== 'none';
-  setWindWidgetVisibility(!isCurrentlyVisible);
+  // Highlight / pulse the permanent bottom banner to direct operator focus
+  if (windHudWidget) {
+    windHudWidget.classList.remove('telemetry-highlight');
+    void windHudWidget.offsetWidth; // trigger CSS reflow
+    windHudWidget.classList.add('telemetry-highlight');
+    setTimeout(() => {
+      if (windHudWidget) windHudWidget.classList.remove('telemetry-highlight');
+    }, 1800);
+  }
+  playSfx('sonar');
+  logToFeed(`SYS: WIND TELEMETRY ACTIVE // BEARING ${Math.round(lastWindDeg)}° @ ${lastWindKmh.toFixed(1)} KM/H`);
 }
 
 function initMovableWindWidget() {
   if (!windHudWidget) return;
 
-  // Restore saved position if valid
-  try {
-    const savedPos = JSON.parse(localStorage.getItem('cmd-wind-pos'));
-    if (savedPos && typeof savedPos.left === 'number' && typeof savedPos.top === 'number') {
-      windHudWidget.style.left = `${savedPos.left}px`;
-      windHudWidget.style.top = `${savedPos.top}px`;
-    }
-  } catch (err) {
-    // Ignore invalid JSON
-  }
+  // Clear any legacy dragging positions from older versions
+  localStorage.removeItem('cmd-wind-pos');
+  localStorage.removeItem('cmd-wind-collapsed');
 
-  // Restore collapse state
-  const isCollapsed = localStorage.getItem('cmd-wind-collapsed') === 'true';
-  if (isCollapsed) {
-    windHudWidget.classList.add('collapsed');
-    if (btnWindCollapse) btnWindCollapse.textContent = '[+]';
-  }
-
-  // Restore visibility
-  const isVisible = localStorage.getItem('cmd-wind-visible') !== 'false';
-  setWindWidgetVisibility(isVisible, false);
+  windHudWidget.style.display = 'flex';
+  if (quickBtnWind) quickBtnWind.classList.add('active');
+  if (windVectorToggle) windVectorToggle.checked = true;
 
   // Render initial readout
   updateWindWidget(lastWindKmh, lastWindDeg);
+}
 
-  if (windDragHandle) {
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let initialLeft = 0;
-    let initialTop = 0;
-
-    function onPointerDown(e) {
-      if (e.target.closest('.wind-mini-btn')) return;
-
-      isDragging = true;
-      windHudWidget.classList.add('dragging');
-
-      const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
-
-      startX = clientX;
-      startY = clientY;
-      initialLeft = windHudWidget.offsetLeft;
-      initialTop = windHudWidget.offsetTop;
-
-      document.addEventListener('mousemove', onPointerMove);
-      document.addEventListener('mouseup', onPointerUp);
-      document.addEventListener('touchmove', onPointerMove, { passive: false });
-      document.addEventListener('touchend', onPointerUp);
-    }
-
-    function onPointerMove(e) {
-      if (!isDragging) return;
-      if (e.cancelable) e.preventDefault();
-
-      const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
-
-      const deltaX = clientX - startX;
-      const deltaY = clientY - startY;
-
-      const parent = windHudWidget.offsetParent || document.body;
-      const parentWidth = parent.clientWidth;
-      const parentHeight = parent.clientHeight;
-      const widgetWidth = windHudWidget.offsetWidth;
-      const widgetHeight = windHudWidget.offsetHeight;
-
-      let newLeft = initialLeft + deltaX;
-      let newTop = initialTop + deltaY;
-
-      // Keep within bounds
-      newLeft = Math.max(10, Math.min(newLeft, parentWidth - widgetWidth - 10));
-      newTop = Math.max(45, Math.min(newTop, parentHeight - widgetHeight - 10));
-
-      windHudWidget.style.left = `${newLeft}px`;
-      windHudWidget.style.top = `${newTop}px`;
-    }
-
-    function onPointerUp() {
-      if (!isDragging) return;
-      isDragging = false;
-      windHudWidget.classList.remove('dragging');
-
-      document.removeEventListener('mousemove', onPointerMove);
-      document.removeEventListener('mouseup', onPointerUp);
-      document.removeEventListener('touchmove', onPointerMove);
-      document.removeEventListener('touchend', onPointerUp);
-
-      localStorage.setItem('cmd-wind-pos', JSON.stringify({
-        left: windHudWidget.offsetLeft,
-        top: windHudWidget.offsetTop
-      }));
-    }
-
-    windDragHandle.addEventListener('mousedown', onPointerDown);
-    windDragHandle.addEventListener('touchstart', onPointerDown, { passive: false });
-  }
-
-  // Reset Button
-  if (btnWindReset) {
-    btnWindReset.addEventListener('click', (e) => {
-      e.stopPropagation();
-      windHudWidget.style.left = '200px';
-      windHudWidget.style.top = '75px';
-      localStorage.removeItem('cmd-wind-pos');
-      logToFeed("SYS: WIND INSTRUMENT POSITION RESET");
-    });
-  }
-
-  // Collapse / Expand Button
-  if (btnWindCollapse) {
-    btnWindCollapse.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const collapsed = windHudWidget.classList.toggle('collapsed');
-      btnWindCollapse.textContent = collapsed ? '[+]' : '[-]';
-      localStorage.setItem('cmd-wind-collapsed', collapsed);
-    });
-  }
+if (quickBtnWind) {
+  quickBtnWind.addEventListener('click', toggleWindWidget);
+}
+if (windVectorToggle) {
+  windVectorToggle.addEventListener('change', toggleWindWidget);
 }
 
 // Initialize Wind Widget on page load
