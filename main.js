@@ -1587,22 +1587,33 @@ function renderCadetTrail(id, coords, status) {
     cadetTrails.set(id, polyline);
   }
 }
-function getCadetIcon(record) {
+
+function getCadetIcon(record, isLkp = false) {
   const name = escapeHtml(record.name || 'Unit');
   const type = record.icon_type || 'blip';
   let color = record.icon_color || 'green';
   const status = record.status || 'active';
+  const heading = (record.heading !== undefined && record.heading !== null && !isNaN(record.heading)) ? record.heading : null;
   
   // SOS overrides color to red
   if (status === 'sos') {
     color = 'red';
   }
   
+  const lkpClass = isLkp ? ' cadet-lkp' : '';
+
+  // Sleek directional arrow for heading
+  let headingArrowHtml = '';
+  if (heading !== null) {
+    const arrowColor = (status === 'sos') ? 'var(--danger-color)' : (isLkp ? '#ffaa00' : 'var(--accent-color)');
+    headingArrowHtml = `<div class="cadet-heading-arrow" style="transform: translate(-50%, -100%) rotate(${heading}deg); border-bottom-color: ${arrowColor};" title="Heading: ${heading}°"></div>`;
+  }
+  
   if (type === 'blip') {
-    const blipClass = (status === 'sos') ? 'cadet-blip blip-red alert' : `cadet-blip blip-${color}`;
+    const blipClass = (status === 'sos') ? `cadet-blip blip-red alert${lkpClass}` : `cadet-blip blip-${color}${lkpClass}`;
     return L.divIcon({
       className: blipClass,
-      html: `<div class="cadet-blip-label">${name}</div>`,
+      html: `${headingArrowHtml}<div class="cadet-blip-label">${name}</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12]
     });
@@ -1618,7 +1629,7 @@ function getCadetIcon(record) {
     } else if (type === 'ship') {
       svgPath = '<path d="M2 17l1.5 2.5A1 1 0 004.4 20h15.2a1 1 0 00.9-.5l1.5-2.5V13H2v4z M7 13V9h4v4 M13 13V7h6v6"></path>';
     } else if (type === 'truck') {
-      svgPath = '<rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle>';
+      svgPath = '<rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle>';
     } else if (type === 'user') {
       svgPath = '<circle cx="12" cy="5" r="2"></circle><path d="M9 22l2-6M15 22l-2-6M12 10v6M9 12h6"></path>';
     } else if (type === 'anchor') {
@@ -1629,17 +1640,53 @@ function getCadetIcon(record) {
       svgPath = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>';
     }
     
-    const wrapperClass = (status === 'sos') ? 'marine-icon-wrapper sos-pulse' : 'marine-icon-wrapper';
+    let wrapperClass = (status === 'sos') ? 'marine-icon-wrapper sos-pulse' : 'marine-icon-wrapper';
+    if (isLkp) wrapperClass += ' cadet-lkp';
     
     return L.divIcon({
       className: `marine-icon`,
-      html: `<div class="${wrapperClass}"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-${color}">${svgPath}</svg><div class="cadet-blip-label" style="top: 26px;">${name}</div></div>`,
+      html: `<div class="${wrapperClass}">${headingArrowHtml}<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="svg-${color}">${svgPath}</svg><div class="cadet-blip-label" style="top: 26px;">${name}</div></div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12]
     });
   }
 }
 
+// Track last-seen timestamps for LKP comms silence detector
+const cadetLastSeen = new Map();
+const cadetLkpState = new Map();
+
+function formatCadetPopup(id, data, isLkp = false, elapsedSec = 0) {
+  const name = escapeHtml(data.name || 'Unit');
+  const status = data.status || 'active';
+  const kmh = ((data.speed || 0) * 3.6).toFixed(1);
+  const mph = ((data.speed || 0) * 2.23694).toFixed(1);
+  const spdDisplay = (data.speed && data.speed > 0.2) ? `${kmh} km/h (${mph} mph)` : '<span style="color:var(--text-secondary)">STATIONARY</span>';
+  const hdgDisplay = (data.heading !== null && data.heading !== undefined && !isNaN(data.heading)) ? `${Math.round(data.heading)}° ${degToCardinal(data.heading)}` : 'N/A';
+  const altDisplay = (data.altitude !== null && data.altitude !== undefined && !isNaN(data.altitude)) ? `${Math.round(data.altitude)}m MSL (${Math.round(data.altitude * 3.28084)}ft)` : 'N/A';
+  const batDisplay = (data.battery !== null && data.battery !== undefined) ? `${data.battery}% ⚡` : 'N/A';
+  const opStatus = data.op_status || 'PATROL';
+  const lkpWarning = isLkp ? `<div class="cadet-lkp-badge" style="display:block; margin: 4px 0;">⚠️ COMMS SILENCE: LKP ${elapsedSec}s AGO</div>` : '';
+
+  return `
+    <strong>TACTICAL TRANSMITTER</strong><br/>
+    CALLSIGN: <strong>${name}</strong><br/>
+    MISSION: <span class="cadet-op-status">${escapeHtml(opStatus)}</span><br/>
+    STATUS: <span class="val-${status}">${status.toUpperCase()}</span><br/>
+    ${lkpWarning}
+    SPEED: <strong>${spdDisplay}</strong><br/>
+    HEADING: <strong>${hdgDisplay}</strong><br/>
+    ELEVATION: <strong>${altDisplay}</strong><br/>
+    BATTERY: <strong>${batDisplay}</strong><br/>
+    LAT: ${Number(data.latitude).toFixed(5)}<br/>
+    LON: ${Number(data.longitude).toFixed(5)}<br/>
+    ACCURACY: ${data.accuracy ? data.accuracy.toFixed(1) + 'm' : 'N/A'}<br/>
+    PARTY: ${escapeHtml(data.party_type || 'Party')} (x${data.party_size || 1})
+    <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
+      <button class="btn-primary" style="width: 100%; font-size: 10px; padding: 4px;" onclick="window.startRangefinderFromUnit('${id}')">[ 🎯 RANGE & BEARING VECTOR ]</button>
+    </div>
+  `;
+}
 
 function updateCadetsHudList() {
   const listEl = document.getElementById('cadets-list');
@@ -1651,6 +1698,7 @@ function updateCadetsHudList() {
   }
   
   let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+  const now = Date.now();
   cadetMarkers.forEach((marker, id) => {
     const data = marker.cadetData;
     const name = escapeHtml(data.name || id);
@@ -1661,6 +1709,10 @@ function updateCadetsHudList() {
       statusClass = 'status-danger';
       color = 'red';
     }
+
+    const lastSeen = cadetLastSeen.get(id) || now;
+    const elapsedSec = Math.round((now - lastSeen) / 1000);
+    const isLkp = elapsedSec > 25;
     
     let iconHtml = '';
     if (type === 'blip') {
@@ -1686,11 +1738,15 @@ function updateCadetsHudList() {
       } else if (type === 'warning') {
         svgPath = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>';
       }
-      
       iconHtml = `<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" style="margin-right: 6px; vertical-align: middle;" class="svg-${color}">${svgPath}</svg>`;
     }
     
-    const partyInfo = `${escapeHtml(data.party_type || 'Party')} (x${Number(data.party_size) || 1})`;
+    const kmh = ((data.speed || 0) * 3.6).toFixed(1);
+    const spdStr = (data.speed && data.speed > 0.2) ? `${kmh} km/h` : 'STATIONARY';
+    const hdgStr = (data.heading !== null && data.heading !== undefined) ? `${Math.round(data.heading)}° ${degToCardinal(data.heading)}` : '';
+    const batStr = (data.battery !== null && data.battery !== undefined) ? ` | ${data.battery}% ⚡` : '';
+    const opBadge = data.op_status ? `<span class="cadet-op-status">${escapeHtml(data.op_status)}</span>` : '';
+    const lkpBadge = isLkp ? `<span class="cadet-lkp-badge">LKP ${elapsedSec}s AGO</span>` : '';
     
     html += `<li style="margin-bottom: 8px; display: flex; flex-direction: column; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1698,10 +1754,15 @@ function updateCadetsHudList() {
           ${iconHtml}
           <strong>${name}</strong>
         </span>
-        <span class="hud-status-badge ${statusClass}" style="font-size: 9px; padding: 1px 4px; font-weight: bold;">${data.status.toUpperCase()}</span>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          ${opBadge}
+          <button class="wind-mini-btn" title="Measure Range Vector from ${name}" onclick="window.startRangefinderFromUnit('${id}')">[🎯]</button>
+          <span class="hud-status-badge ${statusClass}" style="font-size: 9px; padding: 1px 4px; font-weight: bold;">${data.status.toUpperCase()}</span>
+        </div>
       </div>
-      <div style="font-size: 10px; color: var(--text-secondary); margin-left: 14px; margin-top: 2px;">
-        ${partyInfo}
+      <div style="font-size: 10px; color: var(--text-secondary); margin-left: 14px; margin-top: 2px; display: flex; justify-content: space-between;">
+        <span>${spdStr} ${hdgStr}${batStr}</span>
+        ${lkpBadge}
       </div>
     </li>`;
   });
@@ -1768,6 +1829,8 @@ function handleCadetLocationUpdate(payload) {
       cadetTrails.delete(id);
     }
     cadetHistories.delete(id);
+    cadetLastSeen.delete(id);
+    cadetLkpState.delete(id);
   } else {
     // INSERT or UPDATE
     const id = newRecord.id;
@@ -1787,12 +1850,15 @@ function handleCadetLocationUpdate(payload) {
     const history = cadetHistories.get(id);
     if (history.length === 0 || history[history.length - 1][0] !== lat || history[history.length - 1][1] !== lng) {
       history.push([lat, lng]);
-      if (history.length > 25) history.shift();
+      if (history.length > 30) history.shift();
     }
     if (cadetTrailsEnabled) {
       renderCadetTrail(id, history, status);
     }
     
+    cadetLastSeen.set(id, Date.now());
+    cadetLkpState.set(id, false);
+
     if (cadetMarkers.has(id)) {
       const marker = cadetMarkers.get(id);
       marker.setLatLng(latlng);
@@ -1800,38 +1866,21 @@ function handleCadetLocationUpdate(payload) {
       
       const oldStatus = marker.cadetData.status;
       marker.cadetData = newRecord;
-      
-      marker.getPopup().setContent(`
-        <strong>TACTICAL TRANSMITTER</strong><br/>
-        CALLSIGN: <strong>${name}</strong><br/>
-        UNIT TYPE: ${newRecord.party_type || 'Party'}<br/>
-        PARTY SIZE: ${newRecord.party_size || 1}<br/>
-        STATUS: <span class="val-${status}">${status.toUpperCase()}</span><br/>
-        LAT: ${lat.toFixed(4)}<br/>
-        LON: ${lng.toFixed(4)}<br/>
-        ACCURACY: ${newRecord.accuracy ? newRecord.accuracy.toFixed(1) + 'm' : 'N/A'}
-      `);
+      marker.getPopup().setContent(formatCadetPopup(id, newRecord));
       
       if (status === 'sos' && oldStatus !== 'sos') {
         logToFeed(`SOS TRANSMISSION RECEIVED: ${name} IS IN DISTRESS!`, true);
         playSfx('sos');
         triggerSosAlert(newRecord);
       } else {
-        logToFeed(`SYS: LOCATION UPDATE: ${name} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+        const kmh = ((newRecord.speed || 0) * 3.6).toFixed(1);
+        const spdLog = newRecord.speed > 0.2 ? ` | ${kmh}km/h` : '';
+        logToFeed(`SYS: LOCATION UPDATE: ${name} [${lat.toFixed(4)}, ${lng.toFixed(4)}]${spdLog}`);
       }
     } else {
       const marker = L.marker(latlng, { icon: getCadetIcon(newRecord) }).addTo(cadetsLayer);
       marker.cadetData = newRecord;
-      marker.bindPopup(`
-        <strong>TACTICAL TRANSMITTER</strong><br/>
-        CALLSIGN: <strong>${name}</strong><br/>
-        UNIT TYPE: ${newRecord.party_type || 'Party'}<br/>
-        PARTY SIZE: ${newRecord.party_size || 1}<br/>
-        STATUS: <span class="val-${status}">${status.toUpperCase()}</span><br/>
-        LAT: ${lat.toFixed(4)}<br/>
-        LON: ${lng.toFixed(4)}<br/>
-        ACCURACY: ${newRecord.accuracy ? newRecord.accuracy.toFixed(1) + 'm' : 'N/A'}
-      `);
+      marker.bindPopup(formatCadetPopup(id, newRecord));
       
       cadetMarkers.set(id, marker);
       logToFeed(`SYS: RESPONDER ONLINE [${name}]`);
@@ -2431,6 +2480,10 @@ window.addEventListener('keydown', (e) => {
     if (quickBtnRecenter) quickBtnRecenter.click();
   } else if (e.code === 'KeyW') {
     toggleWindWidget();
+  } else if (e.code === 'KeyX') {
+    if (typeof toggleRangefinder === 'function') toggleRangefinder();
+  } else if (e.code === 'Escape') {
+    if (typeof cancelRangefinder === 'function' && rangefinderActive) cancelRangefinder();
   } else if (e.code === 'KeyT') {
     const editToggle = document.getElementById('edit-toggle');
     if (editToggle) {
@@ -2677,4 +2730,300 @@ function initMovableWindWidget() {
 
 // Initialize Wind Widget on page load
 initMovableWindWidget();
+
+// --- 10. Advanced GPS Telemetry, Rangefinder & Mission Export Tools ---
+
+// 1. Comms Silence & Last Known Position (LKP) Watchdog
+function checkCommsSilence() {
+  const now = Date.now();
+  let updatedAny = false;
+  cadetMarkers.forEach((marker, id) => {
+    const lastSeen = cadetLastSeen.get(id) || now;
+    const elapsedSec = Math.round((now - lastSeen) / 1000);
+    const wasLkp = cadetLkpState.get(id) || false;
+    const name = marker.cadetData ? (marker.cadetData.name || id) : id;
+
+    if (elapsedSec > 25) {
+      if (!wasLkp) {
+        cadetLkpState.set(id, true);
+        marker.setIcon(getCadetIcon(marker.cadetData, true));
+        marker.getPopup().setContent(formatCadetPopup(id, marker.cadetData, true, elapsedSec));
+        logToFeed(`⚠️ WARN: COMMS SILENCE ON [${name}] (${elapsedSec}s) - MARKING LKP`, true);
+        playSfx('click');
+        updatedAny = true;
+      }
+    } else {
+      if (wasLkp) {
+        cadetLkpState.set(id, false);
+        marker.setIcon(getCadetIcon(marker.cadetData, false));
+        marker.getPopup().setContent(formatCadetPopup(id, marker.cadetData, false, 0));
+        logToFeed(`SYS: COMMS RESTORED WITH [${name}]`);
+        updatedAny = true;
+      }
+    }
+  });
+  if (updatedAny) updateCadetsHudList();
+}
+setInterval(checkCommsSilence, 4000);
+
+// 2. Tactical Range & Bearing Intercept Vector Tool
+let rangefinderActive = false;
+let rangefinderOrigin = null; // { lat, lng, name, speed }
+let rangefinderLine = null;
+let rangefinderTooltip = null;
+
+const rangefinderBanner = document.getElementById('rangefinder-hud-banner');
+const rangefinderStatusText = document.getElementById('rangefinder-status-text');
+const btnCancelRangefinder = document.getElementById('btn-cancel-rangefinder');
+const quickBtnRangefinder = document.getElementById('quick-btn-rangefinder');
+const quickBtnExport = document.getElementById('quick-btn-export');
+const btnExportMission = document.getElementById('btn-export-mission');
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function calculateBearingDeg(lat1, lon1, lat2, lon2) {
+  const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180);
+  const brng = Math.atan2(y, x) * 180 / Math.PI;
+  return (brng + 360) % 360;
+}
+
+function startRangefinder(origin = null) {
+  rangefinderActive = true;
+  rangefinderOrigin = origin;
+  if (rangefinderBanner) rangefinderBanner.style.display = 'flex';
+  if (quickBtnRangefinder) quickBtnRangefinder.classList.add('active');
+  if (rangefinderStatusText) {
+    rangefinderStatusText.textContent = origin
+      ? `ORIGIN: [${origin.name}] ➔ CLICK TARGET POINT / CADET`
+      : `RANGEFINDER: CLICK 1ST OBJECT (ORIGIN) ➔ 2ND OBJECT (TARGET)`;
+  }
+  primaryMap.getContainer().style.cursor = 'crosshair';
+  logToFeed("SYS: TACTICAL RANGEFINDER / INTERCEPT MODE ACTIVE");
+}
+
+function cancelRangefinder() {
+  rangefinderActive = false;
+  rangefinderOrigin = null;
+  if (rangefinderBanner) rangefinderBanner.style.display = 'none';
+  if (quickBtnRangefinder) quickBtnRangefinder.classList.remove('active');
+  if (rangefinderLine) {
+    primaryMap.removeLayer(rangefinderLine);
+    rangefinderLine = null;
+  }
+  if (rangefinderTooltip) {
+    primaryMap.removeLayer(rangefinderTooltip);
+    rangefinderTooltip = null;
+  }
+  primaryMap.getContainer().style.cursor = '';
+  logToFeed("SYS: RANGEFINDER DISENGAGED");
+}
+
+function toggleRangefinder() {
+  if (rangefinderActive) cancelRangefinder();
+  else startRangefinder();
+}
+
+window.startRangefinderFromUnit = function(cadetId) {
+  const marker = cadetMarkers.get(cadetId);
+  if (!marker || !marker.cadetData) return;
+  const data = marker.cadetData;
+  startRangefinder({
+    lat: data.latitude,
+    lng: data.longitude,
+    name: data.name || 'UNIT',
+    speed: data.speed || 0
+  });
+  if (marker.isPopupOpen()) marker.closePopup();
+};
+
+if (quickBtnRangefinder) {
+  quickBtnRangefinder.addEventListener('click', toggleRangefinder);
+}
+if (btnCancelRangefinder) {
+  btnCancelRangefinder.addEventListener('click', cancelRangefinder);
+}
+
+// Map interaction for Rangefinder Vector
+primaryMap.on('mousemove', (e) => {
+  if (!rangefinderActive || !rangefinderOrigin) return;
+
+  const originLat = rangefinderOrigin.lat;
+  const originLng = rangefinderOrigin.lng;
+  const targetLat = e.latlng.lat;
+  const targetLng = e.latlng.lng;
+
+  const distKm = calculateDistanceKm(originLat, originLng, targetLat, targetLng);
+  const bearing = calculateBearingDeg(originLat, originLng, targetLat, targetLng);
+  const cardinal = degToCardinal(bearing);
+
+  // Speed: use origin unit's speed if > 0.5 km/h, otherwise standard SAR foot-search pace (4.8 km/h)
+  const spdKmh = (rangefinderOrigin.speed && rangefinderOrigin.speed > 0.15) ? (rangefinderOrigin.speed * 3.6) : 4.8;
+  const travelHours = distKm / spdKmh;
+  const travelMinutes = Math.round(travelHours * 60);
+  const etaStr = travelMinutes < 60 ? `${travelMinutes}m` : `${Math.floor(travelMinutes/60)}h ${travelMinutes%60}m`;
+  const distStr = distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(2)}km (${(distKm * 0.539957).toFixed(2)}NM)`;
+
+  const lineCoords = [[originLat, originLng], [targetLat, targetLng]];
+  if (rangefinderLine) {
+    rangefinderLine.setLatLngs(lineCoords);
+  } else {
+    rangefinderLine = L.polyline(lineCoords, {
+      color: '#00d2ff',
+      weight: 2,
+      dashArray: '6, 6',
+      opacity: 0.95
+    }).addTo(primaryMap);
+  }
+
+  const tooltipHtml = `
+    <div style="font-family: var(--hud-font); font-size: 11px; line-height: 1.3;">
+      <span style="color: var(--accent-cyan); font-weight: bold;">VECTOR:</span> ${distStr}<br/>
+      <span style="color: #fff;">BEARING:</span> ${Math.round(bearing)}° ${cardinal}<br/>
+      <span style="color: var(--tactical-green); font-weight: bold;">EST. TIME:</span> ~${etaStr} @ ${spdKmh.toFixed(1)}km/h
+    </div>
+  `;
+
+  if (rangefinderTooltip) {
+    rangefinderTooltip.setLatLng(e.latlng).setContent(tooltipHtml);
+  } else {
+    rangefinderTooltip = L.popup({
+      closeButton: false,
+      autoPan: false,
+      className: 'rangefinder-popup'
+    }).setLatLng(e.latlng).setContent(tooltipHtml).openOn(primaryMap);
+  }
+});
+
+primaryMap.on('click', (e) => {
+  if (!rangefinderActive) return;
+
+  if (!rangefinderOrigin) {
+    // Check if clicked near an existing cadet
+    let selectedCadet = null;
+    cadetMarkers.forEach((marker, id) => {
+      const dist = primaryMap.distance(e.latlng, marker.getLatLng());
+      if (dist < 40) selectedCadet = marker.cadetData;
+    });
+
+    rangefinderOrigin = {
+      lat: selectedCadet ? selectedCadet.latitude : e.latlng.lat,
+      lng: selectedCadet ? selectedCadet.longitude : e.latlng.lng,
+      name: selectedCadet ? (selectedCadet.name || 'CADET') : `PT [${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}]`,
+      speed: selectedCadet ? (selectedCadet.speed || 0) : 0
+    };
+
+    if (rangefinderStatusText) {
+      rangefinderStatusText.textContent = `ORIGIN: [${rangefinderOrigin.name}] ➔ CLICK TARGET TO LOCK VECTOR`;
+    }
+    logToFeed(`SYS: RANGEFINDER ORIGIN LOCKED ON [${rangefinderOrigin.name}]`);
+    playSfx('click');
+  } else {
+    // Lock vector
+    const distKm = calculateDistanceKm(rangefinderOrigin.lat, rangefinderOrigin.lng, e.latlng.lat, e.latlng.lng);
+    const bearing = calculateBearingDeg(rangefinderOrigin.lat, rangefinderOrigin.lng, e.latlng.lat, e.latlng.lng);
+    const cardinal = degToCardinal(bearing);
+    const distStr = distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(2)}km`;
+
+    logToFeed(`🎯 VECTOR: [${rangefinderOrigin.name}] ➔ [TARGET]: ${distStr} @ ${Math.round(bearing)}° ${cardinal}`, true);
+    playSfx('radar');
+
+    // Keep vector visible, clear prompt
+    if (rangefinderStatusText) {
+      rangefinderStatusText.textContent = `LOCKED: ${distStr} @ ${Math.round(bearing)}° ${cardinal} (PRESS ESC TO CLEAR)`;
+    }
+  }
+});
+
+// 3. Mission Data GeoJSON / GPX Export
+function exportMissionData() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const exportDoc = {
+    type: "FeatureCollection",
+    mission: "Deer Lake Tactical Command Mission",
+    exported_at: new Date().toISOString(),
+    features: []
+  };
+
+  // 1. Export active field cadets
+  cadetMarkers.forEach((marker, id) => {
+    const data = marker.cadetData;
+    const history = cadetHistories.get(id) || [];
+    exportDoc.features.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [data.longitude, data.latitude] },
+      properties: {
+        category: "cadet_current",
+        id: id,
+        callsign: data.name,
+        party_type: data.party_type,
+        party_size: data.party_size,
+        status: data.status,
+        op_status: data.op_status || 'PATROL',
+        speed_kmh: data.speed ? (data.speed * 3.6).toFixed(1) : 0,
+        heading_deg: data.heading,
+        altitude_m: data.altitude,
+        battery_pct: data.battery,
+        accuracy_m: data.accuracy,
+        last_updated: data.updated_at
+      }
+    });
+
+    if (history.length > 1) {
+      exportDoc.features.push({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: history.map(pt => [pt[1], pt[0]]) },
+        properties: {
+          category: "cadet_track",
+          id: id,
+          callsign: data.name,
+          points_count: history.length
+        }
+      });
+    }
+  });
+
+  // 2. Export custom tactical markers & buoys
+  try {
+    const customBuoys = JSON.parse(localStorage.getItem('custom_buoys') || '[]');
+    customBuoys.forEach(b => {
+      exportDoc.features.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [b.lng, b.lat] },
+        properties: {
+          category: "tactical_marker",
+          id: b.id,
+          name: b.name,
+          markerType: b.markerType,
+          markerColor: b.markerColor
+        }
+      });
+    });
+  } catch(e) {}
+
+  const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportDoc, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", jsonString);
+  downloadAnchor.setAttribute("download", `deer-lake-mission-${timestamp}.geojson`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+
+  logToFeed(`SYS: MISSION DATA EXPORT COMPLETE (${exportDoc.features.length} FEATURES SAVED)`);
+  playSfx('click');
+}
+
+if (quickBtnExport) quickBtnExport.addEventListener('click', exportMissionData);
+if (btnExportMission) btnExportMission.addEventListener('click', exportMissionData);
+
 

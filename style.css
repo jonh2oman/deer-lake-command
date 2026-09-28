@@ -1899,6 +1899,89 @@ input:focus {
   gap: 8px;
 }
 
+/* ==========================================================================
+   ADVANCED GPS TELEMETRY & KINEMATICS HUD STYLES
+   ========================================================================== */
+
+/* Cadet Heading Directional Arrow Pointer */
+.cadet-heading-arrow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 12px solid var(--accent-color);
+  transform-origin: 50% 18px;
+  pointer-events: none;
+  z-index: 5;
+  filter: drop-shadow(0 0 4px var(--accent-glow));
+  transition: transform 0.4s ease;
+}
+
+/* Comms Lost / LKP (Last Known Position) Warning Strobe */
+@keyframes lkpPulse {
+  0% { box-shadow: 0 0 4px #ffaa00; border-color: #ffaa00; opacity: 1; }
+  50% { box-shadow: 0 0 16px #ff4400; border-color: #ff4400; opacity: 0.55; }
+  100% { box-shadow: 0 0 4px #ffaa00; border-color: #ffaa00; opacity: 1; }
+}
+
+.cadet-lkp {
+  filter: grayscale(0.4) contrast(1.2);
+  animation: lkpPulse 1.2s infinite !important;
+}
+
+.cadet-lkp::before {
+  border-color: #ffaa00 !important;
+  animation: radarPulse 3s infinite ease-out !important;
+}
+
+.cadet-lkp::after {
+  background-color: #ffaa00 !important;
+  box-shadow: 0 0 10px #ffaa00 !important;
+}
+
+.cadet-lkp-badge {
+  background: rgba(255, 170, 0, 0.25);
+  border: 1px solid #ffaa00;
+  color: #ffaa00;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-top: 2px;
+  animation: blink 1.5s infinite;
+}
+
+/* Operational Status Tag in Popup / List */
+.cadet-op-status {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(0, 210, 255, 0.15);
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  color: var(--accent-color);
+  letter-spacing: 0.5px;
+}
+
+/* Tactical Rangefinder Tooltip Overlay */
+.rangefinder-tooltip {
+  background: rgba(5, 15, 25, 0.95);
+  border: 1px solid var(--accent-color);
+  box-shadow: 0 0 15px var(--accent-glow);
+  color: #fff;
+  font-family: var(--hud-font);
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+
 
 
 

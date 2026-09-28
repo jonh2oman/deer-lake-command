@@ -378,6 +378,30 @@
       .back-link:hover {
         color: var(--accent-color);
       }
+      .op-status-btn {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(0, 210, 255, 0.25);
+        color: var(--text-secondary);
+        font-family: var(--hud-font);
+        font-size: 10px;
+        font-weight: bold;
+        padding: 6px 4px;
+        cursor: pointer;
+        text-align: center;
+        letter-spacing: 0.5px;
+        transition: all 0.2s;
+        border-radius: 2px;
+      }
+      .op-status-btn:hover {
+        border-color: var(--accent-color);
+        color: #fff;
+      }
+      .op-status-btn.active {
+        background: rgba(0, 210, 255, 0.2);
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+        box-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
+      }
 
       /* Glow Helpers */
       .svg-green { color: #39ff14; filter: drop-shadow(0 0 3px #39ff14); }
@@ -502,18 +526,60 @@
           <div id="sim-map" style="width: 100%; height: 180px; border: 1px solid var(--border-color); background: #000;"></div>
         </div>
 
+        <!-- Operational Field Status -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label>FIELD MISSION STATUS</label>
+          <div class="op-status-grid" id="op-status-picker" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;">
+            <button type="button" class="op-status-btn active" data-status="SEARCHING">SEARCHING</button>
+            <button type="button" class="op-status-btn" data-status="ON SCENE">ON SCENE</button>
+            <button type="button" class="op-status-btn" data-status="IN TRANSIT">IN TRANSIT</button>
+            <button type="button" class="op-status-btn" data-status="PATROL">PATROL</button>
+            <button type="button" class="op-status-btn" data-status="RTB">RTB (BASE)</button>
+            <button type="button" class="op-status-btn" data-status="STANDBY">STANDBY</button>
+          </div>
+        </div>
+
         <div class="broadcast-panel">
-          <div class="telemetry-row">
-            <span class="label">LATITUDE:</span>
-            <span class="value" id="telemetry-lat">--.----</span>
+          <div class="telemetry-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="telemetry-row">
+              <span class="label">LAT:</span>
+              <span class="value" id="telemetry-lat">--.----</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">LON:</span>
+              <span class="value" id="telemetry-lng">--.----</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">SPEED:</span>
+              <span class="value" id="telemetry-spd">0.0 km/h</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">HEADING:</span>
+              <span class="value" id="telemetry-hdg">---°</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">ALTITUDE:</span>
+              <span class="value" id="telemetry-alt">---m</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">ACCURACY:</span>
+              <span class="value" id="telemetry-acc">--m</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">BATTERY:</span>
+              <span class="value" id="telemetry-bat">--%</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="label">COMMS:</span>
+              <span class="value" id="telemetry-net" style="color: var(--success-color);">ONLINE</span>
+            </div>
           </div>
-          <div class="telemetry-row">
-            <span class="label">LONGITUDE:</span>
-            <span class="value" id="telemetry-lng">--.----</span>
-          </div>
-          <div class="telemetry-row">
-            <span class="label">ACCURACY:</span>
-            <span class="value" id="telemetry-acc">--m</span>
+
+          <!-- Return-To-Base Navigation Cockpit -->
+          <div id="rtb-cockpit" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(0, 210, 255, 0.3); display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+            <span style="color: var(--text-secondary);">COMMAND BASE RTB:</span>
+            <span id="rtb-distance" style="color: var(--accent-color); font-weight: bold;">-- km @ --°</span>
+            <span id="rtb-arrow" style="display: inline-block; transition: transform 0.3s; color: var(--accent-color); font-size: 14px;">➔</span>
           </div>
         </div>
 
