@@ -922,6 +922,55 @@ input:checked + .slider:before {
 .blip-cyan::after { background-color: #00ccff; box-shadow: 0 0 5px rgba(0,204,255,0.8); }
 .blip-cyan::before { border: 2px solid #00ccff; }
 
+/* EMS Subset Blips */
+/* 1. Hospitals / Medical: White Blip */
+.blip-hospital::after {
+  background-color: #ffffff;
+  box-shadow: 0 0 8px #ffffff, 0 0 16px rgba(255, 255, 255, 0.9);
+}
+.blip-hospital::before {
+  border: 2px solid #ffffff;
+}
+
+/* 2. Fire Stations: Tactical Orange Blip */
+.blip-fire::after {
+  background-color: #ff8800;
+  box-shadow: 0 0 8px #ff8800, 0 0 16px rgba(255, 136, 0, 0.9);
+}
+.blip-fire::before {
+  border: 2px solid #ff8800;
+}
+
+/* 3. Police Stations: Bright Royal Blue Blip */
+.blip-police::after {
+  background-color: #1e6bff;
+  box-shadow: 0 0 8px #1e6bff, 0 0 16px rgba(30, 107, 255, 0.9);
+}
+.blip-police::before {
+  border: 2px solid #1e6bff;
+}
+
+/* EMS Quick Filter Chips in Sidebar */
+.ems-chip-btn {
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.ems-chip-btn:hover {
+  filter: brightness(1.25);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+}
+.ems-chip-btn.inactive {
+  opacity: 0.35 !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #666 !important;
+  text-decoration: line-through;
+  box-shadow: none !important;
+}
+
 @keyframes radarPulse {
   0% { transform: scale(0.5); opacity: 1; }
   100% { transform: scale(3); opacity: 0; }

@@ -226,6 +226,12 @@
                 <button class="expand-btn fullscreen-btn" onclick="window.toggleExpand('panel-ems', 'secondaryMap2')">[↗]</button>
               </div>
             </div>
+            <!-- Quick Independent EMS Toggles -->
+            <div class="ems-quick-bar" style="display: flex; gap: 4px; padding: 4px 6px; background: rgba(0,10,20,0.85); border-bottom: 1px solid var(--border-color);">
+              <button id="ems-quick-hospital" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ffffff; background: rgba(255,255,255,0.15); color: #ffffff;" title="Toggle Hospital Blips (White)">[ ⚪ HOSP ]</button>
+              <button id="ems-quick-fire" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #ff8800; background: rgba(255,136,0,0.15); color: #ff8800;" title="Toggle Fire Station Blips (Orange)">[ 🟠 FIRE ]</button>
+              <button id="ems-quick-police" class="ems-chip-btn active" style="flex: 1; font-size: 9px; padding: 3px 2px; font-family: var(--hud-font); cursor: pointer; border: 1px solid #1e6bff; background: rgba(30,107,255,0.15); color: #1e6bff;" title="Toggle Police Station Blips (Royal Blue)">[ 🔵 POLICE ]</button>
+            </div>
             <div id="secondary-map-2" class="minimap"></div>
           </div>
           <div class="minimap-panel" id="panel-forestry">
@@ -332,7 +338,6 @@
     
     <!-- Load GeoJSON Variables -->
     <script src="./data/Buoys_2.js"></script>
-    <script src="./data/emergency_3.js"></script>
 
     <!-- Deployment Terminal Modal -->
     <div id="deployment-modal" class="modal-overlay" style="display: none;">
@@ -835,6 +840,45 @@
                   <span class="slider"></span>
                 </label>
                 <span class="radar-label">WEATHER RADAR</span>
+              </div>
+
+              <!-- EMS Independent Subsets -->
+              <div class="radar-control" style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold; letter-spacing: 1px;">EMERGENCY SERVICES (EMS) SUBSETS:</span>
+                <button type="button" id="btn-scan-osm-ems" class="btn-secondary" style="font-size: 9px; padding: 2px 6px;" title="Scan OpenStreetMap for local hospitals, fire, and police stations around current view">[ 📡 SCAN AREA (OSM) ]</button>
+              </div>
+
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ems-hospital-toggle" checked>
+                  <span class="slider" style="background-color: #ffffff;"></span>
+                </label>
+                <span class="radar-label" style="color: #ffffff; display: flex; align-items: center; gap: 5px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#fff; box-shadow:0 0 5px #fff;"></span>
+                  HOSPITALS (WHITE)
+                </span>
+              </div>
+
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ems-fire-toggle" checked>
+                  <span class="slider" style="background-color: #ff8800;"></span>
+                </label>
+                <span class="radar-label" style="color: #ff8800; display: flex; align-items: center; gap: 5px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ff8800; box-shadow:0 0 5px #ff8800;"></span>
+                  FIRE STATIONS (ORANGE)
+                </span>
+              </div>
+
+              <div class="radar-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ems-police-toggle" checked>
+                  <span class="slider" style="background-color: #1e6bff;"></span>
+                </label>
+                <span class="radar-label" style="color: #1e6bff; display: flex; align-items: center; gap: 5px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#1e6bff; box-shadow:0 0 5px #1e6bff;"></span>
+                  POLICE (ROYAL BLUE)
+                </span>
               </div>
             </div>
           </div>

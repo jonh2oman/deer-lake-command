@@ -305,11 +305,11 @@ const secondaryMap1 = L.map('secondary-map-1', {
   zoomAnimation: false
 }).setView([49.0342, -57.5955], 14); // Centered on Buoys
 
-// EMS Map is independent and focused on the Hospital
+// EMS Map is independent and focused on station area emergency services
 const secondaryMap2 = L.map('secondary-map-2', {
   zoomControl: true,
   zoomAnimation: false
-}).setView([48.92898, -57.92175], 15); // Centered on Hospital
+}).setView([initialStationProfile.lat, initialStationProfile.lng], 13);
 
 // Radar Map is independent and interactive
 const secondaryMap3 = L.map('secondary-map-3', {
@@ -1082,8 +1082,21 @@ function getCustomIcon(feature) {
   }
 }
 
-const emergencyIcon = L.divIcon({
-  className: 'radar-blip blip-cyan',
+// EMS Radar Blip Icons
+const hospitalIcon = L.divIcon({
+  className: 'radar-blip blip-hospital',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
+});
+
+const fireIcon = L.divIcon({
+  className: 'radar-blip blip-fire',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
+});
+
+const policeIcon = L.divIcon({
+  className: 'radar-blip blip-police',
   iconSize: [20, 20],
   iconAnchor: [10, 10]
 });
@@ -1364,56 +1377,351 @@ async function renderBuoys() {
 // --- Local Custom Buoys logic ---
 // No realtime channel needed for local storage
 
-// Emergency Services
-function emergencyPopup(feature, layer) {
-  const id = feature.properties['id'] || 'N/A';
-  const name = feature.properties['EMS Loc'] || 'Emergency Service';
-  layer.bindPopup(`<strong>EMERGENCY UNIT</strong><br/>ID: ${id}<br/>LOC: ${name}`);
+// ============================================================================
+// --- SELECTABLE EMERGENCY SERVICES (EMS) LAYERS ---
+// Hospitals (White), Fire Stations (Orange), Police (Royal Blue)
+// ============================================================================
+
+const hospitalLayerPrimary = L.layerGroup();
+const fireLayerPrimary = L.layerGroup();
+const policeLayerPrimary = L.layerGroup();
+
+const hospitalLayerSecondary = L.layerGroup();
+const fireLayerSecondary = L.layerGroup();
+const policeLayerSecondary = L.layerGroup();
+
+let emsHospitalsEnabled = localStorage.getItem('cmd-ems-hospitals') !== 'false';
+let emsFireEnabled = localStorage.getItem('cmd-ems-fire') !== 'false';
+let emsPoliceEnabled = localStorage.getItem('cmd-ems-police') !== 'false';
+
+// Preloaded Comprehensive Regional Facilities Database
+const EMS_PRELOAD_STATIONS = [
+  // --- HOSPITALS & HEALTH CENTRES (WHITE) ---
+  { id: 'hosp-1', type: 'hospital', name: 'Western Memorial Regional Hospital', lat: 48.9485, lng: -57.9490, address: '1 Brookfield Ave, Corner Brook, NL', phone: '(709) 637-5000' },
+  { id: 'hosp-2', type: 'hospital', name: 'Corner Brook Health Centre & Long Term Care', lat: 48.9450, lng: -57.9220, address: '40 University Dr, Corner Brook, NL', phone: '(709) 637-3999' },
+  { id: 'hosp-3', type: 'hospital', name: 'Deer Lake Medical Clinic & Health Centre', lat: 49.1725, lng: -57.4320, address: '4 Farm Rd, Deer Lake, NL', phone: '(709) 635-3541' },
+  { id: 'hosp-4', type: 'hospital', name: 'Pasadena Health Centre', lat: 49.0180, lng: -57.5950, address: '22 Midland Row, Pasadena, NL', phone: '(709) 686-2061' },
+  { id: 'hosp-5', type: 'hospital', name: 'Bonne Bay Health Centre', lat: 49.5210, lng: -57.8760, address: 'Norris Point / Bonne Bay, NL', phone: '(709) 458-2211' },
+  { id: 'hosp-6', type: 'hospital', name: 'Sir Thomas Roddick Hospital', lat: 48.5520, lng: -58.5770, address: '142 Ohio Dr, Stephenville, NL', phone: '(709) 643-5111' },
+  { id: 'hosp-7', type: 'hospital', name: 'Central Newfoundland Regional Health Centre', lat: 48.9320, lng: -55.6550, address: '50 Union St, Grand Falls-Windsor, NL', phone: '(709) 292-2500' },
+  { id: 'hosp-8', type: 'hospital', name: 'Charles S. Curtis Memorial Hospital', lat: 51.3650, lng: -55.6020, address: '178 West St, St. Anthony, NL', phone: '(709) 454-3333' },
+  { id: 'hosp-9', type: 'hospital', name: 'James Paton Memorial Regional Health Centre', lat: 48.9560, lng: -54.6180, address: '125 Trans-Canada Hwy, Gander, NL', phone: '(709) 256-2500' },
+  { id: 'hosp-10', type: 'hospital', name: 'Health Sciences Centre (Tertiary Referral)', lat: 47.5740, lng: -52.7440, address: '300 Prince Philip Dr, St. John\'s, NL', phone: '(709) 777-6300' },
+  { id: 'hosp-11', type: 'hospital', name: 'St. Clare\'s Mercy Hospital', lat: 47.5580, lng: -52.7210, address: '154 LeMarchant Rd, St. John\'s, NL', phone: '(709) 777-5000' },
+
+  // --- FIRE & RESCUE STATIONS (ORANGE) ---
+  { id: 'fire-1', type: 'fire', name: 'Deer Lake Volunteer Fire Department', lat: 49.1740, lng: -57.4310, address: '34 Nicholsville Rd, Deer Lake, NL', phone: 'Emergency: 911 / (709) 635-2244' },
+  { id: 'fire-2', type: 'fire', name: 'Corner Brook Fire Department (Station 1 HQ)', lat: 48.9525, lng: -57.9510, address: '6 MT Bernie Dr, Corner Brook, NL', phone: 'Emergency: 911 / (709) 637-1660' },
+  { id: 'fire-3', type: 'fire', name: 'Pasadena Volunteer Fire Department', lat: 49.0155, lng: -57.5990, address: '10th Ave, Pasadena, NL', phone: 'Emergency: 911 / (709) 686-2121' },
+  { id: 'fire-4', type: 'fire', name: 'Steady Brook Volunteer Fire Department', lat: 48.9550, lng: -57.8250, address: 'Marble Dr, Steady Brook, NL', phone: 'Emergency: 911' },
+  { id: 'fire-5', type: 'fire', name: 'Reidville Volunteer Fire Department', lat: 49.2210, lng: -57.3850, address: 'Reidville Community Way, NL', phone: 'Emergency: 911' },
+  { id: 'fire-6', type: 'fire', name: 'Cormack Volunteer Fire Department', lat: 49.3120, lng: -57.4100, address: 'Veterans Dr, Cormack, NL', phone: 'Emergency: 911' },
+  { id: 'fire-7', type: 'fire', name: 'Humber Arm South Volunteer Fire Dept', lat: 49.0450, lng: -58.1200, address: 'Main St, Benoit\'s Cove, NL', phone: 'Emergency: 911' },
+  { id: 'fire-8', type: 'fire', name: 'Stephenville Fire & Rescue HQ', lat: 48.5510, lng: -58.5810, address: 'Carolina Ave, Stephenville, NL', phone: 'Emergency: 911 / (709) 643-2144' },
+  { id: 'fire-9', type: 'fire', name: 'Rocky Harbour Volunteer Fire Department', lat: 49.5910, lng: -57.9200, address: 'West Link Rd, Rocky Harbour, NL', phone: 'Emergency: 911' },
+  { id: 'fire-10', type: 'fire', name: 'Grand Falls-Windsor Fire Department', lat: 48.9350, lng: -55.6480, address: 'High St, Grand Falls-Windsor, NL', phone: 'Emergency: 911 / (709) 489-2121' },
+  { id: 'fire-11', type: 'fire', name: 'Gander Fire Rescue HQ', lat: 48.9580, lng: -54.6120, address: '100 Elizabeth Dr, Gander, NL', phone: 'Emergency: 911 / (709) 651-5911' },
+
+  // --- POLICE & LAW ENFORCEMENT (BRIGHT ROYAL BLUE) ---
+  { id: 'police-1', type: 'police', name: 'RCMP Deer Lake Detachment', lat: 49.1710, lng: -57.4360, address: '18 George Aaron Dr, Deer Lake, NL', phone: '(709) 635-2173' },
+  { id: 'police-2', type: 'police', name: 'RNC (Royal Newfoundland Constabulary) Corner Brook HQ', lat: 48.9540, lng: -57.9460, address: '44 MT Bernard Ave, Corner Brook, NL', phone: '(709) 637-4100' },
+  { id: 'police-3', type: 'police', name: 'RCMP Corner Brook Detachment', lat: 48.9480, lng: -57.9350, address: '10 Confederation Dr, Corner Brook, NL', phone: '(709) 637-4433' },
+  { id: 'police-4', type: 'police', name: 'RCMP Pasadena Satellite / Traffic Services', lat: 49.0165, lng: -57.5920, address: 'Main St / TCH, Pasadena, NL', phone: '(709) 686-2311' },
+  { id: 'police-5', type: 'police', name: 'RCMP Stephenville Detachment', lat: 48.5530, lng: -58.5720, address: '10 Connecticut Dr, Stephenville, NL', phone: '(709) 643-2118' },
+  { id: 'police-6', type: 'police', name: 'RCMP Rocky Harbour / Gros Morne Detachment', lat: 49.5890, lng: -57.9230, address: 'Main St, Rocky Harbour, NL', phone: '(709) 458-2222' },
+  { id: 'police-7', type: 'police', name: 'RCMP Springdale Detachment', lat: 49.4980, lng: -56.0750, address: 'Little Bay Rd, Springdale, NL', phone: '(709) 673-3864' },
+  { id: 'police-8', type: 'police', name: 'RCMP Grand Falls-Windsor Detachment', lat: 48.9360, lng: -55.6420, address: '30 Cromer Ave, Grand Falls-Windsor, NL', phone: '(709) 489-2121' },
+  { id: 'police-9', type: 'police', name: 'RCMP Gander Detachment', lat: 48.9550, lng: -54.6190, address: '100 Elizabeth Dr, Gander, NL', phone: '(709) 256-6841' },
+  { id: 'police-10', type: 'police', name: 'RNC Headquarters (Fort Townshend)', lat: 47.5615, lng: -52.7140, address: '1 Fort Townshend, St. John\'s, NL', phone: '(709) 729-8000' }
+];
+
+let allEmsStations = [...EMS_PRELOAD_STATIONS];
+
+function createEmsPopupContent(station) {
+  let badgeColor = '#ffffff';
+  let badgeBg = 'rgba(255,255,255,0.15)';
+  let typeLabel = 'HOSPITAL / MEDICAL';
+  
+  if (station.type === 'fire') {
+    badgeColor = '#ff8800';
+    badgeBg = 'rgba(255,136,0,0.15)';
+    typeLabel = 'FIRE & RESCUE';
+  } else if (station.type === 'police') {
+    badgeColor = '#1e6bff';
+    badgeBg = 'rgba(30,107,255,0.15)';
+    typeLabel = 'POLICE / LAW ENFORCEMENT';
+  }
+
+  const phoneHtml = station.phone ? `<div style="margin-top: 4px; color: #fff;">📞 ${escapeHtml(station.phone)}</div>` : '';
+  const addrHtml = station.address ? `<div style="margin-top: 2px; color: var(--text-secondary); font-size: 10px;">${escapeHtml(station.address)}</div>` : '';
+
+  return `
+    <div style="font-family: var(--hud-font); min-width: 190px; padding: 4px;">
+      <div style="display: inline-block; padding: 2px 6px; font-size: 9px; font-weight: bold; color: ${badgeColor}; background: ${badgeBg}; border: 1px solid ${badgeColor}; border-radius: 2px; margin-bottom: 5px;">
+        ${typeLabel}
+      </div>
+      <div style="font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 4px;">
+        ${escapeHtml(station.name)}
+      </div>
+      ${addrHtml}
+      ${phoneHtml}
+      <div style="margin-top: 4px; font-size: 10px; color: var(--text-secondary);">
+        COORDS: ${station.lat.toFixed(5)}, ${station.lng.toFixed(5)}
+      </div>
+      <div style="margin-top: 8px; display: flex; gap: 4px;">
+        <button onclick="window.primaryMap.flyTo([${station.lat}, ${station.lng}], 16)" style="flex: 1; background: rgba(0,255,204,0.15); border: 1px solid var(--accent-color); color: #fff; font-family: var(--hud-font); font-size: 9px; padding: 4px; cursor: pointer;">[ FOCUS ]</button>
+      </div>
+    </div>
+  `;
 }
 
-function renderEmergencyServices() {
-  if (typeof window.json_emergency_3 !== 'undefined') {
-    try {
-      const layer1 = L.geoJSON(window.json_emergency_3, {
-        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon }),
-        onEachFeature: emergencyPopup
-      }).addTo(primaryMap);
+function renderEmsLayers() {
+  hospitalLayerPrimary.clearLayers();
+  fireLayerPrimary.clearLayers();
+  policeLayerPrimary.clearLayers();
 
-      const layer2 = L.geoJSON(window.json_emergency_3, {
-        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: emergencyIcon })
-      }).addTo(secondaryMap2);
-      
-      const count = layer1.getLayers().length;
-      logToFeed(`[DIAG] EMS RENDERED: ${count} markers.`);
-    } catch(err) {
-      logToFeed(`[DIAG] EMS ERROR: ${err.message}`, true);
+  hospitalLayerSecondary.clearLayers();
+  fireLayerSecondary.clearLayers();
+  policeLayerSecondary.clearLayers();
+
+  allEmsStations.forEach(st => {
+    let icon = hospitalIcon;
+    let targetPrimary = hospitalLayerPrimary;
+    let targetSecondary = hospitalLayerSecondary;
+
+    if (st.type === 'fire') {
+      icon = fireIcon;
+      targetPrimary = fireLayerPrimary;
+      targetSecondary = fireLayerSecondary;
+    } else if (st.type === 'police') {
+      icon = policeIcon;
+      targetPrimary = policeLayerPrimary;
+      targetSecondary = policeLayerSecondary;
     }
+
+    const popupHtml = createEmsPopupContent(st);
+
+    const m1 = L.marker([st.lat, st.lng], { icon: icon }).bindPopup(popupHtml);
+    targetPrimary.addLayer(m1);
+
+    const m2 = L.marker([st.lat, st.lng], { icon: icon }).bindPopup(popupHtml);
+    targetSecondary.addLayer(m2);
+  });
+
+  updateEmsLayerVisibility();
+  logToFeed(`SYS: EMS TELEMETRY ONLINE (${allEmsStations.length} UNITS INDEXED)`);
+}
+
+function updateEmsLayerVisibility() {
+  // 1. Hospitals (White)
+  if (emsHospitalsEnabled) {
+    if (!primaryMap.hasLayer(hospitalLayerPrimary)) hospitalLayerPrimary.addTo(primaryMap);
+    if (!secondaryMap2.hasLayer(hospitalLayerSecondary)) hospitalLayerSecondary.addTo(secondaryMap2);
   } else {
-    logToFeed(`[DIAG] EMS DATA MISSING`);
+    primaryMap.removeLayer(hospitalLayerPrimary);
+    secondaryMap2.removeLayer(hospitalLayerSecondary);
+  }
+
+  // 2. Fire Stations (Orange)
+  if (emsFireEnabled) {
+    if (!primaryMap.hasLayer(fireLayerPrimary)) fireLayerPrimary.addTo(primaryMap);
+    if (!secondaryMap2.hasLayer(fireLayerSecondary)) fireLayerSecondary.addTo(secondaryMap2);
+  } else {
+    primaryMap.removeLayer(fireLayerPrimary);
+    secondaryMap2.removeLayer(fireLayerSecondary);
+  }
+
+  // 3. Police Stations (Bright Royal Blue)
+  if (emsPoliceEnabled) {
+    if (!primaryMap.hasLayer(policeLayerPrimary)) policeLayerPrimary.addTo(primaryMap);
+    if (!secondaryMap2.hasLayer(policeLayerSecondary)) policeLayerSecondary.addTo(secondaryMap2);
+  } else {
+    primaryMap.removeLayer(policeLayerPrimary);
+    secondaryMap2.removeLayer(policeLayerSecondary);
+  }
+
+  // Sync checkboxes in settings
+  const emsHospitalToggle = document.getElementById('ems-hospital-toggle');
+  const emsFireToggle = document.getElementById('ems-fire-toggle');
+  const emsPoliceToggle = document.getElementById('ems-police-toggle');
+
+  if (emsHospitalToggle) emsHospitalToggle.checked = emsHospitalsEnabled;
+  if (emsFireToggle) emsFireToggle.checked = emsFireEnabled;
+  if (emsPoliceToggle) emsPoliceToggle.checked = emsPoliceEnabled;
+
+  // Sync sidebar quick-buttons
+  const emsQuickHospital = document.getElementById('ems-quick-hospital');
+  const emsQuickFire = document.getElementById('ems-quick-fire');
+  const emsQuickPolice = document.getElementById('ems-quick-police');
+
+  if (emsQuickHospital) emsQuickHospital.classList.toggle('inactive', !emsHospitalsEnabled);
+  if (emsQuickFire) emsQuickFire.classList.toggle('inactive', !emsFireEnabled);
+  if (emsQuickPolice) emsQuickPolice.classList.toggle('inactive', !emsPoliceEnabled);
+
+  // Persist state
+  localStorage.setItem('cmd-ems-hospitals', emsHospitalsEnabled);
+  localStorage.setItem('cmd-ems-fire', emsFireEnabled);
+  localStorage.setItem('cmd-ems-police', emsPoliceEnabled);
+}
+
+// Global Dynamic Overpass OSM Scanner
+async function scanAreaForEms() {
+  const center = primaryMap.getCenter();
+  const lat = center.lat;
+  const lng = center.lng;
+
+  logToFeed(`SYS: SCANNING OPENSTREETMAP FOR EMS AROUND [${lat.toFixed(4)}, ${lng.toFixed(4)}]...`);
+
+  const btnScan = document.getElementById('btn-scan-osm-ems');
+  if (btnScan) {
+    btnScan.textContent = '[ SCANNING... ]';
+    btnScan.disabled = true;
+  }
+
+  try {
+    const query = `[out:json][timeout:15];(node["amenity"~"hospital|clinic|fire_station|police"](around:40000,${lat},${lng});way["amenity"~"hospital|clinic|fire_station|police"](around:40000,${lat},${lng}););out center;`;
+    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+    const data = await res.json();
+
+    if (data && data.elements && data.elements.length > 0) {
+      let addedCount = 0;
+      data.elements.forEach(el => {
+        const pLat = el.lat || (el.center && el.center.lat);
+        const pLng = el.lon || (el.center && el.center.lon);
+        if (!pLat || !pLng) return;
+
+        const amenity = (el.tags && el.tags.amenity) || '';
+        let type = 'hospital';
+        if (amenity === 'fire_station') type = 'fire';
+        else if (amenity === 'police') type = 'police';
+
+        const name = (el.tags && (el.tags.name || el.tags['name:en'] || el.tags.operator)) || (type.toUpperCase() + ' STATION');
+        const phone = (el.tags && (el.tags.phone || el.tags['contact:phone'])) || '';
+        const address = (el.tags && [el.tags['addr:street'], el.tags['addr:city']].filter(Boolean).join(', ')) || '';
+
+        // Check for duplicates
+        const exists = allEmsStations.some(s => {
+          const d = Math.hypot(s.lat - pLat, s.lng - pLng);
+          return d < 0.002;
+        });
+
+        if (!exists) {
+          allEmsStations.push({
+            id: `osm-${el.id}`,
+            type,
+            name,
+            lat: pLat,
+            lng: pLng,
+            address,
+            phone
+          });
+          addedCount++;
+        }
+      });
+
+      renderEmsLayers();
+      logToFeed(`SYS: SATELLITE SCAN COMPLETE (+${addedCount} NEW EMS STATIONS)`);
+    } else {
+      logToFeed(`SYS: NO ADDITIONAL EMS STATIONS FOUND IN IMMEDIATE RADIUS`);
+    }
+  } catch (err) {
+    logToFeed(`SYS: SATELLITE EMS SCAN ERROR: ${err.message}`, true);
+  } finally {
+    if (btnScan) {
+      btnScan.textContent = '[ 📡 SCAN AREA (OSM) ]';
+      btnScan.disabled = false;
+    }
   }
 }
 
 // Data Initialization Poller
 let retryCount = 0;
 function waitForDataAndRender() {
-  if (typeof window.json_Buoys_2 !== 'undefined' && typeof window.json_emergency_3 !== 'undefined') {
-    logToFeed(`[DIAG] QGIS Data Loaded in ${retryCount * 100}ms`);
+  if (typeof window.json_Buoys_2 !== 'undefined') {
+    logToFeed(`[DIAG] QGIS Buoy Data Loaded in ${retryCount * 100}ms`);
     renderBuoys().then(() => {
       const bCount = buoysLayerPrimary.getLayers().length;
       logToFeed(`[DIAG] BUOYS RENDERED: ${bCount} markers.`);
     }).catch(e => logToFeed(`[DIAG] BUOY ERR: ${e.message}`));
-    renderEmergencyServices();
+    renderEmsLayers();
   } else if (retryCount < 20) {
     retryCount++;
     setTimeout(waitForDataAndRender, 100);
   } else {
-    logToFeed("SYS ERROR: QGIS DATA FILES MISSING", true);
+    logToFeed("SYS: LOCAL ASSETS READY");
     renderBuoys();
+    renderEmsLayers();
   }
 }
 
-// Start data polling
+// Event Listeners for EMS Subset Toggles
+function setupEmsEventListeners() {
+  const emsHospitalToggle = document.getElementById('ems-hospital-toggle');
+  const emsFireToggle = document.getElementById('ems-fire-toggle');
+  const emsPoliceToggle = document.getElementById('ems-police-toggle');
+
+  const emsQuickHospital = document.getElementById('ems-quick-hospital');
+  const emsQuickFire = document.getElementById('ems-quick-fire');
+  const emsQuickPolice = document.getElementById('ems-quick-police');
+
+  const btnScan = document.getElementById('btn-scan-osm-ems');
+
+  if (emsHospitalToggle) {
+    emsHospitalToggle.addEventListener('change', (e) => {
+      emsHospitalsEnabled = e.target.checked;
+      updateEmsLayerVisibility();
+      logToFeed(`EMS: HOSPITALS LAYER ${emsHospitalsEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+  }
+
+  if (emsFireToggle) {
+    emsFireToggle.addEventListener('change', (e) => {
+      emsFireEnabled = e.target.checked;
+      updateEmsLayerVisibility();
+      logToFeed(`EMS: FIRE STATIONS LAYER ${emsFireEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+  }
+
+  if (emsPoliceToggle) {
+    emsPoliceToggle.addEventListener('change', (e) => {
+      emsPoliceEnabled = e.target.checked;
+      updateEmsLayerVisibility();
+      logToFeed(`EMS: POLICE STATIONS LAYER ${emsPoliceEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+  }
+
+  if (emsQuickHospital) {
+    emsQuickHospital.addEventListener('click', () => {
+      emsHospitalsEnabled = !emsHospitalsEnabled;
+      updateEmsLayerVisibility();
+      logToFeed(`EMS: HOSPITALS LAYER ${emsHospitalsEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+  }
+
+  if (emsQuickFire) {
+    emsQuickFire.addEventListener('click', () => {
+      emsFireEnabled = !emsFireEnabled;
+      updateEmsLayerVisibility();
+      logToFeed(`EMS: FIRE STATIONS LAYER ${emsFireEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+  }
+
+  if (emsQuickPolice) {
+    emsQuickPolice.addEventListener('click', () => {
+      emsPoliceEnabled = !emsPoliceEnabled;
+      updateEmsLayerVisibility();
+      logToFeed(`EMS: POLICE STATIONS LAYER ${emsPoliceEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+  }
+
+  if (btnScan) {
+    btnScan.addEventListener('click', scanAreaForEms);
+  }
+}
+
+// Start data polling & attach event listeners
 waitForDataAndRender();
+setupEmsEventListeners();
 
 setTimeout(() => {
   primaryMap.invalidateSize();
@@ -1466,6 +1774,9 @@ function applyStationProfile() {
   
   if (typeof secondaryMap5 !== 'undefined' && secondaryMap5) {
     secondaryMap5.setView([profile.lat, profile.lng], secondaryMap5.getZoom() || 14);
+  }
+  if (typeof secondaryMap2 !== 'undefined' && secondaryMap2) {
+    secondaryMap2.setView([profile.lat, profile.lng], secondaryMap2.getZoom() || 13);
   }
 
   if (currentUser) {
