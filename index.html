@@ -13,7 +13,6 @@
   <body>
     <!-- CRT Overlay -->
     <div class="scanlines"></div>
-    <div class="vignette"></div>
 
     <div id="app" class="boot-sequence" style="display: none;">
       <!-- Primary Map Area -->
@@ -99,6 +98,8 @@
           </div>
         </div>
         <div id="primary-map"></div>
+        <!-- Tactical Map Vignette: confined strictly to primary map viewport -->
+        <div class="vignette"></div>
 
         <!-- Tactical Range & Bearing Measure HUD Banner -->
         <div id="rangefinder-hud-banner" class="hud-panel" style="display: none; position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 14px; background: rgba(5, 15, 25, 0.95); border: 1px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); font-family: var(--hud-font); font-size: 11px; letter-spacing: 1px; align-items: center; gap: 12px; border-radius: 3px;">
