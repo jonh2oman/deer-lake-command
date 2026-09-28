@@ -820,6 +820,17 @@ function handleIncomingDispatch(dispatch) {
         alertMedStepsList.innerHTML = '<div style="font-size: 10px; color: var(--text-secondary); font-style: italic;">Turn-by-turn guidance available via GPS launch.</div>';
       }
     }
+    // Also pin to persistent Active Medical Evacuation Route Card on the phone dashboard
+    populateActiveMedicalRouteCard({
+      hospitalName: dispatch.hospital_name || 'HOSPITAL',
+      hospitalAddress: dispatch.hospital_address || '',
+      hospitalPhone: dispatch.hospital_phone || '',
+      distanceKm: dispatch.route_distance_km || '',
+      durationMin: dispatch.route_duration_min || '',
+      googleMapsUrl: dispatch.nav_google_url || '#',
+      appleMapsUrl: dispatch.nav_apple_url || '#',
+      steps: dispatch.route_steps || []
+    });
   } else if (alertMedicalRouteBox) {
     alertMedicalRouteBox.style.display = 'none';
   }
@@ -1018,6 +1029,19 @@ async function openUnitHospitalRoute() {
     if (unitHospitalModal) {
       unitHospitalModal.style.display = 'flex';
     }
+
+    // Also pin to persistent Active Medical Evacuation Route Card on phone main screen
+    populateActiveMedicalRouteCard({
+      hospitalName: hospital.name.toUpperCase(),
+      hospitalAddress: hospital.address || '',
+      hospitalPhone: hospital.phone || '',
+      distanceKm: route.distanceKm,
+      durationMin: route.durationMin,
+      googleMapsUrl: route.googleMapsUrl,
+      appleMapsUrl: route.appleMapsUrl,
+      steps: route.steps || []
+    });
+
     playTacticalTone('roger');
     addLog(`ROUTING: Closest hospital is ${hospital.name} (${route.distanceKm}km)`, 'success');
 
@@ -1053,11 +1077,91 @@ if (btnUnitNotifyCommandMed) {
     
     // Immediate broadcast update
     if (isBroadcasting) {
-      uploadTelemetry({ immediate: true });
+      transmitLocation();
     }
     addLog('ALERT SENT: En route to medical facility!', 'fail');
     alert('Central Command has been alerted that you are in transit to the nearest hospital.');
   });
 }
+
+// ============================================================================
+// PERSISTENT ACTIVE MEDICAL ROUTE CARD (ON MOBILE SENSOR COCKPIT)
+// ============================================================================
+const activeMedRouteCard = document.getElementById('active-med-route-card');
+const cardMedHospName = document.getElementById('card-med-hosp-name');
+const cardMedHospAddress = document.getElementById('card-med-hosp-address');
+const cardMedHospPhone = document.getElementById('card-med-hosp-phone');
+const cardMedDistance = document.getElementById('card-med-distance');
+const cardMedEta = document.getElementById('card-med-eta');
+const cardMedBtnGmaps = document.getElementById('card-med-btn-gmaps');
+const cardMedBtnApple = document.getElementById('card-med-btn-apple');
+const btnClearActiveMedRoute = document.getElementById('btn-clear-active-med-route');
+const btnToggleCardSteps = document.getElementById('btn-toggle-card-steps');
+const cardStepsArrow = document.getElementById('card-steps-arrow');
+const cardMedStepsList = document.getElementById('card-med-steps-list');
+
+function populateActiveMedicalRouteCard({
+  hospitalName,
+  hospitalAddress,
+  hospitalPhone,
+  distanceKm,
+  durationMin,
+  googleMapsUrl,
+  appleMapsUrl,
+  steps
+}) {
+  if (!activeMedRouteCard) return;
+
+  if (cardMedHospName) cardMedHospName.textContent = hospitalName || 'HOSPITAL';
+  if (cardMedHospAddress) cardMedHospAddress.textContent = hospitalAddress || '';
+  if (cardMedHospPhone) {
+    cardMedHospPhone.textContent = hospitalPhone || '';
+    cardMedHospPhone.href = `tel:${(hospitalPhone || '').replace(/[^0-9+]/g, '')}`;
+  }
+  if (cardMedDistance) cardMedDistance.textContent = distanceKm ? `${distanceKm} km` : '';
+  if (cardMedEta) cardMedEta.textContent = durationMin ? `~${durationMin} MINS` : '';
+  if (cardMedBtnGmaps) cardMedBtnGmaps.href = googleMapsUrl || '#';
+  if (cardMedBtnApple) cardMedBtnApple.href = appleMapsUrl || '#';
+
+  if (cardMedStepsList) {
+    if (steps && steps.length > 0) {
+      cardMedStepsList.innerHTML = steps.map((s, idx) => `
+        <div class="med-route-step-row" style="padding: 6px 8px;">
+          <div class="med-route-step-num" style="min-width: 20px; height: 20px; font-size: 10px;">${idx + 1}</div>
+          <div class="med-route-step-icon" style="font-size: 12px;">${s.icon || '➡️'}</div>
+          <div class="med-route-step-body">
+            <div class="med-route-step-instruction" style="font-size: 11px; font-weight: 500;">${s.instruction}</div>
+            <div class="med-route-step-meta" style="font-size: 9px; color: var(--text-secondary);">
+              <span>${s.distanceText || ''}</span>
+              ${s.durationText ? `<span>• ${s.durationText}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      cardMedStepsList.innerHTML = '<div style="font-size: 11px; color: var(--text-secondary); padding: 4px;">Turn-by-turn guidance available via Google / Apple Maps navigation.</div>';
+    }
+  }
+
+  activeMedRouteCard.style.display = 'block';
+  // Scroll card smoothly into view if on mobile
+  activeMedRouteCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+if (btnToggleCardSteps && cardMedStepsList && cardStepsArrow) {
+  btnToggleCardSteps.addEventListener('click', () => {
+    const isVisible = cardMedStepsList.style.display === 'flex';
+    cardMedStepsList.style.display = isVisible ? 'none' : 'flex';
+    cardStepsArrow.textContent = isVisible ? '▼' : '▲';
+  });
+}
+
+if (btnClearActiveMedRoute && activeMedRouteCard) {
+  btnClearActiveMedRoute.addEventListener('click', () => {
+    activeMedRouteCard.style.display = 'none';
+    addLog("Active medical route dismissed.");
+  });
+}
+
 
 

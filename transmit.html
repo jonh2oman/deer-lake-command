@@ -583,6 +583,55 @@
           </div>
         </div>
 
+        <!-- Persistent Active Medical Route Card (Keeps directions visible during driving/evac) -->
+        <div id="active-med-route-card" style="display: none; margin-bottom: 16px; background: rgba(255, 51, 68, 0.12); border: 2px solid #ff3344; border-radius: 4px; padding: 12px; box-shadow: 0 0 20px rgba(255, 51, 68, 0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 51, 68, 0.4); padding-bottom: 8px;">
+            <span style="color: #ff5566; font-size: 11px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+              <span class="pulse-dot" style="background: #ff3344;"></span>
+              <span>ACTIVE MEDICAL EVACUATION ROUTE</span>
+            </span>
+            <button type="button" id="btn-clear-active-med-route" class="btn-secondary" style="font-size: 9px; padding: 2px 6px; color: var(--text-secondary); cursor: pointer;" title="Dismiss active route">[ CLEAR ]</button>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <span style="font-size: 9px; color: #ffaa00; letter-spacing: 1px;">DESTINATION HOSPITAL:</span>
+                <div id="card-med-hosp-name" style="font-size: 15px; font-weight: bold; color: #fff; margin-top: 2px;">WESTERN MEMORIAL</div>
+                <div id="card-med-hosp-address" style="font-size: 10px; color: #ddd; margin-top: 2px;"></div>
+                <div style="font-size: 10px; margin-top: 3px;">
+                  TEL: <a id="card-med-hosp-phone" href="#" style="color: #39ff14; font-weight: bold; text-decoration: none;"></a>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div id="card-med-distance" style="font-size: 18px; font-weight: bold; color: #00d2ff;">0.0 km</div>
+                <div id="card-med-eta" style="font-size: 11px; font-weight: bold; color: #39ff14;">~0 MINS</div>
+              </div>
+            </div>
+
+            <!-- Fast Launch Navigation Buttons -->
+            <div style="display: flex; gap: 6px; margin-top: 10px;">
+              <a id="card-med-btn-gmaps" href="#" target="_blank" class="btn-nav-launch btn-nav-google" style="flex: 1; padding: 10px; font-size: 11px; text-align: center;">
+                🧭 LAUNCH GOOGLE MAPS NAVIGATION
+              </a>
+              <a id="card-med-btn-apple" href="#" target="_blank" class="btn-nav-launch btn-nav-apple" style="flex: 0.8; padding: 10px; font-size: 11px; text-align: center;">
+                🍏 APPLE MAPS
+              </a>
+            </div>
+
+            <!-- Expandable Turn-by-Turn Directions -->
+            <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+              <button type="button" id="btn-toggle-card-steps" class="btn-secondary" style="width: 100%; font-size: 10px; padding: 6px 8px; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                <span id="card-steps-title">📋 TURN-BY-TURN DRIVING INSTRUCTIONS (TAP TO EXPAND)</span>
+                <span id="card-steps-arrow">▼</span>
+              </button>
+              <div id="card-med-steps-list" style="display: none; max-height: 250px; overflow-y: auto; flex-direction: column; gap: 4px; margin-top: 8px;">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button id="btn-broadcast-toggle" class="btn-broadcast">START LIVE GPS TRANSMISSION</button>
         <button id="btn-sos-toggle" class="btn-sos">TRIGGER SOS</button>
 
