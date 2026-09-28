@@ -1678,6 +1678,228 @@ input:focus {
   }
 }
 
+/* ==========================================================================
+   MOVABLE TACTICAL WIND SPEED & DIRECTION INSTRUMENT
+   ========================================================================== */
+
+.wind-widget {
+  position: absolute;
+  top: 75px;
+  left: 200px;
+  width: 260px;
+  z-index: 800;
+  padding: 10px !important;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 210, 255, 0.2);
+  user-select: none;
+  backdrop-filter: blur(8px);
+  border-radius: 4px;
+  transition: box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.wind-widget.dragging {
+  opacity: 0.88;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 18px var(--accent-glow);
+  cursor: grabbing !important;
+}
+
+.wind-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 210, 255, 0.25);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  cursor: grab;
+}
+
+.wind-widget-header:active {
+  cursor: grabbing;
+}
+
+.wind-widget-header .drag-icon {
+  opacity: 0.6;
+  font-size: 11px;
+  margin-right: 4px;
+}
+
+.wind-widget-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.wind-mini-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  color: var(--accent-color);
+  font-family: var(--hud-font);
+  font-size: 9px;
+  padding: 1px 5px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.wind-mini-btn:hover {
+  background: rgba(0, 210, 255, 0.2);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.wind-widget-body {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.wind-dial-container {
+  flex-shrink: 0;
+}
+
+.wind-dial {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 210, 255, 0.4);
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.08) 0%, rgba(0, 0, 0, 0.6) 75%);
+  box-shadow: inset 0 0 10px rgba(0, 210, 255, 0.2), 0 0 8px rgba(0, 210, 255, 0.15);
+}
+
+.wind-cardinal {
+  position: absolute;
+  font-family: var(--hud-font);
+  font-size: 8px;
+  font-weight: bold;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.wind-cardinal.n { top: 3px; left: 50%; transform: translateX(-50%); color: var(--accent-color); }
+.wind-cardinal.e { right: 4px; top: 50%; transform: translateY(-50%); }
+.wind-cardinal.s { bottom: 3px; left: 50%; transform: translateX(-50%); }
+.wind-cardinal.w { left: 4px; top: 50%; transform: translateY(-50%); }
+
+.wind-dial-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-color);
+  box-shadow: 0 0 6px var(--accent-glow);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.wind-arrow-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.wind-arrow-shaft {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 2px;
+  height: 42px;
+  background: linear-gradient(to top, rgba(0, 210, 255, 0.2), var(--accent-color));
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px var(--accent-glow);
+}
+
+.wind-arrow-head {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid var(--accent-color);
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 4px var(--accent-glow));
+}
+
+.wind-metrics {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wind-bearing-readout {
+  font-family: var(--hud-font);
+  font-size: 11px;
+  color: var(--accent-color);
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.wind-speed-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.wind-unit-box {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: 2px;
+  padding: 3px 2px;
+  text-align: center;
+}
+
+.wind-unit-box .wind-val {
+  display: block;
+  font-family: var(--hud-font);
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.1;
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+
+.wind-unit-box .wind-lbl {
+  display: block;
+  font-family: var(--hud-font);
+  font-size: 8px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.wind-condition-tag {
+  font-family: var(--hud-font);
+  font-size: 9px;
+  color: var(--tactical-green);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Collapsed Mini Wind Pill */
+.wind-widget.collapsed .wind-widget-body {
+  display: none;
+}
+.wind-widget.collapsed {
+  width: auto;
+  padding: 6px 10px !important;
+}
+.wind-widget.collapsed .wind-widget-header {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  gap: 8px;
+}
+
+
 
 
 

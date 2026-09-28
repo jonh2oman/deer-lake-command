@@ -615,6 +615,10 @@ async function fetchWeatherAndMarine(lat, lng) {
         ${marineHtml}
       `;
 
+      if (typeof updateWindWidget === 'function') {
+        updateWindWidget(ws, wd);
+      }
+
       logToFeed(`TELEMETRY RECV: WIND ${ws}km/h @ ${wd}°${waveLog}`);
     }
   } catch (e) {
@@ -2425,6 +2429,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
     if (quickBtnRecenter) quickBtnRecenter.click();
+  } else if (e.code === 'KeyW') {
+    toggleWindWidget();
   } else if (e.code === 'KeyT') {
     const editToggle = document.getElementById('edit-toggle');
     if (editToggle) {
@@ -2448,4 +2454,227 @@ window.addEventListener('keydown', (e) => {
     toggleHotkeysModal();
   }
 });
+
+// --- 9. Movable Wind Speed & Direction HUD Instrument ---
+const windHudWidget = document.getElementById('wind-hud-widget');
+const windDragHandle = document.getElementById('wind-widget-drag-handle');
+const btnWindReset = document.getElementById('btn-wind-reset');
+const btnWindCollapse = document.getElementById('btn-wind-collapse');
+const quickBtnWind = document.getElementById('quick-btn-wind');
+const windVectorToggle = document.getElementById('wind-vector-toggle');
+const windArrowWrapper = document.getElementById('wind-arrow-wrapper');
+const windValKmh = document.getElementById('wind-val-kmh');
+const windValMph = document.getElementById('wind-val-mph');
+const windValKts = document.getElementById('wind-val-kts');
+const windBearingReadout = document.getElementById('wind-bearing-readout');
+const windConditionTag = document.getElementById('wind-condition-tag');
+
+let lastWindKmh = 14.0;
+let lastWindDeg = 240;
+
+const CARDINALS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+
+function degToCardinal(deg) {
+  const norm = ((deg % 360) + 360) % 360;
+  const idx = Math.round(norm / 22.5) % 16;
+  return CARDINALS[idx];
+}
+
+function getBeaufortScale(kmh) {
+  if (kmh < 1) return { level: 0, desc: 'CALM', color: '#00d2ff' };
+  if (kmh <= 5) return { level: 1, desc: 'LIGHT AIR', color: '#00e5ff' };
+  if (kmh <= 11) return { level: 2, desc: 'LIGHT BREEZE', color: '#00ffaa' };
+  if (kmh <= 19) return { level: 3, desc: 'GENTLE BREEZE', color: '#44dd88' };
+  if (kmh <= 28) return { level: 4, desc: 'MODERATE BREEZE', color: '#eedd22' };
+  if (kmh <= 38) return { level: 5, desc: 'FRESH BREEZE', color: '#ffaa00' };
+  if (kmh <= 49) return { level: 6, desc: 'STRONG BREEZE', color: '#ff7700' };
+  if (kmh <= 61) return { level: 7, desc: 'HIGH WIND', color: '#ff4444' };
+  if (kmh <= 74) return { level: 8, desc: 'GALE FORCE', color: '#ff1144' };
+  if (kmh <= 88) return { level: 9, desc: 'STRONG GALE', color: '#dd0066' };
+  if (kmh <= 102) return { level: 10, desc: 'STORM CELL', color: '#cc00ff' };
+  return { level: 11, desc: 'VIOLENT STORM', color: '#ff0055' };
+}
+
+function updateWindWidget(wsKmh, wdDeg) {
+  if (wsKmh !== undefined && wsKmh !== null && !isNaN(wsKmh)) lastWindKmh = Number(wsKmh);
+  if (wdDeg !== undefined && wdDeg !== null && !isNaN(wdDeg)) lastWindDeg = Number(wdDeg);
+
+  const kmh = lastWindKmh;
+  const mph = lastWindKmh * 0.621371;
+  const kts = lastWindKmh * 0.539957;
+
+  if (windValKmh) windValKmh.textContent = kmh.toFixed(1);
+  if (windValMph) windValMph.textContent = mph.toFixed(1);
+  if (windValKts) windValKts.textContent = kts.toFixed(1);
+
+  // In meteorology, wind direction is origin (where it comes FROM).
+  // The aerodynamic arrow points towards where the wind is BLOWING TO.
+  const fromCard = degToCardinal(lastWindDeg);
+  const blowToDeg = (lastWindDeg + 180) % 360;
+  const toCard = degToCardinal(blowToDeg);
+
+  if (windBearingReadout) {
+    windBearingReadout.innerHTML = `FROM <span style="color:var(--accent-cyan); font-weight:700;">${Math.round(lastWindDeg)}° ${fromCard}</span> ➔ <span style="color:#ffffff;">${toCard}</span>`;
+  }
+
+  if (windArrowWrapper) {
+    windArrowWrapper.style.transform = `rotate(${blowToDeg}deg)`;
+  }
+
+  const beaufort = getBeaufortScale(kmh);
+  if (windConditionTag) {
+    windConditionTag.textContent = `BFT ${beaufort.level} • ${beaufort.desc}`;
+    windConditionTag.style.borderColor = beaufort.color;
+    windConditionTag.style.color = beaufort.color;
+  }
+}
+
+function setWindWidgetVisibility(visible, log = true) {
+  if (windHudWidget) {
+    windHudWidget.style.display = visible ? 'block' : 'none';
+  }
+  if (quickBtnWind) {
+    if (visible) quickBtnWind.classList.add('active');
+    else quickBtnWind.classList.remove('active');
+  }
+  if (windVectorToggle) {
+    windVectorToggle.checked = visible;
+  }
+  localStorage.setItem('cmd-wind-visible', visible);
+  if (log) {
+    logToFeed(`SYS: WIND VECTOR HUD [${visible ? 'DEPLOYED' : 'STOWED'}]`);
+  }
+}
+
+function toggleWindWidget() {
+  const isCurrentlyVisible = windHudWidget && windHudWidget.style.display !== 'none';
+  setWindWidgetVisibility(!isCurrentlyVisible);
+}
+
+function initMovableWindWidget() {
+  if (!windHudWidget) return;
+
+  // Restore saved position if valid
+  try {
+    const savedPos = JSON.parse(localStorage.getItem('cmd-wind-pos'));
+    if (savedPos && typeof savedPos.left === 'number' && typeof savedPos.top === 'number') {
+      windHudWidget.style.left = `${savedPos.left}px`;
+      windHudWidget.style.top = `${savedPos.top}px`;
+    }
+  } catch (err) {
+    // Ignore invalid JSON
+  }
+
+  // Restore collapse state
+  const isCollapsed = localStorage.getItem('cmd-wind-collapsed') === 'true';
+  if (isCollapsed) {
+    windHudWidget.classList.add('collapsed');
+    if (btnWindCollapse) btnWindCollapse.textContent = '[+]';
+  }
+
+  // Restore visibility
+  const isVisible = localStorage.getItem('cmd-wind-visible') !== 'false';
+  setWindWidgetVisibility(isVisible, false);
+
+  // Render initial readout
+  updateWindWidget(lastWindKmh, lastWindDeg);
+
+  if (windDragHandle) {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
+
+    function onPointerDown(e) {
+      if (e.target.closest('.wind-mini-btn')) return;
+
+      isDragging = true;
+      windHudWidget.classList.add('dragging');
+
+      const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+
+      startX = clientX;
+      startY = clientY;
+      initialLeft = windHudWidget.offsetLeft;
+      initialTop = windHudWidget.offsetTop;
+
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('mouseup', onPointerUp);
+      document.addEventListener('touchmove', onPointerMove, { passive: false });
+      document.addEventListener('touchend', onPointerUp);
+    }
+
+    function onPointerMove(e) {
+      if (!isDragging) return;
+      if (e.cancelable) e.preventDefault();
+
+      const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+
+      const deltaX = clientX - startX;
+      const deltaY = clientY - startY;
+
+      const parent = windHudWidget.offsetParent || document.body;
+      const parentWidth = parent.clientWidth;
+      const parentHeight = parent.clientHeight;
+      const widgetWidth = windHudWidget.offsetWidth;
+      const widgetHeight = windHudWidget.offsetHeight;
+
+      let newLeft = initialLeft + deltaX;
+      let newTop = initialTop + deltaY;
+
+      // Keep within bounds
+      newLeft = Math.max(10, Math.min(newLeft, parentWidth - widgetWidth - 10));
+      newTop = Math.max(45, Math.min(newTop, parentHeight - widgetHeight - 10));
+
+      windHudWidget.style.left = `${newLeft}px`;
+      windHudWidget.style.top = `${newTop}px`;
+    }
+
+    function onPointerUp() {
+      if (!isDragging) return;
+      isDragging = false;
+      windHudWidget.classList.remove('dragging');
+
+      document.removeEventListener('mousemove', onPointerMove);
+      document.removeEventListener('mouseup', onPointerUp);
+      document.removeEventListener('touchmove', onPointerMove);
+      document.removeEventListener('touchend', onPointerUp);
+
+      localStorage.setItem('cmd-wind-pos', JSON.stringify({
+        left: windHudWidget.offsetLeft,
+        top: windHudWidget.offsetTop
+      }));
+    }
+
+    windDragHandle.addEventListener('mousedown', onPointerDown);
+    windDragHandle.addEventListener('touchstart', onPointerDown, { passive: false });
+  }
+
+  // Reset Button
+  if (btnWindReset) {
+    btnWindReset.addEventListener('click', (e) => {
+      e.stopPropagation();
+      windHudWidget.style.left = '200px';
+      windHudWidget.style.top = '75px';
+      localStorage.removeItem('cmd-wind-pos');
+      logToFeed("SYS: WIND INSTRUMENT POSITION RESET");
+    });
+  }
+
+  // Collapse / Expand Button
+  if (btnWindCollapse) {
+    btnWindCollapse.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const collapsed = windHudWidget.classList.toggle('collapsed');
+      btnWindCollapse.textContent = collapsed ? '[+]' : '[-]';
+      localStorage.setItem('cmd-wind-collapsed', collapsed);
+    });
+  }
+}
+
+// Initialize Wind Widget on page load
+initMovableWindWidget();
 

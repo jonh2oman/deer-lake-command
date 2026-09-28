@@ -28,6 +28,7 @@
           </div>
           <div class="tactical-quick-bar">
             <button id="quick-btn-recenter" class="quick-hud-btn" title="Recenter Base (Space)">[ 🎯 CENTER ]</button>
+            <button id="quick-btn-wind" class="quick-hud-btn active" title="Toggle Wind Vector Gauge (W)">[ 💨 WIND ]</button>
             <button id="quick-btn-flir" class="quick-hud-btn" title="Cycle FLIR/NVG (N)">[ 👁 FLIR ]</button>
             <button id="quick-btn-radar" class="quick-hud-btn" title="Toggle Radar Sweep (R)">[ 📡 RADAR ]</button>
             <button id="quick-btn-audio" class="quick-hud-btn" title="Toggle Audio HUD (M)">[ 🔇 SFX: OFF ]</button>
@@ -48,6 +49,50 @@
           <div class="radar-sweep-beam"></div>
           <div class="radar-sonar-ring ring-1"></div>
           <div class="radar-sonar-ring ring-2"></div>
+        </div>
+
+        <!-- HUD: Movable Wind Speed & Direction Indicator -->
+        <div id="wind-hud-widget" class="hud-panel wind-widget" style="display: block;">
+          <div class="hud-label wind-widget-header" id="wind-widget-drag-handle">
+            <span><span class="drag-icon">⠿</span> WIND VECTOR</span>
+            <div class="wind-widget-actions">
+              <button id="btn-wind-reset" class="wind-mini-btn" title="Reset Position">[↺]</button>
+              <button id="btn-wind-collapse" class="wind-mini-btn" title="Collapse/Expand">[-]</button>
+            </div>
+          </div>
+          <div class="wind-widget-body" id="wind-widget-body">
+            <div class="wind-dial-container">
+              <div class="wind-dial" id="wind-dial">
+                <div class="wind-cardinal n">N</div>
+                <div class="wind-cardinal e">E</div>
+                <div class="wind-cardinal s">S</div>
+                <div class="wind-cardinal w">W</div>
+                <div class="wind-arrow-wrapper" id="wind-arrow-wrapper">
+                  <div class="wind-arrow-shaft"></div>
+                  <div class="wind-arrow-head"></div>
+                </div>
+                <div class="wind-dial-center"></div>
+              </div>
+            </div>
+            <div class="wind-metrics">
+              <div class="wind-bearing-readout" id="wind-bearing-readout">---° ---</div>
+              <div class="wind-speed-grid">
+                <div class="wind-unit-box">
+                  <span class="wind-val" id="wind-val-kmh">--.-</span>
+                  <span class="wind-lbl">KM/H</span>
+                </div>
+                <div class="wind-unit-box">
+                  <span class="wind-val" id="wind-val-mph">--.-</span>
+                  <span class="wind-lbl">MPH</span>
+                </div>
+                <div class="wind-unit-box">
+                  <span class="wind-val" id="wind-val-kts">--.-</span>
+                  <span class="wind-lbl">KTS</span>
+                </div>
+              </div>
+              <div class="wind-condition-tag" id="wind-condition-tag">CALM</div>
+            </div>
+          </div>
         </div>
 
 
@@ -720,6 +765,13 @@
               </div>
               <div class="radar-control">
                 <label class="toggle-switch">
+                  <input type="checkbox" id="wind-vector-toggle" checked>
+                  <span class="slider" style="background-color: var(--nautical-color);"></span>
+                </label>
+                <span class="radar-label" style="color: var(--nautical-color);">WIND VECTOR GAUGE</span>
+              </div>
+              <div class="radar-control">
+                <label class="toggle-switch">
                   <input type="checkbox" id="telemetry-graph-toggle" checked>
                   <span class="slider"></span>
                 </label>
@@ -760,6 +812,10 @@
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
             <span style="color: var(--accent-color); font-weight: bold;"><kbd style="background: rgba(0,210,255,0.15); border: 1px solid var(--border-color); padding: 1px 5px; border-radius: 3px;">SPACE</kbd></span>
             <span style="color: var(--text-primary);">Recenter on Tactical Command Base</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
+            <span style="color: var(--accent-color); font-weight: bold;"><kbd style="background: rgba(0,210,255,0.15); border: 1px solid var(--border-color); padding: 1px 5px; border-radius: 3px;">W</kbd></span>
+            <span style="color: var(--text-primary);">Toggle Movable Wind Vector Gauge</span>
           </div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">
             <span style="color: var(--accent-color); font-weight: bold;"><kbd style="background: rgba(0,210,255,0.15); border: 1px solid var(--border-color); padding: 1px 5px; border-radius: 3px;">T</kbd></span>
